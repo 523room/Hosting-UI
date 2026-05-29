@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UI Designs — CreditBridge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0D1117;
+      color: #EEF0F8;
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+    }
+
+    .logo {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #00C896;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #EEF0F8;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: #8892A8;
+      margin-bottom: 56px;
+      text-align: center;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 960px;
+    }
+
+    a.card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: #151B27;
+      border: 1px solid #1E2640;
+      border-radius: 16px;
+      padding: 28px 28px 24px;
+      text-decoration: none;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    a.card:hover {
+      border-color: #00C896;
+      transform: translateY(-2px);
+    }
+
+    .card-tag {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #00C896;
+    }
+
+    .card-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #EEF0F8;
+    }
+
+    .card-desc {
+      font-size: 14px;
+      color: #8892A8;
+      line-height: 1.6;
+    }
+
+    .card-arrow {
+      margin-top: 8px;
+      font-size: 20px;
+      color: #4D556A;
+      transition: color 0.2s;
+    }
+
+    a.card:hover .card-arrow {
+      color: #00C896;
+    }
+
+    footer {
+      margin-top: 64px;
+      font-size: 13px;
+      color: #4D556A;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo">CreditBridge</div>
+  <h1>UI Design Prototypes</h1>
+  <p class="subtitle">Reference screens — internal use only</p>
+
+  <div class="grid">
+    <a class="card" href="connector-app.html">
+      <span class="card-tag">Mobile · Flutter</span>
+      <span class="card-title">Connector App</span>
+      <p class="card-desc">Field DSA mobile app — lead submission, tracking, DPDP consent, and commission dashboard.</p>
+      <span class="card-arrow">→</span>
+    </a>
+
+    <a class="card" href="lead-market.html">
+      <span class="card-tag">Web · Flutter</span>
+      <span class="card-title">Lead Market</span>
+      <p class="card-desc">FI buyer portal — lead discovery, filtering, bid/accept flows, and analytics.</p>
+      <span class="card-arrow">→</span>
+    </a>
+
+    <a class="card" href="lead-converter.html">
+      <span class="card-tag">Web · Flutter</span>
+      <span class="card-title">Lead Converter Portal</span>
+      <p class="card-desc">Internal converter dashboard — lead processing, status management, and conversion tracking.</p>
+      <span class="card-arrow">→</span>
+    </a>
+  </div>
+
+  <footer>CreditBridge · Internal Design Review</footer>
+</body>
+</html>

@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lead Market — CreditBridge FI Buyer Portal</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body style="margin:0;padding:0;background:#09101A;">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LEAD MARKET — CreditBridge FI Buyer Portal
+    // ─────────────────────────────────────────────────────────────────────
+    // Aesthetic: Refined institutional dark — premium, trust-inspiring,
+    //   data-rich without feeling overwhelming. Built for fi_manager role
+    //   at banks, NBFCs, and fintechs doing credit acquisition on desktop.
+    // Font: DM Sans (body) + DM Mono (numbers/IDs) — clean, professional.
+    // Memorable: Anonymised lead cards with PII-blur that lifts on
+    //   soft-approval, score BAND (not exact score), document completeness
+    //   bar, Phase 1 bid submission panel, and SLA countdown for accepted leads.
+    // PRD Modules: Lead Feed (P0), Bid Submission (P1), Lead Detail pre/post-accept,
+    //   SLA Countdown (P1), Analytics Dashboard (P1), Billing & Payouts (P1),
+    //   FI Configuration (P2), Notification Centre (P2)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const injectFont = () => {
+      if (document.querySelector("#lm-font")) return;
+      const l = document.createElement("link");
+      l.id = "lm-font";
+      l.rel = "stylesheet";
+      l.href = "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Mono:wght@400;500&display=swap";
+      document.head.appendChild(l);
+    };
+
+    // ─── Design tokens ─────────────────────────────────────────────────────
+    const C = {
+      bg: "#09101A", sidebar: "#0C1320", card: "#101A28", surface: "#0E1722",
+      input: "#162030", inputBorder: "#1E2E44",
+      accent: "#00C896", accentDim: "#00C89614", accentMid: "#00C89628",
+      accentSoft: "#00C89608",
+      red: "#F05252", redDim: "#F0525214",
+      amber: "#F0A020", amberDim: "#F0A02014",
+      blue: "#4080F0", blueDim: "#4080F014",
+      purple: "#9060F0", purpleDim: "#9060F014",
+      teal: "#14B8A6", tealDim: "#14B8A614",
+      text: "#D4DAE8", textSec: "#607090", textTer: "#3A4D66",
+      border: "#152030", borderLight: "#1E2E42",
+      sans: "'DM Sans', -apple-system, sans-serif",
+      mono: "'DM Mono', monospace",
+    };
+
+    const PRODUCT_COLOR = {
+      "Personal Loan":   { c: C.blue,   bg: C.blueDim   },
+      "Home Loan":       { c: C.purple, bg: C.purpleDim  },
+      "Business Loan":   { c: C.amber,  bg: C.amberDim   },
+      "Two-Wheeler":     { c: C.teal,   bg: C.tealDim    },
+      "Gold Loan":       { c: C.amber,  bg: C.amberDim   },
+      "MSME Loan":       { c: C.blue,   bg: C.blueDim    },
+    };
+
+    // ─── Primitives ─────────────────────────────────────────────────────────
+    const Badge = ({ label, color = C.accent, bg, dot, s = 10 }) => (
+      <span style={{ fontSize: s, fontWeight: 600, padding: "2px 8px", borderRadius: 3, background: bg || (color + "22"), color, whiteSpace: "nowrap", letterSpacing: "0.2px", fontFamily: C.sans, display: "inline-flex", alignItems: "center", gap: 4 }}>
+        {dot && <span style={{ width: 5, height: 5, borderRadius: 3, background: color }}/>}
+        {label}
+      </span>
+    );
+
+    const Card = ({ children, style, onClick, glow }) => (
+      <div onClick={onClick} style={{ background: C.card, borderRadius: 10, border: `1px solid ${glow ? C.accentMid : C.border}`, padding: "14px 18px", cursor: onClick ? "pointer" : undefined, transition: "border-color 0.15s, box-shadow 0.15s", boxShadow: glow ? `0 0 0 1px ${C.accentDim}` : "none", ...style }}>
+        {children}
+      </div>
+    );
+
+    const Btn = ({ children, primary, danger, ghost, small, outline, style, ...p }) => (
+      <button style={{ padding: small ? "5px 12px" : "8px 16px", borderRadius: 6, border: outline ? `1px solid ${C.accent}` : primary || danger || ghost ? "none" : `1px solid ${C.border}`, background: primary ? C.accent : danger ? C.red : ghost || outline ? "transparent" : C.input, color: primary ? "#09101A" : danger ? "#fff" : ghost || outline ? C.accent : C.text, fontSize: small ? 11 : 12, fontWeight: 600, cursor: "pointer", fontFamily: C.sans, display: "inline-flex", alignItems: "center", gap: 5, letterSpacing: "0.1px", flexShrink: 0, ...style }} {...p}>{children}</button>
+    );
+
+    // ─── Score Band pill (shows band, never exact score — per PRD) ──────────
+    const ScorePill = ({ band }) => {
+      // band e.g. "720–749" or "700–719"
+      const lo = parseInt(band.split("–")[0], 10);
+      const color = lo >= 720 ? C.accent : lo >= 680 ? C.amber : C.red;
+      return (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ padding: "4px 8px", borderRadius: 8, background: color + "18", border: `1.5px solid ${color}40`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color, fontFamily: C.mono, lineHeight: 1, whiteSpace:"nowrap" }}>CIBIL {band}</span>
+          </div>
+        </div>
+      );
+    };
+
+    // ─── Completeness bar ────────────────────────────────────────────────────
+    const CompleteBar = ({ pct }) => {
+      const color = pct >= 80 ? C.accent : pct >= 50 ? C.amber : C.red;
+      return (
+        <div>
+          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:2 }}>
+            <span style={{ fontSize:9, color:C.textTer, fontFamily:C.sans }}>File Complete</span>
+            <span style={{ fontSize:9, fontWeight:700, color, fontFamily:C.mono }}>{pct}%</span>
+          </div>
+          <div style={{ height:3, borderRadius:2, background:C.border }}>
+            <div style={{ width:`${pct}%`, height:"100%", borderRadius:2, background:color }}/>
+          </div>
+        </div>
+      );
+    };
+
+    // ─── PII Blur cell — lifts on hover / accept ────────────────────────────
+    const PiiCell = ({ children, revealed }) => (
+      <span style={{ filter: revealed ? "none" : "blur(4px)", userSelect: revealed ? "auto" : "none", transition: "filter 0.3s", color: C.text, fontSize: 12, fontFamily: C.mono }}>
+        {children}
+      </span>
+    );
+
+    // ─── Sidebar ────────────────────────────────────────────────────────────
+    const Sidebar = ({ active, onNav, fi, role, slaScore }) => {
+      const allNav = [
+        { id: "feed",          label: "Lead Feed",    badge: "128",                   roles: ["fi_manager","fi_rm","fi_billing"] },
+        { id: "accepted",      label: "Accepted",     badge: "34",                    roles: ["fi_manager","fi_rm","fi_billing"] },
+        { id: "analytics",     label: "Analytics",                                    roles: ["fi_manager","fi_rm","fi_billing"] },
+        { id: "billing",       label: "Billing",                                      roles: ["fi_billing"] },
+        { id: "config",        label: "Configuration", badge: "1",                    roles: ["fi_manager","fi_billing"] },
+        { id: "notifications", label: "Notifications",badge: "3",                     roles: ["fi_manager","fi_rm","fi_billing"] },
+      ];
+      const nav = allNav.filter(n => n.roles.includes(role));
+      return (
+        <div style={{ width: 220, background: C.sidebar, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", flexShrink: 0 }}>
+          <div style={{ padding: "18px 16px 14px", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accent, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, color: "#09101A", fontFamily: C.mono }}>CB</div>
+              <div><div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.sans }}>Lead Market</div><div style={{ fontSize: 9, color: C.textTer, letterSpacing: "0.5px", fontFamily: C.mono }}>FI PORTAL</div></div>
+            </div>
+            <div style={{ padding: "8px 10px", borderRadius: 7, background: C.accentDim, border: `1px solid ${C.accentMid}` }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans }}>{fi}</div>
+                <div style={{ padding:"2px 7px", borderRadius:10, background: slaScore>=80?C.accent+"22":C.amber+"22", border:`1px solid ${slaScore>=80?C.accent:C.amber}40`, fontSize:9, fontWeight:700, color:slaScore>=80?C.accent:C.amber, fontFamily:C.mono }}>SLA {slaScore}</div>
+              </div>
+              <div style={{ fontSize: 10, color: C.textSec, fontFamily: C.sans, marginTop:2 }}>{role} · Active</div>
+            </div>
+          </div>
+          <div style={{ flex: 1, padding: "10px 8px" }}>
+            {nav.map(({ id, label, badge }) => (
+              <button key={id} onClick={() => onNav(id)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderRadius: 7, border: "none", background: active === id ? C.accentDim : "transparent", color: active === id ? C.accent : C.textSec, fontSize: 13, fontWeight: active === id ? 600 : 400, cursor: "pointer", width: "100%", textAlign: "left", fontFamily: C.sans, marginBottom: 2 }}>
+                {label}
+                {badge && <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 10, background: active === id ? C.accentMid : C.border, color: active === id ? C.accent : C.textTer, fontFamily: C.mono }}>{badge}</span>}
+              </button>
+            ))}
+          </div>
+          <div style={{ padding: "10px 14px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 15, background: C.blueDim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: C.blue, fontFamily: C.mono }}>MK</div>
+            <div><div style={{ fontSize: 12, fontWeight: 600, color: C.text, fontFamily: C.sans }}>Manisha Kapoor</div><div style={{ fontSize: 10, color: C.textTer, fontFamily: C.sans }}>Credit Manager</div></div>
+          </div>
+        </div>
+      );
+    };
+
+    // ─── Topbar ─────────────────────────────────────────────────────────────
+    const Topbar = ({ title, sub, actions }) => (
+      <div style={{ height: 54, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", padding: "0 22px", gap: 12, flexShrink: 0 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: C.sans }}>{title}</div>
+          {sub && <div style={{ fontSize: 10, color: C.textTer, fontFamily: C.sans }}>{sub}</div>}
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>{actions}</div>
+      </div>
+    );
+
+    // ─── VIEW: Lead Feed (P1 — anonymised, bid window) ──────────────────────
+    const FeedView = () => {
+      const [accepted, setAccepted] = useState({});
+      const [passed, setPassed]     = useState({});
+      const [activeDetail, setDetail] = useState(null);
+      const [filters, setFilters]   = useState({ product: "all", score: "all", city: "all" });
+      const [biddingCard, setBiddingCard] = useState(null);
+      const [bidInputs, setBidInputs]     = useState({});  // { [id]: { rate, fee, tat } }
+      const [demoOffHours, setDemoOffHours] = useState(false);
+      // Bid window: Mon–Fri 9:00–18:00 IST
+      const now = new Date();
+      const dayOfWeek = now.getDay(); // 0=Sun,6=Sat
+      const hour = now.getHours();
+      const isWorkingHours = !demoOffHours && dayOfWeek >= 1 && dayOfWeek <= 5 && hour >= 9 && hour < 18;
+      const bidWindowOpen = true;
+
+      const leads = [
+        { id:"LM-8841", product:"Personal Loan", amount:"₹2L–₹3L",  scoreBand:"720–749", income:"₹40K–₹60K/mo", pincode:"400001", city:"Mumbai",    employment:"Salaried",     completeness:92, freshHrs:3,  connQuality:"High",   fresh:true  },
+        { id:"LM-8839", product:"Home Loan",     amount:"₹15L–₹25L", scoreBand:"700–719", income:"₹80K–₹1L/mo",  pincode:"411001", city:"Pune",      employment:"Salaried",     completeness:87, freshHrs:11, connQuality:"High",   fresh:false },
+        { id:"LM-8836", product:"Business Loan", amount:"₹3L–₹10L",  scoreBand:"680–699", income:"₹1L+/mo",      pincode:"380001", city:"Ahmedabad", employment:"Business Owner",completeness:74, freshHrs:26, connQuality:"Medium", fresh:false },
+        { id:"LM-8831", product:"Vehicle Loan",  amount:"₹50K–₹1L",  scoreBand:"720–749", income:"₹20K–₹40K/mo", pincode:"600001", city:"Chennai",   employment:"Salaried",     completeness:95, freshHrs:1,  connQuality:"High",   fresh:true  },
+        { id:"LM-8827", product:"Gold Loan",     amount:"₹1L–₹3L",   scoreBand:"700–719", income:"₹20K–₹40K/mo", pincode:"500001", city:"Hyderabad", employment:"Self-Employed", completeness:88, freshHrs:5,  connQuality:"Medium", fresh:true  },
+        { id:"LM-8819", product:"MSME Loan",     amount:"₹3L–₹10L",  scoreBand:"680–699", income:"₹1L+/mo",      pincode:"560001", city:"Bengaluru", employment:"Business Owner",completeness:62, freshHrs:38, connQuality:"Low",    fresh:false },
+      ];
+
+      const filtered = leads.filter(l => {
+        if (filters.product !== "all" && l.product !== filters.product) return false;
+        const lo = parseInt(l.scoreBand.split("–")[0], 10);
+        if (filters.score === "720+" && lo < 720) return false;
+        if (filters.score === "700-719" && (lo < 700 || lo >= 720)) return false;
+        if (filters.score === "680-699" && (lo < 680 || lo >= 700)) return false;
+        if (filters.city !== "all" && l.city !== filters.city) return false;
+        return true;
+      }).filter(l => !passed[l.id]);
+
+      const doAccept = (id, e) => {
+        e.stopPropagation();
+        setAccepted(p => ({ ...p, [id]: true }));
+      };
+      const doPass = (id, e) => {
+        e.stopPropagation();
+        setPassed(p => ({ ...p, [id]: true }));
+      };
+
+      return (
+        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+            {/* Filter bar */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+              <select value={filters.product} onChange={e => setFilters(f=>({...f,product:e.target.value}))} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${C.inputBorder}`, background: C.input, color: C.text, fontSize: 12, fontFamily: C.sans, outline: "none" }}>
+                <option value="all">All Products</option>
+                {Object.keys(PRODUCT_COLOR).map(p=><option key={p} value={p}>{p}</option>)}
+              </select>
+              <select value={filters.score} onChange={e => setFilters(f=>({...f,score:e.target.value}))} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${C.inputBorder}`, background: C.input, color: C.text, fontSize: 12, fontFamily: C.sans, outline: "none" }}>
+                <option value="all">Any Score Band</option>
+                <option value="720+">720+ (Near-prime or above)</option>
+                <option value="700-719">700–719</option>
+                <option value="680-699">680–699</option>
+              </select>
+              <select value={filters.city} onChange={e => setFilters(f=>({...f,city:e.target.value}))} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${C.inputBorder}`, background: C.input, color: C.text, fontSize: 12, fontFamily: C.sans, outline: "none" }}>
+                <option value="all">All Cities</option>
+                {[...new Set(leads.map(l=>l.city))].map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+              <div style={{ flex: 1 }}/>
+              <div style={{ fontSize: 12, color: C.textSec, fontFamily: C.sans }}>{filtered.length} leads available</div>
+              <button onClick={() => setDemoOffHours(v=>!v)} style={{ padding:"5px 10px", borderRadius:5, border:`1px solid ${C.border}`, background:demoOffHours?C.amberDim:C.input, color:demoOffHours?C.amber:C.textTer, fontSize:10, fontFamily:C.mono, cursor:"pointer" }}>
+                {demoOffHours ? "⏱ Demo: Off-hours" : "Demo: Working hours"}
+              </button>
+            </div>
+
+            {/* PII notice */}
+            <div style={{ padding: "9px 14px", borderRadius: 8, background: C.accentDim, border: `1px solid ${C.accentMid}`, marginBottom: 16, display: "flex", gap: 10, alignItems: "center" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" stroke={C.accent} strokeWidth="1.7"/><path d="M7 11V7a5 5 0 0110 0v4" stroke={C.accent} strokeWidth="1.7"/></svg>
+              <span style={{ fontSize: 11, color: C.accent, fontFamily: C.sans }}>PII is masked until you accept a lead. Name, phone, and Aadhaar are never shared pre-acceptance — enforced at API layer per RBI/2022-23/111.</span>
+            </div>
+
+            {/* Lead cards */}
+            {filtered.map(l => {
+              const isAccepted = accepted[l.id];
+              const pc = PRODUCT_COLOR[l.product] || PRODUCT_COLOR["Personal Loan"];
+              return (
+                <Card key={l.id} glow={isAccepted} onClick={() => setDetail(l.id)} style={{ marginBottom: 10, cursor: "pointer" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                      <ScorePill band={l.scoreBand}/>
+                      <Badge label={l.product.split(" ")[0]} color={pc.c} bg={pc.bg} s={9}/>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                        <span style={{ fontSize: 11, color: C.textTer, fontFamily: C.mono }}>{l.id}</span>
+                        {l.fresh && <Badge label="New" color={C.accent} dot s={9}/>}
+                        {l.freshHrs <= 6 && <Badge label={`${l.freshHrs}h ago`} color={C.blue} s={9}/>}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "4px 14px", marginBottom:8 }}>
+                        {[
+                          { l:"Loan Band",     v: l.amount                            },
+                          { l:"Income Band",   v: l.income                            },
+                          { l:"City / Pin",    v: `${l.city} (${l.pincode})`          },
+                          { l:"Employment",    v: l.employment                        },
+                          { l:"Connector",     v: `${l.connQuality} Quality`, color: l.connQuality==="High"?C.accent:l.connQuality==="Medium"?C.amber:C.red },
+                          { l:"PAN",           v: isAccepted?"ABCDE1234F":"ABCDE****", pii:!isAccepted },
+                        ].map(({ l:k, v, bold, color, pii }) => (
+                          <div key={k}>
+                            <div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans, textTransform: "uppercase", letterSpacing: "0.4px" }}>{k}</div>
+                            {pii
+                              ? <PiiCell revealed={isAccepted}>{v}</PiiCell>
+                              : <div style={{ fontSize: 12, fontWeight: bold?700:500, color: color||C.text, fontFamily: C.mono }}>{v}</div>
+                            }
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0, minWidth: 120 }}>
+                      <CompleteBar pct={l.completeness}/>
+                      <div style={{ marginTop:4 }}>
+                        {isAccepted
+                          ? <div style={{ padding: "8px 12px", borderRadius: 6, background: C.accentDim, border: `1px solid ${C.accentMid}`, textAlign: "center" }}>
+                              <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, fontFamily: C.sans }}>✓ Bid Placed</div>
+                              <div style={{ fontSize: 9, color: C.textSec, fontFamily: C.sans }}>{(bidInputs[l.id]||{}).rate||"—"}% APR · {(bidInputs[l.id]||{}).tat||"—"}h TAT</div>
+                            </div>
+                          : <>
+                              <div style={{ fontSize: 9, color: bidWindowOpen ? C.amber : C.textTer, fontFamily: C.mono, marginBottom: 4, textAlign: "center" }}>
+                                {bidWindowOpen ? "⏱ 1h 42m left" : "🔒 Bidding closed (outside 9:30–18:00)"}
+                              </div>
+                              <Btn primary onClick={e => { e.stopPropagation(); if(bidWindowOpen) setBiddingCard(biddingCard === l.id ? null : l.id); }} style={{ justifyContent: "center", width:"100%", opacity:bidWindowOpen?1:0.4, pointerEvents:bidWindowOpen?"auto":"none" }}>Place Bid →</Btn>
+                              <Btn ghost small onClick={e => doPass(l.id,e)} style={{ justifyContent: "center", width:"100%", marginTop:4, fontSize:10 }}>Pass</Btn>
+                            </>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  {/* Inline bid form — expands below card content */}
+                  {biddingCard === l.id && !isAccepted && (
+                    <div onClick={e => e.stopPropagation()} style={{ borderTop:`1px solid ${C.accentMid}`, marginTop:12, paddingTop:12 }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:C.accent, marginBottom:8, fontFamily:C.sans, textTransform:"uppercase", letterSpacing:"0.4px" }}>Submit Bid — 2-Hour Window</div>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr auto", gap:8, alignItems:"flex-end" }}>
+                        {[
+                          { label:"Interest Rate (APR %)", key:"rate", ph:"e.g. 16.5", def:"16.5" },
+                          { label:"Processing Fee (%)",    key:"fee",  ph:"e.g. 1.5",  def:"1.5"  },
+                          { label:"TAT Commitment (hrs)",  key:"tat",  ph:"e.g. 48",   def:"48"   },
+                        ].map(({ label, key, ph, def }) => (
+                          <div key={key}>
+                            <div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans, marginBottom:3 }}>{label}</div>
+                            <input
+                              value={(bidInputs[l.id]||{})[key] ?? def}
+                              onChange={e => setBidInputs(p => ({ ...p, [l.id]: { ...(p[l.id]||{}), [key]: e.target.value } }))}
+                              placeholder={ph}
+                              style={{ width:"100%", padding:"6px 10px", borderRadius:5, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.mono, outline:"none", boxSizing:"border-box" }}
+                            />
+                          </div>
+                        ))}
+                        <Btn primary style={{ height:32, whiteSpace:"nowrap" }} onClick={e => { e.stopPropagation(); setAccepted(p => ({ ...p, [l.id]: true })); setBiddingCard(null); }}>Submit →</Btn>
+                      </div>
+                      <div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans, marginTop:6 }}>Sealed bid — lowest APR wins. Result published at window close. No obligation until disbursement.</div>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Detail panel — post-accept PII reveal */}
+          {activeDetail && (() => {
+            const l = leads.find(x=>x.id===activeDetail);
+            if (!l) return null;
+            const isAcc = accepted[l.id];
+            return (
+              <div style={{ width: 320, borderLeft: `1px solid ${C.border}`, background: C.sidebar, overflowY: "auto", padding: 18, flexShrink: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.sans }}>Lead Detail</div>
+                  <button onClick={() => setDetail(null)} style={{ background: "none", border: "none", color: C.textSec, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>
+                </div>
+                <div style={{ fontFamily: C.mono, fontSize: 11, color: C.accent, marginBottom: 10 }}>{l.id}</div>
+
+                {/* KFS compliance banner */}
+                <div style={{ padding: "10px 12px", borderRadius: 7, background: "#1A1400", border: `1px solid ${C.amber}40`, marginBottom: 14 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: C.amber, marginBottom: 3, fontFamily: C.sans }}>KFS — Key Fact Statement (RBI)</div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    {[["Indicative APR","16.5% p.a."],["Processing Fee","1.5%"],["Tenure","36–60 mo"]].map(([k,v])=>(
+                      <div key={k}><div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans }}>{k}</div><div style={{ fontSize: 12, fontWeight: 700, color: C.amber, fontFamily: C.mono }}>{v}</div></div>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 9, color: C.textTer, marginTop:5, fontFamily: C.sans }}>Displayed in compliance with RBI/2022-23/111 §7(c). Full KFS available post-accept.</div>
+                </div>
+
+                {[
+                  { k:"Loan Band",         v:l.amount,       pii:false },
+                  { k:"Income Band",       v:l.income,       pii:false },
+                  { k:"City / Pin",        v:`${l.city} (${l.pincode})`, pii:false },
+                  { k:"Bureau Score Band", v:`CRIF/CIBIL ${l.scoreBand}`, pii:false },
+                  { k:"Employment",        v:l.employment,   pii:false },
+                  { k:"File Complete",     v:`${l.completeness}%`, pii:false },
+                  { k:"Connector Quality", v:`${l.connQuality}`, pii:false },
+                  { k:"Full Name",         v:"Rajesh Kumar",  pii:true },
+                  { k:"Phone",             v:"+91 98765 43210", pii:true },
+                  { k:"PAN",               v:"ABCDE1234F",   pii:true  },
+                ].map(({ k, v, pii }) => (
+                  <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: `1px solid ${C.border}` }}>
+                    <span style={{ fontSize: 11, color: C.textTer, fontFamily: C.sans }}>{k}</span>
+                    <PiiCell revealed={!pii || isAcc}>{v}</PiiCell>
+                  </div>
+                ))}
+
+                {/* Phase 1 — Bid Submission Panel */}
+                {!isAcc && (() => {
+                  const [bidRate, setBidRate] = React.useState("16.5");
+                  const [bidFee, setBidFee] = React.useState("1.5");
+                  const [bidTat, setBidTat] = React.useState("48");
+                  const [bidSubmitted, setBidSubmitted] = React.useState(false);
+                  return (
+                    <div style={{ marginTop:14, padding:"12px", borderRadius:8, background:"#0E1722", border:`1px solid ${C.accentMid}` }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:C.accent, marginBottom:10, fontFamily:C.sans, textTransform:"uppercase", letterSpacing:"0.4px" }}>Phase 1 — Submit Bid (2-hr window)</div>
+                      {bidSubmitted
+                        ? <div style={{ textAlign:"center", padding:"10px 0" }}>
+                            <div style={{ fontSize:12, color:C.accent, fontWeight:700, fontFamily:C.sans }}>✓ Bid Submitted</div>
+                            <div style={{ fontSize:10, color:C.textSec, fontFamily:C.sans, marginTop:3 }}>{bidRate}% APR · {bidFee}% fee · {bidTat}h TAT</div>
+                            <div style={{ fontSize:9, color:C.textTer, marginTop:5, fontFamily:C.sans }}>Lowest APR wins. Result at window close.</div>
+                          </div>
+                        : <>
+                            {[
+                              { l:"Interest Rate (APR %)", val:bidRate, set:setBidRate, placeholder:"e.g. 16.5" },
+                              { l:"Processing Fee (%)", val:bidFee, set:setBidFee, placeholder:"e.g. 1.5" },
+                              { l:"TAT Commitment (hours)", val:bidTat, set:setBidTat, placeholder:"e.g. 48" },
+                            ].map(({ l:label, val, set, placeholder })=>(
+                              <div key={label} style={{ marginBottom:8 }}>
+                                <div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans, marginBottom:3 }}>{label}</div>
+                                <input value={val} onChange={e=>set(e.target.value)} placeholder={placeholder}
+                                  style={{ width:"100%", padding:"6px 10px", borderRadius:5, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.mono, outline:"none", boxSizing:"border-box" }}/>
+                              </div>
+                            ))}
+                            <Btn primary style={{ width:"100%", justifyContent:"center", marginTop:4 }} onClick={()=>setBidSubmitted(true)}>Submit Bid →</Btn>
+                          </>
+                      }
+                    </div>
+                  );
+                })()}
+
+
+                {!isAcc && (
+                  <div style={{ marginTop: 16 }}>
+                    <Btn primary style={{ width:"100%", justifyContent:"center" }} onClick={()=>setAccepted(p=>({...p,[l.id]:true}))}>Accept & Unlock PII</Btn>
+                    <div style={{ fontSize: 9, color: C.textTer, textAlign: "center", marginTop: 6, fontFamily: C.sans }}>You'll be notified if lead cascades to next FI. No commitment until disbursement.</div>
+                  </div>
+                )}
+                {isAcc && (
+                  <div style={{ marginTop: 14 }}>
+                    <div style={{ padding: "10px 12px", borderRadius: 7, background: C.accentDim, border: `1px solid ${C.accentMid}`, marginBottom:8 }}>
+                      <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, fontFamily: C.sans }}>✓ Soft Approval Recorded</div>
+                      <div style={{ fontSize: 10, color: C.textSec, fontFamily: C.sans, marginTop: 3 }}>PII is now fully visible. Proceed with underwriting.</div>
+                    </div>
+                    {/* SLA countdown */}
+                    <div style={{ padding:"10px 12px", borderRadius:7, background:"#1A1200", border:`1px solid ${C.amber}40` }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:C.amber, marginBottom:6, fontFamily:C.sans }}>SLA Countdown — Status Update Required</div>
+                      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                        <div style={{ flex:1, height:5, borderRadius:3, background:C.border }}>
+                          <div style={{ width:"62%", height:"100%", borderRadius:3, background:C.amber }}/>
+                        </div>
+                        <span style={{ fontSize:12, fontWeight:700, color:C.amber, fontFamily:C.mono, flexShrink:0 }}>18h 24m left</span>
+                      </div>
+                      <div style={{ fontSize:9, color:C.textTer, marginTop:5, fontFamily:C.sans }}>Update status by T+48h or lead auto-cascades to next FI and your SLA score decrements.</div>
+                      <div style={{ display:"flex", gap:6, marginTop:8, flexWrap:"wrap" }}>
+                        {["Additional Docs Requested","Soft Sanctioned","Hard Sanctioned","Disbursed","Declined"].map(s=>(
+                          <Btn key={s} ghost small style={{ fontSize:9, padding:"4px 8px" }}>{s}</Btn>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      );
+    };
+
+    // ─── VIEW: Analytics ────────────────────────────────────────────────────
+    const AnalyticsView = () => {
+      const [prodFilter, setProdFilter] = useState("all");
+      const months = ["Oct","Nov","Dec","Jan","Feb","Mar"];
+      const accepted =  [12,18,22,14,19,28];
+      const disbursed = [9,13,16,10,15,22];
+      const maxA = Math.max(...accepted);
+      return (
+        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+          {/* Product filter */}
+          <div style={{ display:"flex", gap:8, marginBottom:16, alignItems:"center" }}>
+            <select value={prodFilter} onChange={e=>setProdFilter(e.target.value)} style={{ padding:"6px 10px", borderRadius:6, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.sans, outline:"none" }}>
+              <option value="all">All Products</option>
+              {Object.keys(PRODUCT_COLOR).map(p=><option key={p} value={p}>{p}</option>)}
+            </select>
+            <span style={{ fontSize:11, color:C.textTer, fontFamily:C.sans }}>TAT benchmarks are product-specific</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
+            {[
+              { l:"Leads Accepted (Apr)",   v:"28",    c:C.accent },
+              { l:"Disbursed (Apr)",        v:"22",    c:C.accent },
+              { l:"Conversion Rate",        v:"78.6%", c:C.blue   },
+              { l:"Avg TAT (days)",         v:"3.2",   c:C.text   },
+            ].map(({ l, v, c }) => (
+              <Card key={l} style={{ padding: "12px 14px" }}>
+                <div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 5 }}>{l}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: c, fontFamily: C.mono }}>{v}</div>
+              </Card>
+            ))}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+            <Card>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 14 }}>Accepted vs Disbursed</div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 110 }}>
+                {months.map((m,i)=>(
+                  <div key={m} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                    <div style={{ display: "flex", gap: 2, alignItems: "flex-end", width: "100%" }}>
+                      <div style={{ flex:1, borderRadius:"2px 2px 0 0", background:C.accentDim, height:`${(accepted[i]/maxA)*90}px` }}>
+                        <div style={{ height:"100%", background:C.accentMid, borderRadius:"2px 2px 0 0" }}/>
+                      </div>
+                      <div style={{ flex:1, borderRadius:"2px 2px 0 0", background:`linear-gradient(180deg,${C.accent},${C.accent}80)`, height:`${(disbursed[i]/maxA)*90}px` }}/>
+                    </div>
+                    <span style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans }}>{m}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 14, marginTop: 8 }}>
+                <div style={{ display: "flex", gap: 5, alignItems: "center" }}><div style={{ width: 8, height: 8, borderRadius: 2, background: C.accentMid }}/><span style={{ fontSize: 9, color: C.textSec, fontFamily: C.sans }}>Accepted</span></div>
+                <div style={{ display: "flex", gap: 5, alignItems: "center" }}><div style={{ width: 8, height: 8, borderRadius: 2, background: C.accent }}/><span style={{ fontSize: 9, color: C.textSec, fontFamily: C.sans }}>Disbursed</span></div>
+              </div>
+            </Card>
+            <Card>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 14 }}>Rejection Breakdown</div>
+              {[
+                { reason:"Low Bureau Score",  pct:38, color:C.red    },
+                { reason:"Income Mismatch",   pct:27, color:C.amber  },
+                { reason:"Incomplete Docs",   pct:19, color:C.blue   },
+                { reason:"Geography Limit",   pct:10, color:C.purple },
+                { reason:"Other",             pct:6,  color:C.textSec},
+              ].map(({ reason, pct, color }) => (
+                <div key={reason} style={{ marginBottom: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                    <span style={{ fontSize: 11, color: C.textSec, fontFamily: C.sans }}>{reason}</span>
+                    <span style={{ fontSize: 11, color, fontFamily: C.mono, fontWeight: 600 }}>{pct}%</span>
+                  </div>
+                  <div style={{ height: 4, borderRadius: 2, background: C.border }}>
+                    <div style={{ width:`${pct}%`, height:"100%", borderRadius:2, background:color }}/>
+                  </div>
+                </div>
+              ))}
+            </Card>
+          </div>
+
+          <Card>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 12 }}>TAT Benchmarking vs Platform Average</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+              {[
+                { stage:"Accept → Underwriting", you:"0.8d", avg:"1.2d", better:true  },
+                { stage:"Underwriting → Sanction",you:"2.1d", avg:"3.4d", better:true  },
+                { stage:"Sanction → Disbursal",  you:"1.3d", avg:"2.1d", better:true  },
+                { stage:"Full Cycle",            you:"4.2d", avg:"6.7d", better:true  },
+              ].map(({ stage, you, avg, better }) => (
+                <div key={stage} style={{ padding: "10px 12px", borderRadius: 7, background: C.surface, border: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans, marginBottom: 6 }}>{stage}</div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <div><div style={{ fontSize: 9, color: C.textTer }}>You</div><div style={{ fontSize: 16, fontWeight: 700, color: better?C.accent:C.red, fontFamily: C.mono }}>{you}</div></div>
+                    <div style={{ textAlign: "right" }}><div style={{ fontSize: 9, color: C.textTer }}>Platform</div><div style={{ fontSize: 16, fontWeight: 700, color: C.textSec, fontFamily: C.mono }}>{avg}</div></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      );
+    };
+
+    // ─── VIEW: Billing (daily invoices, expandable loan rows) ────────────────
+    const BillingView = () => {
+      const [expanded, setExpanded] = useState({});
+      // Daily invoices — one per disbursement day
+      const dailyInvoices = [
+        { date:"04 May 2026", inv:"INV-2026-124", loans:[
+            { id:"LM-8810", product:"Personal Loan",  amount:"₹2,50,000", fee:"1.8%", commission:"₹4,500",  gst:"₹810"  },
+            { id:"LM-8797", product:"Business Loan",  amount:"₹6,00,000", fee:"2.0%", commission:"₹12,000", gst:"₹2,160" },
+          ], totalNet:"₹16,500", totalGst:"₹2,970", status:"invoiced" },
+        { date:"02 May 2026", inv:"INV-2026-121", loans:[
+            { id:"LM-8803", product:"Home Loan",      amount:"₹18,00,000", fee:"0.8%", commission:"₹14,400", gst:"₹2,592" },
+          ], totalNet:"₹14,400", totalGst:"₹2,592", status:"invoiced" },
+        { date:"29 Apr 2026", inv:"INV-2026-118", loans:[
+            { id:"LM-8791", product:"Personal Loan",  amount:"₹1,80,000", fee:"1.8%", commission:"₹3,240",  gst:"₹583"  },
+            { id:"LM-8785", product:"Gold Loan",      amount:"₹2,10,000", fee:"1.5%", commission:"₹3,150",  gst:"₹567"  },
+          ], totalNet:"₹6,390", totalGst:"₹1,150", status:"paid" },
+      ];
+      const statusColor = { paid: C.accent, invoiced: C.amber, pending: C.red };
+      return (
+        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
+            {[
+              { l:"Disbursed AUM (May)", v:"₹28.6 Cr", c:C.accent },
+              { l:"Commission Due",      v:"₹30,900",   c:C.amber  },
+              { l:"Total Paid (FY)",    v:"₹9,12,400", c:C.text   },
+              { l:"Invoices Raised",    v:"3 this mo", c:C.textSec },
+            ].map(({ l, v, c }) => (
+              <Card key={l} style={{ padding: "12px 14px" }}>
+                <div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 5 }}>{l}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: c, fontFamily: C.mono }}>{v}</div>
+              </Card>
+            ))}
+          </div>
+
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.text, fontFamily: C.sans, marginBottom: 10 }}>Daily Invoices</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {dailyInvoices.map(inv => (
+              <Card key={inv.inv} style={{ padding:0, overflow:"hidden" }}>
+                {/* Invoice header row */}
+                <div onClick={() => setExpanded(p=>({...p,[inv.inv]:!p[inv.inv]}))}
+                  style={{ display:"flex", alignItems:"center", gap:14, padding:"12px 16px", cursor:"pointer" }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:12, fontWeight:700, color:C.text, fontFamily:C.sans }}>{inv.date}</div>
+                    <div style={{ fontSize:10, color:C.blue, fontFamily:C.mono, marginTop:2 }}>{inv.inv}</div>
+                  </div>
+                  <div style={{ textAlign:"right" }}>
+                    <div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans }}>Net Commission + GST</div>
+                    <div style={{ fontSize:13, fontWeight:700, color:C.accent, fontFamily:C.mono }}>
+                      {inv.totalNet} <span style={{ fontSize:10, color:C.textSec }}>+ {inv.totalGst} GST</span>
+                    </div>
+                  </div>
+                  <Badge label={`${inv.loans.length} loan${inv.loans.length>1?"s":""}`} color={C.textSec} s={9}/>
+                  <Badge label={inv.status} color={statusColor[inv.status]} dot/>
+                  <Btn small>PDF ↓</Btn>
+                  <span style={{ fontSize:12, color:C.textTer, marginLeft:4 }}>{expanded[inv.inv]?"▲":"▼"}</span>
+                </div>
+                {/* Expanded loan breakdown */}
+                {expanded[inv.inv] && (
+                  <div style={{ borderTop:`1px solid ${C.border}` }}>
+                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                      <thead style={{ background:C.surface }}>
+                        <tr>
+                          {["Lead ID","Product","Disbursed Amt","Fee Rate","Commission","GST (18%)"].map(h=>(
+                            <th key={h} style={{ padding:"6px 14px", fontSize:9, fontWeight:600, color:C.textTer, textAlign:"left", textTransform:"uppercase", letterSpacing:"0.5px", borderBottom:`1px solid ${C.border}`, fontFamily:C.sans, whiteSpace:"nowrap" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {inv.loans.map(l => (
+                          <tr key={l.id}>
+                            <td style={{ padding:"7px 14px", fontSize:11, color:C.blue, fontFamily:C.mono }}>{l.id}</td>
+                            <td style={{ padding:"7px 14px", fontSize:11, color:C.text, fontFamily:C.sans }}>{l.product}</td>
+                            <td style={{ padding:"7px 14px", fontSize:11, color:C.text, fontFamily:C.mono }}>{l.amount}</td>
+                            <td style={{ padding:"7px 14px", fontSize:11, color:C.textSec, fontFamily:C.mono }}>{l.fee}</td>
+                            <td style={{ padding:"7px 14px", fontSize:11, color:C.accent, fontWeight:700, fontFamily:C.mono }}>{l.commission}</td>
+                            <td style={{ padding:"7px 14px", fontSize:11, color:C.textSec, fontFamily:C.mono }}>{l.gst}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+          <div style={{ marginTop:10, fontSize:10, color:C.textTer, fontFamily:C.sans }}>Invoices raised daily on disbursement. GST at 18% on success fee. Per RBI/2022-23/111: no disbursement routed through CreditBridge accounts.</div>
+        </div>
+      );
+    };
+
+    // ─── VIEW: FI Configuration (Phase 1 — read-only + change requests) ────
+    const ConfigView = () => {
+      const [expandedPincodes, setExpandedPincodes] = useState({});
+      const MY_PRODUCTS = [
+        { product:"Personal Loan", scoreRange:"700–850", loanRange:"₹1L–₹10L",  commission:"1.5%", pincodes:["400001","400002","400003","411001","411002","560001","560002","500001","380001","380002"], status:"Active" },
+        { product:"Home Loan",     scoreRange:"680–850", loanRange:"₹15L–₹2Cr", commission:"0.8%", pincodes:["411001","411002","411003","560001","500001","500002","380001","380002","400001","400005","400006","400007","400008","400009","400010","400011","600001","600002"], status:"Active" },
+        { product:"Business Loan", scoreRange:"720–850", loanRange:"₹5L–₹50L",  commission:"2.0%", pincodes:["380001","380002","380003","560001","560002","400001","400002","411001","411002","500001","500002","600001"], status:"Paused" },
+      ];
+      const CHANGE_TYPES = ["Add Pincodes","Remove Pincodes","Update Score Range","Update Loan Amount Range","Add Product","Remove Product"];
+      const INIT_MRS = [
+        { id:"CR-041", type:"Add Pincodes",          details:"Add 400072, 400073 to Personal Loan",    submitted:"14 Apr 2026, 10:30", status:"pending",  reason:"" },
+        { id:"CR-038", type:"Update Score Range",     details:"Change Personal Loan min score to 680",  submitted:"08 Apr 2026, 14:22", status:"approved", reason:"" },
+        { id:"CR-035", type:"Remove Pincodes",        details:"Remove 380001 from Business Loan",       submitted:"01 Apr 2026, 09:15", status:"rejected", reason:"Operational coverage cannot be reduced during active bid windows." },
+      ];
+
+      const [myReqs, setMyReqs]             = useState(INIT_MRS);
+      const [showModal, setShowModal]       = useState(false);
+      const [modalStep, setModalStep]       = useState(1);
+      const [selProduct, setSelProduct]     = useState(null);
+      const [changeType, setChangeType]     = useState("");
+      const [det, setDet]                   = useState({ pincodes:"", minScore:"", maxScore:"", minAmt:"", maxAmt:"", addProd:"", removeProd:"" });
+
+      const openModal = () => { setSelProduct(null); setChangeType(""); setDet({ pincodes:"", minScore:"", maxScore:"", minAmt:"", maxAmt:"", addProd:"", removeProd:"" }); setModalStep(1); setShowModal(true); };
+
+      const detailStr = () => {
+        if (changeType==="Add Pincodes"||changeType==="Remove Pincodes") return `${changeType} ${det.pincodes} to ${selProduct?.product}`;
+        if (changeType==="Update Score Range") return `Score range ${det.minScore}–${det.maxScore} for ${selProduct?.product}`;
+        if (changeType==="Update Loan Amount Range") return `Loan range ₹${det.minAmt}–₹${det.maxAmt} for ${selProduct?.product}`;
+        if (changeType==="Add Product") return `Add product: ${det.addProd}`;
+        return `Remove product: ${det.removeProd}`;
+      };
+
+      const submit = () => {
+        setMyReqs(prev => [{ id:`CR-0${42+prev.filter(r=>r.status==="pending").length+1}`, type:changeType, details:detailStr(), submitted:"14 Apr 2026, now", status:"pending", reason:"" }, ...prev]);
+        setShowModal(false);
+      };
+
+      const statusColor = { pending:C.amber, approved:C.accent, rejected:C.red };
+      const statusLabel = { pending:"Under Review", approved:"Approved", rejected:"Rejected" };
+
+      return (
+        <div style={{ flex:1, overflowY:"auto", padding:20 }}>
+          {/* Info banner */}
+          <div style={{ padding:"10px 14px", borderRadius:7, background:C.blueDim, border:`1px solid ${C.blue}30`, marginBottom:18, display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ fontSize:14, color:C.blue }}>ℹ</span>
+            <span style={{ fontSize:12, color:C.textSec, fontFamily:C.sans }}>Configuration is managed by CreditBridge ops. Submit a change request — changes go live after approval.</span>
+          </div>
+
+          {/* Current Settings */}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:C.text, fontFamily:C.sans }}>Current Settings</div>
+            <Btn outline onClick={() => openModal()}>Request Change</Btn>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:12, marginBottom:24 }}>
+            {MY_PRODUCTS.map(p => {
+              const pc = PRODUCT_COLOR[p.product] || { c:C.blue, bg:C.blueDim };
+              return (
+                <Card key={p.product} style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:4 }}>{p.product}</div>
+                      <Badge label={p.status} color={p.status==="Active"?C.accent:C.textSec} dot/>
+                    </div>
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                    {[["Score Range",p.scoreRange],["Loan Range",p.loanRange],["Commission",p.commission]].map(([l,v]) => (
+                      <div key={l}>
+                        <div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:2 }}>{l}</div>
+                        <div style={{ fontSize:12, fontWeight:600, color:C.text, fontFamily:C.mono }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Pincode chip list */}
+                  <div>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                      <div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans, textTransform:"uppercase", letterSpacing:"0.5px" }}>Pincodes ({p.pincodes.length})</div>
+                      <button onClick={()=>setExpandedPincodes(x=>({...x,[p.product]:!x[p.product]}))} style={{ fontSize:9, color:C.blue, background:"none", border:"none", cursor:"pointer", fontFamily:C.sans }}>
+                        {expandedPincodes[p.product]?"Hide":"Show"}
+                      </button>
+                    </div>
+                    {expandedPincodes[p.product] && (
+                      <div>
+                        <div style={{ display:"flex", flexWrap:"wrap", gap:4, marginBottom:8 }}>
+                          {p.pincodes.map(pin=>(
+                            <span key={pin} style={{ padding:"2px 7px", borderRadius:4, background:C.surface, border:`1px solid ${C.border}`, fontSize:10, color:C.textSec, fontFamily:C.mono }}>{pin}</span>
+                          ))}
+                        </div>
+                        {/* Excel upload area */}
+                        <div style={{ border:`1px dashed ${C.inputBorder}`, borderRadius:6, padding:"8px 12px", display:"flex", alignItems:"center", gap:8, background:C.surface }}>
+                          <span style={{ fontSize:12 }}>📥</span>
+                          <div style={{ flex:1 }}>
+                            <div style={{ fontSize:10, color:C.textSec, fontFamily:C.sans }}>Upload pincode list (.xlsx)</div>
+                            <div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans }}>Fixed template — submits as change request</div>
+                          </div>
+                          <Btn small outline>Upload</Btn>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* My Requests */}
+          <div style={{ fontSize:13, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:12 }}>My Requests</div>
+          <Card style={{ padding:0 }}>
+            <table style={{ width:"100%", borderCollapse:"collapse" }}>
+              <thead>
+                <tr>
+                  {["Request ID","Type","Details","Submitted","Status",""].map(h => (
+                    <th key={h} style={{ padding:"8px 14px", fontSize:9, fontWeight:600, color:C.textTer, textAlign:"left", textTransform:"uppercase", letterSpacing:"0.6px", borderBottom:`1px solid ${C.border}`, fontFamily:C.sans, whiteSpace:"nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {myReqs.map(r => (
+                  <React.Fragment key={r.id}>
+                    <tr onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      <td style={{ padding:"9px 14px", fontSize:11, color:C.blue, fontFamily:C.mono, borderBottom:`1px solid ${r.status==="rejected"?"transparent":C.border}` }}>{r.id}</td>
+                      <td style={{ padding:"9px 14px", fontSize:12, color:C.text, fontFamily:C.sans, borderBottom:`1px solid ${r.status==="rejected"?"transparent":C.border}` }}>{r.type}</td>
+                      <td style={{ padding:"9px 14px", fontSize:12, color:C.textSec, fontFamily:C.sans, borderBottom:`1px solid ${r.status==="rejected"?"transparent":C.border}`, maxWidth:220 }}>{r.details}</td>
+                      <td style={{ padding:"9px 14px", fontSize:11, color:C.textSec, fontFamily:C.mono, borderBottom:`1px solid ${r.status==="rejected"?"transparent":C.border}`, whiteSpace:"nowrap" }}>{r.submitted}</td>
+                      <td style={{ padding:"9px 14px", borderBottom:`1px solid ${r.status==="rejected"?"transparent":C.border}` }}><Badge label={statusLabel[r.status]} color={statusColor[r.status]} dot/></td>
+                      <td style={{ padding:"9px 14px", borderBottom:`1px solid ${r.status==="rejected"?"transparent":C.border}` }}>
+                        {r.status==="pending" && <Btn small danger onClick={()=>setMyReqs(prev=>prev.filter(x=>x.id!==r.id))}>Cancel</Btn>}
+                      </td>
+                    </tr>
+                    {r.status==="rejected" && (
+                      <tr>
+                        <td colSpan={6} style={{ padding:"0 14px 10px 14px", borderBottom:`1px solid ${C.border}` }}>
+                          <div style={{ padding:"8px 10px", borderRadius:6, background:C.redDim, border:`1px solid ${C.red}30`, fontSize:11, color:C.textSec, fontFamily:C.sans }}>
+                            <span style={{ color:C.red, fontWeight:600 }}>Rejection reason: </span>{r.reason}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+
+          {/* 3-Step Request Change Modal */}
+          {showModal && (
+            <div style={{ position:"fixed", inset:0, background:"rgba(9,16,26,0.88)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
+              <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, width:500, padding:24 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+                  <div>
+                    <div style={{ fontSize:14, fontWeight:700, color:C.text, fontFamily:C.sans }}>Request Change</div>
+                    <div style={{ fontSize:11, color:C.textSec, fontFamily:C.sans, marginTop:2 }}>{selProduct?.product} · Step {modalStep} of 3</div>
+                  </div>
+                  <button onClick={()=>setShowModal(false)} style={{ background:"none", border:"none", color:C.textSec, fontSize:18, cursor:"pointer" }}>×</button>
+                </div>
+                {/* Step bar */}
+                <div style={{ display:"flex", gap:6, marginBottom:20 }}>
+                  {[1,2,3].map(s=><div key={s} style={{ flex:1, height:3, borderRadius:2, background:s<=modalStep?C.accent:C.border }}/>)}
+                </div>
+
+                {/* Step 1 — Product + Change Type */}
+                {modalStep===1 && (
+                  <div>
+                    <div style={{ fontSize:11, color:C.textSec, fontFamily:C.sans, marginBottom:6 }}>Product</div>
+                    <select
+                      value={selProduct?.product||""}
+                      onChange={e => {
+                        const v = e.target.value;
+                        if (v === "Add Product" || v === "Remove Product") {
+                          setSelProduct({ product: v, _special: true });
+                          setChangeType(v);
+                        } else {
+                          setSelProduct(MY_PRODUCTS.find(p => p.product === v) || null);
+                          setChangeType("");
+                        }
+                      }}
+                      style={{ width:"100%", padding:"8px 12px", borderRadius:6, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.sans, outline:"none" }}>
+                      <option value="">Select product…</option>
+                      {MY_PRODUCTS.map(p => <option key={p.product} value={p.product}>{p.product}</option>)}
+                      <option disabled>──────────────</option>
+                      <option value="Add Product">+ Add Product</option>
+                      <option value="Remove Product">− Remove Product</option>
+                    </select>
+
+                    {selProduct && !selProduct._special && (
+                      <div style={{ marginTop:16 }}>
+                        <div style={{ fontSize:11, color:C.textSec, fontFamily:C.sans, marginBottom:8 }}>What would you like to change?</div>
+                        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                          {CHANGE_TYPES.filter(ct => ct !== "Add Product" && ct !== "Remove Product").map(ct => (
+                            <button key={ct} onClick={()=>setChangeType(ct)} style={{ padding:"10px 14px", borderRadius:7, border:`1px solid ${changeType===ct?C.accent:C.border}`, background:changeType===ct?C.accentDim:C.surface, color:changeType===ct?C.accent:C.textSec, fontSize:12, fontWeight:changeType===ct?600:400, cursor:"pointer", textAlign:"left", fontFamily:C.sans }}>{ct}</button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {selProduct?._special && (
+                      <div style={{ marginTop:12, padding:"10px 14px", borderRadius:7, background:C.accentDim, border:`1px solid ${C.accentMid}`, fontSize:11, color:C.accent, fontFamily:C.sans }}>
+                        {selProduct.product === "Add Product"
+                          ? "You'll specify the new product details in the next step."
+                          : "You'll specify which product to remove in the next step."}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Step 2 — Details */}
+                {modalStep===2 && (
+                  <div>
+                    <div style={{ fontSize:12, fontWeight:600, color:C.text, fontFamily:C.sans, marginBottom:14 }}>Provide details</div>
+                    {(changeType==="Add Pincodes"||changeType==="Remove Pincodes") && (
+                      <div>
+                        <div style={{ fontSize:11, color:C.textSec, fontFamily:C.sans, marginBottom:6 }}>Pincodes (comma-separated)</div>
+                        <textarea rows={3} value={det.pincodes} onChange={e=>setDet(p=>({...p,pincodes:e.target.value}))} placeholder="400001, 411001, 560001 ..." style={{ width:"100%", padding:"8px 12px", borderRadius:6, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.mono, outline:"none", resize:"vertical", boxSizing:"border-box" }}/>
+                      </div>
+                    )}
+                    {changeType==="Update Score Range" && (
+                      <div style={{ display:"flex", gap:10 }}>
+                        {[["minScore","Min score"],["maxScore","Max score"]].map(([k,lbl]) => (
+                          <div key={k} style={{ flex:1 }}>
+                            <div style={{ fontSize:11, color:C.textSec, fontFamily:C.sans, marginBottom:6 }}>{lbl}</div>
+                            <input type="number" value={det[k]} onChange={e=>setDet(p=>({...p,[k]:e.target.value}))} placeholder={k==="minScore"?"e.g. 680":"e.g. 850"} style={{ width:"100%", padding:"8px 10px", borderRadius:6, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.mono, outline:"none", boxSizing:"border-box" }}/>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {changeType==="Update Loan Amount Range" && (
+                      <div style={{ display:"flex", gap:10 }}>
+                        {[["minAmt","Min ₹"],["maxAmt","Max ₹"]].map(([k,lbl]) => (
+                          <div key={k} style={{ flex:1 }}>
+                            <div style={{ fontSize:11, color:C.textSec, fontFamily:C.sans, marginBottom:6 }}>{lbl}</div>
+                            <input type="number" value={det[k]} onChange={e=>setDet(p=>({...p,[k]:e.target.value}))} placeholder={k==="minAmt"?"e.g. 100000":"e.g. 5000000"} style={{ width:"100%", padding:"8px 10px", borderRadius:6, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.mono, outline:"none", boxSizing:"border-box" }}/>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {changeType==="Add Product" && (
+                      <div>
+                        <div style={{ fontSize:11, color:C.textSec, fontFamily:C.sans, marginBottom:8 }}>Select product to add</div>
+                        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                          {["Gold Loan","Two-Wheeler","MSME Loan"].map(p=>(
+                            <button key={p} onClick={()=>setDet(prev=>({...prev,addProd:p}))} style={{ padding:"7px 12px", borderRadius:6, border:`1px solid ${det.addProd===p?C.accent:C.border}`, background:det.addProd===p?C.accentDim:C.surface, color:det.addProd===p?C.accent:C.textSec, fontSize:12, fontWeight:det.addProd===p?600:400, cursor:"pointer", fontFamily:C.sans }}>{p}</button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {changeType==="Remove Product" && (
+                      <div>
+                        <div style={{ fontSize:11, color:C.textSec, fontFamily:C.sans, marginBottom:8 }}>Which product would you like to remove?</div>
+                        <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:12 }}>
+                          {MY_PRODUCTS.map(p => (
+                            <button key={p.product} onClick={() => setDet(prev => ({ ...prev, removeProd: p.product }))}
+                              style={{ padding:"10px 14px", borderRadius:7, border:`1px solid ${det.removeProd===p.product?C.red:C.border}`, background:det.removeProd===p.product?C.redDim:C.surface, color:det.removeProd===p.product?C.red:C.textSec, fontSize:12, fontWeight:det.removeProd===p.product?600:400, cursor:"pointer", textAlign:"left", fontFamily:C.sans, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                              {p.product}
+                              <Badge label={p.status} color={p.status==="Active"?C.accent:C.textSec} s={9}/>
+                            </button>
+                          ))}
+                        </div>
+                        {det.removeProd && (
+                          <div style={{ padding:"10px 14px", borderRadius:7, background:C.redDim, border:`1px solid ${C.red}30` }}>
+                            <div style={{ fontSize:11, color:C.red, fontFamily:C.sans }}>Removing <strong>{det.removeProd}</strong>. Active leads on this product continue until resolved.</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Step 3 — Confirm */}
+                {modalStep===3 && (
+                  <div>
+                    <div style={{ fontSize:12, fontWeight:600, color:C.text, fontFamily:C.sans, marginBottom:14 }}>Confirm your request</div>
+                    <div style={{ padding:14, borderRadius:8, background:C.surface, border:`1px solid ${C.border}`, marginBottom:14 }}>
+                      <div style={{ display:"grid", gridTemplateColumns:"120px 1fr", gap:"8px 0" }}>
+                        {[["Product", changeType==="Remove Product" ? det.removeProd : changeType==="Add Product" ? det.addProd : selProduct?.product],["Change Type",changeType],["Details",detailStr()]].map(([l,v])=>(
+                          <React.Fragment key={l}>
+                            <div style={{ fontSize:11, color:C.textTer, fontFamily:C.sans }}>{l}</div>
+                            <div style={{ fontSize:12, fontWeight:600, color:C.text, fontFamily:C.sans }}>{v}</div>
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ padding:"10px 12px", borderRadius:7, background:C.amberDim, border:`1px solid ${C.amber}30`, fontSize:11, color:C.amber, fontFamily:C.sans }}>
+                      Reviewed by CreditBridge ops before going live. You'll be notified on approval or rejection.
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display:"flex", gap:8, justifyContent:"flex-end", marginTop:20 }}>
+                  {modalStep>1 && <Btn onClick={()=>setModalStep(s=>s-1)}>Back</Btn>}
+                  <Btn onClick={()=>setShowModal(false)}>Cancel</Btn>
+                  {modalStep<3 && <Btn primary onClick={()=>setModalStep(s=>s+1)} style={{ opacity:(modalStep===1&&(!selProduct||!changeType))?0.4:1, pointerEvents:(modalStep===1&&(!selProduct||!changeType))?"none":undefined }}>Next →</Btn>}
+
+                  {modalStep===3 && <Btn primary onClick={submit}>Submit Request</Btn>}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // ─── VIEW: Notifications ─────────────────────────────────────────────────
+    const NotificationsView = ({ onNav }) => {
+      const [readState, setReadState] = useState({});
+      const notifs = [
+        { id:0, type:"match",   msg:"3 new leads match your credit appetite — bureau 700+, Personal Loan",         time:"5m ago",   read:false, cta:{ label:"View Feed →",      nav:"feed"          } },
+        { id:1, type:"sla",     msg:"Lead LM-8831 will cascade in 2 hours — underwriting decision needed",         time:"28m ago",  read:false, cta:{ label:"Go to Accepted →",  nav:"accepted"      } },
+        { id:2, type:"config",  msg:"Change request CR-038 (Update Score Range) has been approved and is now live",time:"1h ago",   read:false, cta:{ label:"View Config →",     nav:"config"        } },
+        { id:3, type:"sla",     msg:"Lead LM-8819 cascaded to Axis Bank — opportunity passed",                    time:"2h ago",   read:true,  cta:null },
+        { id:4, type:"billing", msg:"Invoice INV-2026-124 of ₹30,900 has been issued",                            time:"Yesterday",read:true,  cta:{ label:"View Invoice →",    nav:"billing"       } },
+        { id:5, type:"match",   msg:"5 new leads in Bengaluru matching MSME Loan criteria",                        time:"2d ago",   read:true,  cta:{ label:"View Feed →",      nav:"feed"          } },
+      ];
+      const typeColor = { match:C.accent, sla:C.amber, billing:C.blue, config:C.purple };
+      const allRead = notifs.every(n => n.read || readState[n.id]);
+      return (
+        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+            <Btn ghost onClick={() => setReadState(Object.fromEntries(notifs.map(n=>[n.id,true])))}>Mark all read</Btn>
+          </div>
+          {notifs.map((n)=>{
+            const isRead = n.read || readState[n.id];
+            return (
+              <div key={n.id}
+                onClick={() => setReadState(p=>({...p,[n.id]:true}))}
+                style={{ padding:"12px 14px", borderRadius:8, background:isRead?C.card:C.surface, border:`1px solid ${isRead?C.border:typeColor[n.type]+"40"}`, marginBottom:8, display:"flex", gap:12, alignItems:"flex-start", cursor:"pointer", transition:"background 0.15s" }}>
+                <div style={{ width:8, height:8, borderRadius:4, background:isRead?C.textTer:typeColor[n.type], flexShrink:0, marginTop:5 }}/>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:13, color:isRead?C.textSec:C.text, fontFamily:C.sans, lineHeight:1.5 }}>{n.msg}</div>
+                  <div style={{ fontSize:10, color:C.textTer, fontFamily:C.sans, marginTop:3 }}>{n.time}</div>
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0 }}>
+                  <Badge label={n.type} color={typeColor[n.type]} s={9}/>
+                  {n.cta && <Btn ghost small style={{ fontSize:9, padding:"3px 8px", color:typeColor[n.type] }} onClick={e=>{e.stopPropagation(); onNav(n.cta.nav);}}>{n.cta.label}</Btn>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    };
+
+    // ─── VIEW: Lead Inbox / Accepted Leads (P0/P1 — full PII + SLA) ──────────
+    const InboxView = () => {
+      const [statuses, setStatuses] = useState({});
+
+      const acceptedLeads = [
+        { id:"LM-8810", product:"Personal Loan",  amount:"₹2L–₹3L",   scoreBand:"720–749", city:"Mumbai",    pincode:"400001", employment:"Salaried",      completeness:92, name:"Rajesh Kumar",  phone:"+91 98765 43210", pan:"ABCDE1234F", acceptedHrsAgo:6,  slaRemainingHrs:42, slaTotalHrs:48 },
+        { id:"LM-8803", product:"Home Loan",      amount:"₹15L–₹25L",  scoreBand:"700–719", city:"Pune",      pincode:"411001", employment:"Salaried",      completeness:87, name:"Priya Sharma",  phone:"+91 87654 32109", pan:"FGHIJ5678K", acceptedHrsAgo:28, slaRemainingHrs:20, slaTotalHrs:48 },
+        { id:"LM-8797", product:"Business Loan",  amount:"₹3L–₹10L",   scoreBand:"680–699", city:"Ahmedabad", pincode:"380001", employment:"Business Owner", completeness:74, name:"Suresh Patel",  phone:"+91 76543 21098", pan:"KLMNO9012P", acceptedHrsAgo:44, slaRemainingHrs:4,  slaTotalHrs:48 },
+      ];
+
+      const STATUS_OPTIONS = ["Additional Docs Requested","Soft Sanctioned","Hard Sanctioned","Disbursed","Declined"];
+      const STATUS_ORDER = { "Additional Docs Requested":0, "Soft Sanctioned":1, "Hard Sanctioned":2, "Disbursed":3, "Declined":4 };
+      const [docsModal, setDocsModal] = useState(null); // leadId
+      const [docsToast, setDocsToast] = useState(false);
+
+      return (
+        <div style={{ flex:1, overflowY:"auto", padding:20 }}>
+          {/* Info banner */}
+          <div style={{ padding:"9px 14px", borderRadius:8, background:C.accentDim, border:`1px solid ${C.accentMid}`, marginBottom:16, display:"flex", gap:10, alignItems:"center" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4" stroke={C.accent} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="9" stroke={C.accent} strokeWidth="1.7"/></svg>
+            <span style={{ fontSize:11, color:C.accent, fontFamily:C.sans }}>Full PII is visible for all accepted leads. Update status within 48h of acceptance to maintain your SLA compliance score.</span>
+          </div>
+
+          {/* Request Docs modal */}
+          {docsModal && (
+            <div style={{ position:"fixed", inset:0, background:"rgba(9,16,26,0.88)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
+              <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, width:420, padding:24 }}>
+                <div style={{ fontSize:14, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:8 }}>Request Additional Documents</div>
+                <div style={{ fontSize:12, color:C.textSec, fontFamily:C.sans, marginBottom:16 }}>The lead applicant will be notified via Connector to submit missing documents.</div>
+                <div style={{ padding:"10px 12px", borderRadius:7, background:C.amberDim, border:`1px solid ${C.amber}30`, fontSize:11, color:C.amber, fontFamily:C.sans, marginBottom:20 }}>
+                  Lead status will update to <strong>Additional Docs Requested</strong>. SLA clock continues.
+                </div>
+                <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
+                  <Btn onClick={() => setDocsModal(null)}>Cancel</Btn>
+                  <Btn primary onClick={() => { setStatuses(p => ({ ...p, [docsModal]: "Additional Docs Requested" })); setDocsModal(null); setDocsToast(true); setTimeout(()=>setDocsToast(false),3000); }}>Confirm Request</Btn>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Toast */}
+          {docsToast && (
+            <div style={{ position:"fixed", bottom:24, right:24, padding:"12px 18px", borderRadius:8, background:C.accentDim, border:`1px solid ${C.accentMid}`, fontSize:12, color:C.accent, fontFamily:C.sans, zIndex:200 }}>
+              ✓ Document request sent to Connector
+            </div>
+          )}
+          {acceptedLeads.map(l => {
+            const slaPct = (l.slaRemainingHrs / l.slaTotalHrs) * 100;
+            const slaColor = slaPct > 50 ? C.accent : slaPct > 15 ? C.amber : C.red;
+            const curStatus = statuses[l.id];
+            const pc = PRODUCT_COLOR[l.product] || PRODUCT_COLOR["Personal Loan"];
+            return (
+              <Card key={l.id} style={{ marginBottom:12 }}>
+                {/* Header row */}
+                <div style={{ display:"flex", alignItems:"flex-start", gap:14, marginBottom:12 }}>
+                  <div style={{ display:"flex", flexDirection:"column", gap:6, flexShrink:0 }}>
+                    <ScorePill band={l.scoreBand}/>
+                    <Badge label={l.product.split(" ")[0]} color={pc.c} bg={pc.bg} s={9}/>
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:6 }}>
+                      <span style={{ fontSize:11, color:C.textTer, fontFamily:C.mono }}>{l.id}</span>
+                      <Badge label={`Accepted ${l.acceptedHrsAgo}h ago`} color={C.accent} s={9}/>
+                      {curStatus && <Badge label={curStatus} color={curStatus==="Disbursed"?C.accent:curStatus==="Declined"?C.red:C.amber} s={9}/>}
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"4px 14px" }}>
+                      {[
+                        { k:"Full Name",  v:l.name       },
+                        { k:"Phone",      v:l.phone      },
+                        { k:"PAN",        v:l.pan        },
+                        { k:"Loan Band",  v:l.amount     },
+                        { k:"City / Pin", v:`${l.city} (${l.pincode})` },
+                        { k:"Employment", v:l.employment },
+                      ].map(({ k, v }) => (
+                        <div key={k}>
+                          <div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans, textTransform:"uppercase", letterSpacing:"0.4px" }}>{k}</div>
+                          <div style={{ fontSize:12, fontWeight:500, color:C.text, fontFamily:C.mono }}>{v}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* SLA countdown */}
+                  <div style={{ flexShrink:0, minWidth:130 }}>
+                    <div style={{ padding:"8px 10px", borderRadius:7, background:slaColor+"12", border:`1px solid ${slaColor}40` }}>
+                      <div style={{ fontSize:9, fontWeight:700, color:slaColor, fontFamily:C.sans, marginBottom:5, textTransform:"uppercase", letterSpacing:"0.3px" }}>SLA Countdown</div>
+                      <div style={{ fontSize:18, fontWeight:700, color:slaColor, fontFamily:C.mono, marginBottom:5 }}>{l.slaRemainingHrs}h left</div>
+                      <div style={{ height:4, borderRadius:2, background:C.border, marginBottom:4 }}>
+                        <div style={{ width:`${slaPct}%`, height:"100%", borderRadius:2, background:slaColor }}/>
+                      </div>
+                      <div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans }}>Update by T+48h or cascade</div>
+                    </div>
+                  </div>
+                </div>
+                {/* Status update row — sequential: each step gated behind previous */}
+                <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:10 }}>
+                  <div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans, marginBottom:4, textTransform:"uppercase", letterSpacing:"0.4px" }}>Update Status</div>
+                  {curStatus && <div style={{ fontSize:10, color:C.textSec, fontFamily:C.sans, marginBottom:8 }}>Last: <span style={{ color:C.accent, fontWeight:600 }}>{curStatus}</span></div>}
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
+                    {STATUS_OPTIONS.filter(s => s !== "Declined").map(s => {
+                      const curIdx = curStatus ? STATUS_ORDER[curStatus] : -1;
+                      const sIdx = STATUS_ORDER[s];
+                      const isActive = curStatus === s || (curStatus && sIdx <= curIdx);
+                      const isNext = sIdx === curIdx + 1 || (!curStatus && sIdx === 0);
+                      const isLocked = !isActive && !isNext;
+                      return (
+                        <Btn key={s} small
+                          primary={isActive}
+                          ghost={!isActive}
+                          style={{ fontSize:9, padding:"4px 8px", opacity:isLocked?0.35:1, pointerEvents:isLocked?"none":"auto" }}
+                          onClick={() => !isLocked && setStatuses(p => ({ ...p, [l.id]: s }))}
+                        >{s}</Btn>
+                      );
+                    })}
+                    <Btn ghost small
+                      style={{ fontSize:9, padding:"4px 8px", color:C.red,
+                        opacity:(!curStatus||STATUS_ORDER[curStatus]>=STATUS_ORDER["Declined"])?0.35:1,
+                        pointerEvents:(!curStatus||STATUS_ORDER[curStatus]>=STATUS_ORDER["Declined"])?"none":"auto"
+                      }}
+                      onClick={() => setStatuses(p => ({ ...p, [l.id]: "Declined" }))}
+                    >Declined</Btn>
+                    <Btn ghost small style={{ fontSize:9, padding:"4px 8px", marginLeft:"auto", color:C.blue }}
+                      onClick={() => setDocsModal(l.id)}>Request Docs</Btn>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      );
+    };
+
+    // ─── Login Page ──────────────────────────────────────────────────────────
+    // Aesthetic: Refined split-screen — branded left panel with live activity
+    // ticker and platform stats; clean credential form on the right.
+    // DM Sans ensures institutional credibility; grid-texture left panel
+    // communicates depth without clutter. The accent glow at the bottom of
+    // the left panel anchors the brand warmth against the dark background.
+    // Memorable: The left panel shows anonymised real-time lead activity with
+    // a pulsing indicator — communicating the platform's live, always-on nature.
+    const LoginPage = ({ onLogin }) => {
+      const [email, setEmail]       = useState("");
+      const [password, setPassword] = useState("");
+      const [showPass, setShowPass] = useState(false);
+      const [loading, setLoading]   = useState(false);
+      const [error, setError]       = useState("");
+      const [fi, setFi]             = useState("HDFC Bank Ltd.");
+
+      const FI_LIST = ["HDFC Bank Ltd.", "ICICI Bank Ltd.", "Axis Bank Ltd.", "Bajaj Finserv Ltd.", "Kotak Mahindra Bank", "Aditya Birla Finance"];
+
+      const handleLogin = () => {
+        if (!email || !password) { setError("Work email and password are required."); return; }
+        setLoading(true); setError("");
+        setTimeout(() => { setLoading(false); onLogin({ email, fi }); }, 1200);
+      };
+
+
+      return (
+        <div style={{ display:"flex", height:"100vh", background:C.bg, fontFamily:C.sans, overflow:"hidden" }}>
+          <style>{`* { box-sizing:border-box; margin:0; padding:0; }
+            ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:${C.border}; border-radius:2px; }
+            button { cursor:pointer; } button:focus,input:focus,select:focus,textarea:focus { outline:none; }
+            input,select { font-family:${C.sans}; color:${C.text} !important; } select option { background:${C.input}; }
+            @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+            @keyframes fadeSlide { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+          `}</style>
+
+          {/* ── Left branded panel ──────────────────────────────────────── */}
+          {/* Subtle grid texture + accent glow create depth without clutter */}
+          <div style={{ width:"42%", background:C.sidebar, borderRight:`1px solid ${C.border}`, display:"flex", flexDirection:"column", padding:"40px 40px 32px", position:"relative", overflow:"hidden" }}>
+            {/* Grid texture */}
+            <div style={{ position:"absolute", inset:0, backgroundImage:`linear-gradient(${C.border} 1px, transparent 1px), linear-gradient(90deg, ${C.border} 1px, transparent 1px)`, backgroundSize:"28px 28px", opacity:0.45 }}/>
+            {/* Soft accent glow anchors brand color at bottom */}
+            <div style={{ position:"absolute", bottom:-60, left:"10%", width:"80%", height:160, borderRadius:"50%", background:C.accent, filter:"blur(80px)", opacity:0.07 }}/>
+
+            <div style={{ position:"relative", zIndex:1, flex:1, display:"flex", flexDirection:"column" }}>
+              {/* Logo wordmark */}
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:52 }}>
+                <div style={{ width:36, height:36, borderRadius:10, background:C.accent, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:13, color:C.bg, fontFamily:C.mono }}>CB</div>
+                <div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.text }}>Lead Market</div>
+                  <div style={{ fontSize:9, color:C.textTer, letterSpacing:"0.8px", fontFamily:C.mono }}>CREDITBRIDGE FI PORTAL</div>
+                </div>
+              </div>
+
+              {/* Hero headline */}
+              <div style={{ marginBottom:36 }}>
+                <div style={{ fontSize:27, fontWeight:700, color:C.text, lineHeight:1.25, letterSpacing:"-0.4px", marginBottom:12 }}>
+                  Credit leads,<br/>qualified and ready.
+                </div>
+                <div style={{ fontSize:13, color:C.textSec, lineHeight:1.65, maxWidth:280 }}>
+                  Bureau-verified applicants routed to your credit appetite. Bid, accept, and disburse — all in one portal.
+                </div>
+              </div>
+
+            </div>
+
+            {/* Regulatory footer note */}
+            <div style={{ position:"relative", zIndex:1, fontSize:9, color:C.textTer, fontFamily:C.sans, marginTop:20, lineHeight:1.5 }}>
+              Per RBI/2022-23/111 — No disbursement routed through CreditBridge accounts.
+            </div>
+          </div>
+
+          {/* ── Right login panel ───────────────────────────────────────── */}
+          <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:40 }}>
+            <div style={{ width:"100%", maxWidth:380, animation:"fadeSlide 0.5s ease" }}>
+              <div style={{ marginBottom:30 }}>
+                <div style={{ fontSize:22, fontWeight:700, color:C.text, letterSpacing:"-0.3px", marginBottom:6 }}>Sign in</div>
+                <div style={{ fontSize:13, color:C.textSec }}>Access your FI's lead marketplace</div>
+              </div>
+
+              {/* FI selector */}
+              <div style={{ marginBottom:16 }}>
+                <label style={{ fontSize:11, fontWeight:600, color:C.textSec, display:"block", marginBottom:6, letterSpacing:"0.2px" }}>Financial Institution</label>
+                <div style={{ position:"relative" }}>
+                  <select value={fi} onChange={e=>setFi(e.target.value)}
+                    style={{ width:"100%", padding:"10px 36px 10px 14px", borderRadius:8, border:`1px solid ${C.inputBorder}`, background:C.input, fontSize:13, appearance:"none", cursor:"pointer" }}>
+                    {FI_LIST.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                  <span style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", color:C.textSec, fontSize:10, pointerEvents:"none" }}>▾</span>
+                </div>
+              </div>
+
+              {/* Email field */}
+              <div style={{ marginBottom:14 }}>
+                <label style={{ fontSize:11, fontWeight:600, color:C.textSec, display:"block", marginBottom:6, letterSpacing:"0.2px" }}>Work Email</label>
+                <input type="email" value={email} onChange={e=>{ setEmail(e.target.value); setError(""); }}
+                  placeholder="you@yourbank.com"
+                  style={{ width:"100%", padding:"10px 14px", borderRadius:8, border:`1px solid ${error ? C.red : C.inputBorder}`, background:C.input, fontSize:13 }}/>
+              </div>
+
+              {/* Password field */}
+              <div style={{ marginBottom: error ? 10 : 20 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                  <label style={{ fontSize:11, fontWeight:600, color:C.textSec, letterSpacing:"0.2px" }}>Password</label>
+                  <button style={{ fontSize:11, color:C.accent, background:"none", border:"none", cursor:"pointer", fontFamily:C.sans }}>Forgot password?</button>
+                </div>
+                <div style={{ position:"relative" }}>
+                  <input type={showPass ? "text" : "password"} value={password} onChange={e=>{ setPassword(e.target.value); setError(""); }}
+                    placeholder="••••••••"
+                    style={{ width:"100%", padding:"10px 48px 10px 14px", borderRadius:8, border:`1px solid ${error ? C.red : C.inputBorder}`, background:C.input, fontSize:13 }}/>
+                  <button onClick={()=>setShowPass(s=>!s)}
+                    style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:C.textSec, fontSize:10, cursor:"pointer", fontFamily:C.mono, letterSpacing:"0.5px" }}>
+                    {showPass ? "HIDE" : "SHOW"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Inline error */}
+              {error && (
+                <div style={{ fontSize:11, color:C.red, marginBottom:12, padding:"8px 12px", borderRadius:6, background:C.redDim, border:`1px solid ${C.red}30` }}>
+                  {error}
+                </div>
+              )}
+
+              {/* Primary CTA */}
+              <button onClick={handleLogin} disabled={loading}
+                style={{ width:"100%", padding:"11px", borderRadius:8, border:"none", background:loading ? C.accentDim : C.accent, color:loading ? C.accent : C.bg, fontSize:13, fontWeight:700, cursor:loading?"not-allowed":"pointer", letterSpacing:"0.1px", transition:"background 0.15s, color 0.15s" }}>
+                {loading ? "Signing in…" : "Sign In to Lead Market"}
+              </button>
+
+              {/* Divider */}
+              <div style={{ display:"flex", alignItems:"center", gap:10, margin:"16px 0" }}>
+                <div style={{ flex:1, height:1, background:C.border }}/>
+                <span style={{ fontSize:10, color:C.textTer }}>OR</span>
+                <div style={{ flex:1, height:1, background:C.border }}/>
+              </div>
+
+              {/* SSO option */}
+              <button style={{ width:"100%", padding:"10px", borderRadius:8, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.textSec, fontSize:12, fontWeight:600, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                <span style={{ fontSize:14 }}>🏛</span> Continue with Institutional SSO
+              </button>
+
+              {/* Access notice */}
+              <div style={{ marginTop:22, padding:"12px 14px", borderRadius:8, background:C.accentDim, border:`1px solid ${C.accentMid}` }}>
+                <div style={{ fontSize:10, color:C.accent, lineHeight:1.6 }}>
+                  <strong>Restricted access.</strong> This portal is for authorised FI credit managers only. Accounts provisioned by CreditBridge Operations.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ─── Root App ────────────────────────────────────────────────────────────
+    function LeadMarket() {
+      const [active, setActive]   = useState("feed");
+      const [loggedIn, setLoggedIn] = useState(false);
+      const [role, setRole]       = useState("fi_manager");
+      const slaScore = 87; // demo value
+      if (typeof window !== "undefined") injectFont();
+
+      if (!loggedIn) return <LoginPage onLogin={() => setLoggedIn(true)} />;
+
+      const views = {
+        feed:          { title:"Lead Feed",        sub:"Anonymised leads · 2-hour bid window · PII unlocked on bid win", component: FeedView          },
+        accepted:      { title:"Lead Inbox",       sub:"Full PII · SLA countdown · Status updates",                     component: InboxView         },
+        analytics:     { title:"Analytics",        sub:"Conversion · TAT · Benchmarking",                               component: AnalyticsView     },
+        billing:       { title:"Billing & Payouts",sub:"Daily invoices · Per-loan commission · GST breakup",            component: BillingView       },
+        config:        { title:"Configuration",    sub:"Current settings (read-only) · Change requests",                component: ConfigView        },
+        notifications: { title:"Notifications",    sub:"Lead alerts · SLA warnings · Billing updates",                  component: (props) => <NotificationsView {...props} onNav={v=>setActive(v)}/> },
+      };
+
+      const { title, sub, component: View } = views[active] || views.feed;
+
+      return (
+        <div style={{ display:"flex", height:"100vh", background:C.bg, fontFamily:C.sans, overflow:"hidden" }}>
+          <style>{`* { box-sizing:border-box; margin:0; padding:0; } ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:${C.border}; border-radius:2px; } select,input,textarea { color:${C.text} !important; } select option { background:${C.input}; } button { cursor:pointer; } button:focus,input:focus,select:focus,textarea:focus { outline:none; }`}</style>
+          <Sidebar active={active} onNav={setActive} fi="HDFC Bank Ltd." role={role} slaScore={slaScore}/>
+          <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+            <Topbar title={title} sub={sub} actions={<>
+              <Badge label="● 128 Live Leads" color={C.accent} dot={false} s={11}/>
+              {/* Demo role switcher */}
+              <select value={role} onChange={e=>{ setRole(e.target.value); setActive("feed"); }} style={{ padding:"4px 8px", borderRadius:5, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.textSec, fontSize:10, fontFamily:C.mono, outline:"none" }}>
+                <option value="fi_manager">fi_manager</option>
+                <option value="fi_rm">fi_rm</option>
+                <option value="fi_billing">fi_billing</option>
+              </select>
+              <span style={{ fontSize:11, color:C.textSec, fontFamily:C.mono }}>May 05, 2026</span>
+            </>}/>
+            <View/>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<LeadMarket />);
+  </script>
+</body>
+</html>

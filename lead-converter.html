@@ -1,0 +1,1794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lead Platform — CreditBridge Converter Portal</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body style="margin:0;padding:0;background:#080B10;">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LEAD PLATFORM — CreditBridge Converter Portal (Internal Back-Office)
+    // ─────────────────────────────────────────────────────────────────────
+    // Aesthetic: Precision industrial dark — dense, data-first, zero
+    //   decoration. Built for Converter staff monitoring SLAs, lead
+    //   pipelines, FI billing, and DPDP compliance dashboards on desktop.
+    // Font: IBM Plex Mono for numbers/codes + IBM Plex Sans for labels —
+    //   gives a command-centre feel.
+    // Memorable: The pipeline kanban with SLA countdown rings,
+    //   waterfall routing visualiser, and compliance audit log drawer.
+    // PRD Modules: Connector Lifecycle, Lead Pipeline, SLA Tracker,
+    //   FI Billing, Commission Engine, Compliance Dashboard, Analytics
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const injectFont = () => {
+      if (document.querySelector("#lp-font")) return;
+      const l = document.createElement("link");
+      l.id = "lp-font";
+      l.rel = "stylesheet";
+      l.href = "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap";
+      document.head.appendChild(l);
+    };
+
+    // ─── Design tokens ─────────────────────────────────────────────────────
+    const C = {
+      bg: "#080B10", sidebar: "#0B0E14", card: "#0F1520", surface: "#0D111A",
+      input: "#141B28", inputBorder: "#1C2535",
+      accent: "#00C896", accentDim: "#00C89614", accentMid: "#00C89630",
+      red: "#F0464E", redDim: "#F0464E14", redText: "#FF7070",
+      amber: "#E8A830", amberDim: "#E8A83014", amberText: "#FFD066",
+      blue: "#3B82F6", blueDim: "#3B82F614",
+      purple: "#8B5CF6", purpleDim: "#8B5CF614",
+      green: "#22C55E", greenDim: "#22C55E14",
+      text: "#C8CEDC", textSec: "#5E6A82", textTer: "#354060",
+      border: "#141D2E", borderLight: "#1E2A40",
+      mono: "'IBM Plex Mono', monospace",
+      sans: "'IBM Plex Sans', -apple-system, sans-serif",
+    };
+
+    const PIPELINE_STAGES = ["New","AI Enrichment","Ready for FI","Sent to FI","Under Review","Sanctioned","Disbursed","Rejected"];
+
+    const STAGE_COLOR = {
+      "New":            { c: C.textSec, bg: C.input         },
+      "AI Enrichment":  { c: C.blue,    bg: C.blueDim        },
+      "Ready for FI":   { c: C.purple,  bg: C.purpleDim      },
+      "Sent to FI":     { c: C.amber,   bg: C.amberDim       },
+      "Under Review":   { c: C.amber,   bg: C.amberDim       },
+      "Sanctioned":     { c: C.accent,  bg: C.accentDim      },
+      "Disbursed":      { c: C.accent,  bg: C.accentDim      },
+      "Rejected":       { c: C.red,     bg: C.redDim         },
+    };
+
+    // ─── Primitives ─────────────────────────────────────────────────────────
+    const Badge = ({ label, color = C.accent, bg, dot, s = 10 }) => (
+      <span style={{ fontSize: s, fontWeight: 600, padding: dot ? "2px 7px 2px 5px" : "2px 8px", borderRadius: 3, background: bg || (color + "20"), color, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4, letterSpacing: "0.3px", fontFamily: C.sans }}>
+        {dot && <span style={{ width: 5, height: 5, borderRadius: 3, background: color, flexShrink: 0 }} />}
+        {label}
+      </span>
+    );
+
+    const Card = ({ children, style, onClick }) => (
+      <div onClick={onClick} style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.border}`, padding: "14px 18px", cursor: onClick ? "pointer" : undefined, ...style }}>
+        {children}
+      </div>
+    );
+
+    const Btn = ({ children, primary, danger, ghost, small, style, ...p }) => (
+      <button style={{ padding: small ? "4px 10px" : "6px 14px", borderRadius: 5, border: primary || danger || ghost ? "none" : `1px solid ${C.border}`, background: primary ? C.accent : danger ? C.red : ghost ? "transparent" : C.input, color: primary ? "#080B10" : danger ? "#fff" : ghost ? C.accent : C.text, fontSize: small ? 11 : 12, fontWeight: 600, cursor: "pointer", fontFamily: C.sans, display: "inline-flex", alignItems: "center", gap: 5, letterSpacing: "0.1px", flexShrink: 0, ...style }} {...p}>{children}</button>
+    );
+
+    const TH = ({ children, w }) => (
+      <th style={{ padding: "7px 12px", fontSize: 10, fontWeight: 600, color: C.textTer, textAlign: "left", textTransform: "uppercase", letterSpacing: "0.6px", borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap", width: w, fontFamily: C.sans }}>
+        {children}
+      </th>
+    );
+    const TD = ({ children, mono, color, bold, style }) => (
+      <td style={{ padding: "8px 12px", fontSize: 12, color: color || C.textSec, fontWeight: bold ? 600 : 400, borderBottom: `1px solid ${C.border}`, fontFamily: mono ? C.mono : C.sans, whiteSpace: "nowrap", ...style }}>
+        {children}
+      </td>
+    );
+
+    // ─── SLA ring — shows time remaining as an arc ─────────────────────────
+    const SlaRing = ({ pct, label, color }) => {
+      const r = 16, circ = 2 * Math.PI * r;
+      const dash = circ * (1 - pct / 100);
+      return (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+          <svg width={40} height={40} viewBox="0 0 40 40" style={{ transform: "rotate(-90deg)" }}>
+            <circle cx={20} cy={20} r={r} fill="none" stroke={C.border} strokeWidth={3}/>
+            <circle cx={20} cy={20} r={r} fill="none" stroke={color} strokeWidth={3} strokeDasharray={circ} strokeDashoffset={dash} strokeLinecap="round"/>
+          </svg>
+          <span style={{ fontSize: 9, color, fontWeight: 700, fontFamily: C.mono, letterSpacing: "0.2px" }}>{label}</span>
+        </div>
+      );
+    };
+
+    // ─── Sidebar ────────────────────────────────────────────────────────────
+    const Sidebar = ({ active, onNav }) => {
+      const groups = [
+        { title: "Operations", items: [
+          { id: "dashboard",      label: "Dashboard",         ico: "⬡" },
+          { id: "connectors",     label: "Connectors",        ico: "◈" },
+          { id: "fi_management",  label: "FI Management",     ico: "◫", badge: "2" },
+          { id: "pipeline",       label: "Lead Pipeline",     ico: "⬕" },
+          { id: "sla",            label: "SLA Tracker",       ico: "◷" },
+        ]},
+        { title: "Compliance & Analytics", items: [
+          { id: "compliance",  label: "Compliance",     ico: "▣" },
+          { id: "analytics",   label: "Analytics",      ico: "▨" },
+        ]},
+        { title: "System", items: [
+          { id: "config",      label: "Config",         ico: "◉" },
+        ]},
+      ];
+      return (
+        <div style={{ width: 200, background: C.sidebar, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", flexShrink: 0, height: "100%" }}>
+          <div style={{ padding: "14px 14px 12px", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+              <div style={{ width: 30, height: 30, borderRadius: 6, background: C.accent, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, color: "#080B10", fontFamily: C.mono }}>CB</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.sans }}>CreditBridge</div>
+                <div style={{ fontSize: 9, color: C.textTer, letterSpacing: "0.6px", fontFamily: C.mono }}>CONVERTER PORTAL</div>
+              </div>
+            </div>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "8px 6px" }}>
+            {groups.map(g => (
+              <div key={g.title} style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 8, fontWeight: 700, color: C.textTer, textTransform: "uppercase", letterSpacing: "0.9px", padding: "6px 10px", fontFamily: C.sans }}>{g.title}</div>
+                {g.items.map(({ id, label, ico, badge }) => (
+                  <button key={id} onClick={() => onNav(id)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 5, border: "none", background: active === id ? C.accentDim : "transparent", color: active === id ? C.accent : C.textSec, fontSize: 12, fontWeight: active === id ? 600 : 400, cursor: "pointer", width: "100%", textAlign: "left", fontFamily: C.sans }}>
+                    <span style={{ fontFamily: C.mono, fontSize: 11 }}>{ico}</span>
+                    <span style={{ flex: 1 }}>{label}</span>
+                    {badge && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 8, background: C.amberDim, color: C.amber, fontFamily: C.mono }}>{badge}</span>}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: "10px 12px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 14, background: C.purpleDim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: C.purple, fontFamily: C.mono }}>SK</div>
+            <div><div style={{ fontSize: 12, fontWeight: 600, color: C.text, fontFamily: C.sans }}>Sneha K.</div><div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans }}>Converter</div></div>
+          </div>
+        </div>
+      );
+    };
+
+    // ─── Topbar ─────────────────────────────────────────────────────────────
+    const Topbar = ({ title, sub, actions }) => (
+      <div style={{ height: 52, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", padding: "0 20px", gap: 12, flexShrink: 0 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text, fontFamily: C.sans }}>{title}</div>
+          {sub && <div style={{ fontSize: 10, color: C.textTer, fontFamily: C.sans }}>{sub}</div>}
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>{actions}</div>
+      </div>
+    );
+
+    // ─── VIEW: Ops Dashboard ─────────────────────────────────────────────────
+    const DashboardView = () => {
+      const kpis = [
+        { label: "Active Leads",     value: "347",     sub: "+12 today",    color: C.text   },
+        { label: "Disbursed (Apr)",  value: "₹1.4 Cr", sub: "62 loans",     color: C.accent },
+        { label: "SLA Breaches",     value: "4",       sub: "Needs action", color: C.red    },
+        { label: "Conversion Rate",  value: "34.2%",   sub: "↑2.1% MoM",   color: C.green  },
+        { label: "FI Revenue (Apr)", value: "₹8.6L",   sub: "Accrued",      color: C.amber  },
+        { label: "Connectors",       value: "218",     sub: "171 active",   color: C.purple },
+      ];
+      const recentActivity = [
+        { time: "09:14", event: "Lead #3847 sanctioned by HDFC", tag: "sanctioned" },
+        { time: "09:02", event: "Connector KYC approved — Amit Sharma (MH-12)", tag: "kyc" },
+        { time: "08:51", event: "SLA breach — Lead #3831 > 48h at FI", tag: "sla" },
+        { time: "08:44", event: "Invoice INV-2026-094 raised for Axis Bank", tag: "billing" },
+        { time: "08:31", event: "Lead #3815 rejected by Bajaj Finserv, cascading", tag: "routing" },
+      ];
+      const tagColor = { sanctioned: C.accent, kyc: C.blue, sla: C.red, billing: C.purple, routing: C.amber };
+      return (
+        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 10, marginBottom: 20 }}>
+            {kpis.map(({ label, value, sub, color }) => (
+              <Card key={label} style={{ padding: "12px 14px" }}>
+                <div style={{ fontSize: 9, color: C.textTer, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 6, fontFamily: C.sans }}>{label}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color, fontFamily: C.mono, letterSpacing: "-0.5px" }}>{value}</div>
+                <div style={{ fontSize: 10, color: C.textTer, marginTop: 4, fontFamily: C.sans }}>{sub}</div>
+              </Card>
+            ))}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 14 }}>
+            <Card style={{ padding: "16px 18px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.text, marginBottom: 14, fontFamily: C.sans, display: "flex", justifyContent: "space-between" }}>
+                <span>Pipeline Funnel</span>
+                <Badge label="Live" color={C.accent} dot/>
+              </div>
+              {[
+                { stage: "New",           n: 47,  pct: 100 },
+                { stage: "AI Enrichment", n: 41,  pct: 87  },
+                { stage: "Ready for FI",  n: 36,  pct: 77  },
+                { stage: "Sent to FI",    n: 28,  pct: 60  },
+                { stage: "Under Review",  n: 20,  pct: 43  },
+                { stage: "Sanctioned",    n: 11,  pct: 23  },
+                { stage: "Disbursed",     n: 8,   pct: 17  },
+              ].map(({ stage, n, pct }) => { const { c, bg } = STAGE_COLOR[stage]; return (
+                <div key={stage} style={{ marginBottom: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                    <span style={{ fontSize: 11, color: C.textSec, fontFamily: C.sans }}>{stage}</span>
+                    <span style={{ fontSize: 11, color: c, fontFamily: C.mono, fontWeight: 600 }}>{n}</span>
+                  </div>
+                  <div style={{ height: 5, borderRadius: 3, background: C.border }}>
+                    <div style={{ height: "100%", width: `${pct}%`, borderRadius: 3, background: c, opacity: 0.7 }}/>
+                  </div>
+                </div>
+              );})}
+            </Card>
+
+            <Card style={{ padding: "16px 18px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.text, marginBottom: 14, fontFamily: C.sans }}>Recent Activity</div>
+              {recentActivity.map(({ time, event, tag }, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, marginBottom: 12, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 10, color: C.textTer, fontFamily: C.mono, flexShrink: 0, marginTop: 1 }}>{time}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: C.textSec, lineHeight: 1.5, fontFamily: C.sans }}>{event}</div>
+                    <Badge label={tag} color={tagColor[tag]} s={9}/>
+                  </div>
+                </div>
+              ))}
+            </Card>
+          </div>
+        </div>
+      );
+    };
+
+    // ─── DATA: Connectors ────────────────────────────────────────────────────
+    const CONNECTORS_DATA = [
+      {
+        id:"C-0421", name:"Ravi Shankar", phone:"+91 98765 43210", location:"Mumbai, MH",
+        leads:28, conversion:"42%", status:"active", kyc:"verified", score:87,
+        email:"ravi.shankar@gmail.com", pan:"ABCPK1234M", joinedOn:"12 Sep 2025",
+        onboardedBy:"Neeraj Kapoor",
+        bank:{ name:"SBI", account:"XXXX XXXX 3421", ifsc:"SBIN0001234", holder:"Ravi Shankar" },
+        kycVerifiedOn:"15 Sep 2025",
+        activeLeads:5, disbursed:12, rejected:8, pendingDocs:3,
+        commissionYTD:"₹28,400", tdsYTD:"₹1,420", netPayoutYTD:"₹26,980",
+        products:["Personal Loan","Two-Wheeler","Business Loan"],
+        qualityBreakdown:{ disbursalRate:42, escalationPenalty:-2, consistencyBonus:3 },
+        payoutHistory:[
+          { date:"01 Apr 2026", leadId:"L-3601", product:"Personal Loan", gross:"₹4,200", tds:"₹210",  net:"₹3,990", status:"paid" },
+          { date:"18 Mar 2026", leadId:"L-3487", product:"Two-Wheeler",   gross:"₹1,800", tds:"—",     net:"₹1,800", status:"paid" },
+          { date:"04 Mar 2026", leadId:"L-3401", product:"Personal Loan", gross:"₹5,600", tds:"₹280",  net:"₹5,320", status:"paid" },
+          { date:"14 Feb 2026", leadId:"L-3289", product:"Business Loan", gross:"₹8,100", tds:"₹405",  net:"₹7,695", status:"paid" },
+        ],
+        leadsList:[
+          { id:"L-3847", borrower:"Rajesh Kumar",  product:"Personal Loan", amount:"₹2.5L", stage:"Sanctioned",   submitted:"3h ago"      },
+          { id:"L-3812", borrower:"Meena Patel",   product:"Two-Wheeler",   amount:"₹65K",  stage:"Disbursed",    submitted:"5 days ago"  },
+          { id:"L-3790", borrower:"Sunil Desai",   product:"Business Loan", amount:"₹4L",   stage:"Rejected",     submitted:"12 days ago" },
+          { id:"L-3765", borrower:"Anita Rao",     product:"Personal Loan", amount:"₹1.5L", stage:"Disbursed",    submitted:"18 days ago" },
+        ],
+        coaching:[],
+      },
+      {
+        id:"C-0398", name:"Priya Mehta", phone:"+91 91234 56789", location:"Pune, MH",
+        leads:14, conversion:"28%", status:"active", kyc:"verified", score:71,
+        email:"priya.mehta@yahoo.com", pan:"BNDPM5678K", joinedOn:"03 Nov 2025",
+        onboardedBy:"Kavita Shah",
+        bank:{ name:"HDFC Bank", account:"XXXX XXXX 7832", ifsc:"HDFC0002341", holder:"Priya Mehta" },
+        kycVerifiedOn:"07 Nov 2025",
+        activeLeads:3, disbursed:4, rejected:5, pendingDocs:2,
+        commissionYTD:"₹11,200", tdsYTD:"—", netPayoutYTD:"₹11,200",
+        products:["Personal Loan","Gold Loan"],
+        qualityBreakdown:{ disbursalRate:28, escalationPenalty:-3, consistencyBonus:1 },
+        payoutHistory:[
+          { date:"10 Mar 2026", leadId:"L-3455", product:"Personal Loan", gross:"₹3,100", tds:"—", net:"₹3,100", status:"paid" },
+          { date:"20 Feb 2026", leadId:"L-3312", product:"Gold Loan",     gross:"₹2,800", tds:"—", net:"₹2,800", status:"paid" },
+        ],
+        leadsList:[
+          { id:"L-3800", borrower:"Rahul Shah",   product:"Personal Loan", amount:"₹1.8L", stage:"Under Review", submitted:"8h ago"      },
+          { id:"L-3744", borrower:"Sunita Patil", product:"Gold Loan",     amount:"₹85K",  stage:"Disbursed",    submitted:"14 days ago" },
+        ],
+        coaching:[{ date:"2026-03-01", note:"Customer follow-up missed at T=48h. 2 leads escalated to ops in Feb." }],
+      },
+      {
+        id:"C-0372", name:"Vijay Nair", phone:"+91 94567 12345", location:"Nagpur, MH",
+        leads:6, conversion:"16%", status:"pending", kyc:"pending", score:null,
+        email:"vijay.nair2000@gmail.com", pan:"CFVPN9012J", joinedOn:"01 Apr 2026",
+        onboardedBy:"Rajan Tiwari",
+        bank:{ name:"—", account:"—", ifsc:"—", holder:"—" },
+        kycVerifiedOn:null,
+        activeLeads:0, disbursed:0, rejected:0, pendingDocs:0,
+        commissionYTD:"—", tdsYTD:"—", netPayoutYTD:"—",
+        products:[],
+        qualityBreakdown:null,
+        payoutHistory:[],
+        leadsList:[],
+        coaching:[],
+      },
+      {
+        id:"C-0349", name:"Anita Rao", phone:"+91 87654 32109", location:"Surat, GJ",
+        leads:19, conversion:"36%", status:"active", kyc:"verified", score:78,
+        email:"anita.rao@gmail.com", pan:"DKQAR3456H", joinedOn:"22 Oct 2025",
+        onboardedBy:"Pooja Joshi",
+        bank:{ name:"Axis Bank", account:"XXXX XXXX 5512", ifsc:"UTIB0001892", holder:"Anita Rao" },
+        kycVerifiedOn:"28 Oct 2025",
+        activeLeads:4, disbursed:7, rejected:4, pendingDocs:4,
+        commissionYTD:"₹19,800", tdsYTD:"₹990", netPayoutYTD:"₹18,810",
+        products:["Home Loan","Personal Loan","Two-Wheeler"],
+        qualityBreakdown:{ disbursalRate:36, escalationPenalty:-1, consistencyBonus:2 },
+        payoutHistory:[
+          { date:"05 Apr 2026", leadId:"L-3710", product:"Personal Loan", gross:"₹3,800", tds:"₹190",  net:"₹3,610", status:"paid"       },
+          { date:"22 Mar 2026", leadId:"L-3592", product:"Home Loan",     gross:"₹7,200", tds:"₹360",  net:"₹6,840", status:"paid"       },
+          { date:"10 Mar 2026", leadId:"L-3518", product:"Two-Wheeler",   gross:"₹1,400", tds:"—",     net:"₹1,400", status:"processing" },
+        ],
+        leadsList:[
+          { id:"L-3835", borrower:"Deepak Gupta",  product:"Home Loan",     amount:"₹22L",  stage:"Sent to FI", submitted:"1 day ago"   },
+          { id:"L-3789", borrower:"Kaveri Shah",   product:"Personal Loan", amount:"₹1.2L", stage:"Disbursed",  submitted:"10 days ago" },
+          { id:"L-3720", borrower:"Nitin Patel",   product:"Two-Wheeler",   amount:"₹72K",  stage:"Disbursed",  submitted:"22 days ago" },
+        ],
+        coaching:[],
+      },
+      {
+        id:"C-0311", name:"Suresh Patel", phone:"+91 99001 23456", location:"Ahmedabad, GJ",
+        leads:2, conversion:"0%", status:"suspended", kyc:"failed", score:31,
+        email:"suresh.patel.dsa@gmail.com", pan:"ELKSP7890N", joinedOn:"05 Aug 2025",
+        onboardedBy:"Anil Verma",
+        bank:{ name:"Kotak Mahindra", account:"XXXX XXXX 1190", ifsc:"KKBK0000552", holder:"Suresh Patel" },
+        kycVerifiedOn:"10 Aug 2025",
+        activeLeads:0, disbursed:0, rejected:2, pendingDocs:0,
+        commissionYTD:"—", tdsYTD:"—", netPayoutYTD:"—",
+        products:["Personal Loan"],
+        qualityBreakdown:{ disbursalRate:0, escalationPenalty:-10, consistencyBonus:0 },
+        payoutHistory:[],
+        leadsList:[
+          { id:"L-3240", borrower:"Mahesh Kumar",  product:"Personal Loan", amount:"₹1L",   stage:"Rejected", submitted:"2 months ago" },
+          { id:"L-3198", borrower:"Vijay Tiwari",  product:"Personal Loan", amount:"₹1.5L", stage:"Rejected", submitted:"2 months ago" },
+        ],
+        coaching:[
+          { date:"2025-11-15", note:"2 consecutive rejections. Bureau score both below threshold. Flagged for product training." },
+          { date:"2026-01-10", note:"KYC document resubmission failed second time. Account suspended pending fresh KYC."       },
+        ],
+      },
+    ];
+
+    // ─── VIEW: Connector Management ──────────────────────────────────────────
+    const ConnectorsView = () => {
+      const [filter, setFilter]                     = useState("all");
+      const [selectedId, setSelectedId]             = useState(null);
+      const [activeTab, setActiveTab]               = useState("overview");
+      const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
+
+      const statusColor = { active: C.accent, pending: C.amber, suspended: C.red };
+      const kycColor    = { verified: C.accent, pending: C.amber, failed: C.red };
+
+      // ── LIST VIEW ─────────────────────────────────────────────────────────
+      if (!selectedId) {
+        const filtered = filter === "all" ? CONNECTORS_DATA : CONNECTORS_DATA.filter(c => c.status === filter);
+        return (
+          <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
+              {["all","active","pending","suspended"].map(f => (
+                <button key={f} onClick={() => setFilter(f)} style={{ padding: "5px 12px", borderRadius: 4, border: `1px solid ${filter===f?C.accent:C.border}`, background: filter===f?C.accentDim:"transparent", color: filter===f?C.accent:C.textSec, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: C.sans, textTransform: "capitalize" }}>{f==="all"?"All Status":f}</button>
+              ))}
+              <div style={{ flex: 1 }}/>
+              <Btn primary>+ Onboard Connector</Btn>
+            </div>
+            <Card style={{ padding: 0, overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead style={{ background: C.surface }}><tr>
+                  <TH>Connector</TH><TH>Location</TH>
+                  <TH>Leads</TH><TH>Conv.</TH><TH>Quality Score</TH>
+                  <TH>KYC</TH><TH>Status</TH><TH>Actions</TH>
+                </tr></thead>
+                <tbody>
+                  {filtered.map(c => (
+                    <tr key={c.id} style={{ transition: "background 0.1s" }} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      <TD bold color={C.text}>{c.name}<div style={{ fontSize: 9, color: C.textTer, fontFamily: C.mono }}>{c.id} · {c.phone}</div></TD>
+                      <TD>{c.location}</TD>
+                      <TD mono bold color={C.text}>{c.leads}</TD>
+                      <TD mono color={parseInt(c.conversion)>30?C.accent:C.textSec}>{c.conversion}</TD>
+                      <TD><span style={{ fontFamily: C.mono, fontSize: 12, fontWeight: 700, color: c.score>75?C.accent:c.score>50?C.amber:c.score?C.red:C.textTer }}>{c.score??'—'}</span></TD>
+                      <TD><Badge label={c.kyc} color={kycColor[c.kyc]}/></TD>
+                      <TD><Badge label={c.status} color={statusColor[c.status]} dot/></TD>
+                      <TD style={{ display: "flex", gap: 6 }}>
+                        <Btn small onClick={() => { setSelectedId(c.id); setActiveTab("overview"); }}>View →</Btn>
+                        {c.status==="pending"   && <Btn small primary>Approve</Btn>}
+                        {c.status==="active"    && <Btn small danger>Suspend</Btn>}
+                        {c.status==="suspended" && <Btn small style={{ color:C.accent, borderColor:C.accentMid }}>Reactivate</Btn>}
+                      </TD>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          </div>
+        );
+      }
+
+      // ── DETAIL VIEW ───────────────────────────────────────────────────────
+      const c = CONNECTORS_DATA.find(x => x.id === selectedId);
+      const scoreColor = c.score>75?C.accent:c.score>50?C.amber:c.score?C.red:C.textTer;
+
+      return (
+        <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+
+          {/* Detail breadcrumb header */}
+          <div style={{ padding:"10px 20px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", gap:12, flexShrink:0, background:C.sidebar }}>
+            <button onClick={() => setSelectedId(null)} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:4, padding:"4px 10px", color:C.textSec, fontSize:11, cursor:"pointer", fontFamily:C.sans }}>← Connectors</button>
+            <div style={{ fontSize:15, fontWeight:700, color:C.text, fontFamily:C.sans }}>{c.name}</div>
+            <Badge label={c.status} color={statusColor[c.status]} dot/>
+            <Badge label={`KYC: ${c.kyc}`} color={kycColor[c.kyc]}/>
+            <div style={{ flex:1 }}/>
+            {c.status!=="suspended"
+              ? <Btn danger ghost small onClick={() => setShowSuspendConfirm(true)}>Suspend Connector</Btn>
+              : <Btn small style={{ color:C.accent, borderColor:C.accentMid }}>Reactivate Connector</Btn>
+            }
+          </div>
+
+          {/* Tabs */}
+          <div style={{ display:"flex", gap:0, borderBottom:`1px solid ${C.border}`, padding:"0 20px", flexShrink:0, background:C.sidebar }}>
+            {[
+              { id:"overview", label:"Overview" },
+              { id:"leads",    label:"Leads",              badge: c.leadsList.length || null },
+              { id:"payouts",  label:"Payouts" },
+              { id:"notes",    label:"Notes & Coaching",   badge: c.coaching.length || null },
+            ].map(({ id, label, badge }) => (
+              <button key={id} onClick={() => setActiveTab(id)} style={{ padding:"10px 14px", background:"none", border:"none", borderBottom:`2px solid ${activeTab===id?C.accent:"transparent"}`, color:activeTab===id?C.accent:C.textSec, fontSize:12, fontWeight:activeTab===id?600:400, cursor:"pointer", fontFamily:C.sans, display:"flex", alignItems:"center", gap:6 }}>
+                {label}
+                {badge ? <span style={{ fontSize:9, fontWeight:700, padding:"1px 5px", borderRadius:8, background:C.accentDim, color:C.accent, fontFamily:C.mono }}>{badge}</span> : null}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ flex:1, overflowY:"auto", padding:20 }}>
+
+            {/* ── Overview ──────────────────────────────────────────────── */}
+            {activeTab==="overview" && (
+              <div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:10, marginBottom:18 }}>
+                  {[
+                    { label:"Total Leads",     value:c.leads,          color:C.text    },
+                    { label:"Disbursed",       value:c.disbursed,      color:C.accent  },
+                    { label:"Conversion Rate", value:c.conversion,     color:parseInt(c.conversion)>30?C.accent:C.amber },
+                    { label:"Active Leads",    value:c.activeLeads,    color:C.blue    },
+                    { label:"Quality Score",   value:c.score??'—',     color:scoreColor },
+                    { label:"Payout YTD",      value:c.netPayoutYTD,   color:C.amber   },
+                  ].map(({ label, value, color }) => (
+                    <Card key={label} style={{ padding:"12px 14px" }}>
+                      <div style={{ fontSize:9, color:C.textTer, textTransform:"uppercase", letterSpacing:"0.6px", marginBottom:6, fontFamily:C.sans }}>{label}</div>
+                      <div style={{ fontSize:20, fontWeight:700, color, fontFamily:C.mono, letterSpacing:"-0.5px" }}>{value}</div>
+                    </Card>
+                  ))}
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+                  <Card>
+                    <div style={{ fontSize:11, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:12 }}>Profile</div>
+                    {[
+                      ["Connector ID", c.id],
+                      ["Full Name",    c.name],
+                      ["Phone",        c.phone],
+                      ["Email",        c.email],
+                      ["Location",     c.location],
+                      ["PAN",          c.pan],
+                      ["Joined",       c.joinedOn],
+                      ["Onboarded by", c.onboardedBy],
+                    ].map(([k,v]) => (
+                      <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderBottom:`1px solid ${C.border}` }}>
+                        <span style={{ fontSize:11, color:C.textTer, fontFamily:C.sans }}>{k}</span>
+                        <span style={{ fontSize:11, fontWeight:600, color:C.text, fontFamily:C.mono }}>{v}</span>
+                      </div>
+                    ))}
+                  </Card>
+                  <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                    <Card>
+                      <div style={{ fontSize:11, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:12 }}>KYC Status</div>
+                      {[
+                        ["Status",      <Badge label={c.kyc} color={kycColor[c.kyc]}/>],
+                        ["Verified On", c.kycVerifiedOn ?? "—"],
+                        ["PAN",         c.pan],
+                        ["Aadhaar",     "Verified (UID hash stored)"],
+                      ].map(([k,v]) => (
+                        <div key={k} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 0", borderBottom:`1px solid ${C.border}` }}>
+                          <span style={{ fontSize:11, color:C.textTer, fontFamily:C.sans }}>{k}</span>
+                          <span style={{ fontSize:11, fontWeight:600, color:C.text, fontFamily:C.mono }}>{v}</span>
+                        </div>
+                      ))}
+                    </Card>
+                    <Card>
+                      <div style={{ fontSize:11, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:12 }}>Quality Score Breakdown</div>
+                      {c.qualityBreakdown ? (
+                        <div>
+                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
+                            {[
+                              { label:"Disbursal Rate",  value:`${c.qualityBreakdown.disbursalRate}%`, color:C.accent },
+                              { label:"Escalation Pen.", value:String(c.qualityBreakdown.escalationPenalty), color:C.red   },
+                              { label:"Consistency Bon.",value:`+${c.qualityBreakdown.consistencyBonus}`,    color:C.blue  },
+                            ].map(({ label, value, color }) => (
+                              <div key={label} style={{ padding:"10px 8px", borderRadius:6, background:C.surface, border:`1px solid ${C.border}`, textAlign:"center" }}>
+                                <div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans, marginBottom:4 }}>{label}</div>
+                                <div style={{ fontSize:16, fontWeight:700, color, fontFamily:C.mono }}>{value}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ padding:"10px 12px", borderRadius:6, background:C.surface, border:`1px solid ${C.borderLight}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                            <span style={{ fontSize:11, fontWeight:700, color:C.text, fontFamily:C.sans }}>Final Score</span>
+                            <span style={{ fontSize:22, fontWeight:700, color:scoreColor, fontFamily:C.mono }}>{c.score}</span>
+                          </div>
+                        </div>
+                      ) : <div style={{ padding:16, textAlign:"center", color:C.textSec, fontSize:12, fontFamily:C.sans }}>Score computed after first disbursal.</div>}
+                    </Card>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Leads ─────────────────────────────────────────────────── */}
+            {activeTab==="leads" && (
+              <div>
+                {c.leadsList.length===0 ? (
+                  <Card><div style={{ padding:20, textAlign:"center", color:C.textSec, fontSize:12, fontFamily:C.sans }}>No leads submitted yet.</div></Card>
+                ) : (
+                  <Card style={{ padding:0, overflow:"hidden" }}>
+                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                      <thead style={{ background:C.surface }}><tr>
+                        <TH>Lead ID</TH><TH>Borrower</TH><TH>Product</TH><TH>Amount</TH><TH>Stage</TH><TH>Submitted</TH>
+                      </tr></thead>
+                      <tbody>
+                        {c.leadsList.map(l => {
+                          const sc = STAGE_COLOR[l.stage] || { c:C.textSec, bg:C.input };
+                          return (
+                            <tr key={l.id} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                              <TD mono color={C.accent}>{l.id}</TD>
+                              <TD bold color={C.text}>{l.borrower}</TD>
+                              <TD>{l.product}</TD>
+                              <TD mono bold color={C.text}>{l.amount}</TD>
+                              <TD><Badge label={l.stage} color={sc.c} bg={sc.bg}/></TD>
+                              <TD mono>{l.submitted}</TD>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* ── Payouts ───────────────────────────────────────────────── */}
+            {activeTab==="payouts" && (
+              <div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:18 }}>
+                  <Card>
+                    <div style={{ fontSize:11, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:12 }}>Commission Structure (YTD)</div>
+                    {[
+                      ["Gross Commission Received", c.commissionYTD,    C.text   ],
+                      ["GST Input Credit (18%)",    "Deducted at source",C.textSec],
+                      ["Net Commission",            "After GST",         C.text   ],
+                      ["CreditBridge Retained",     "Product-specific %",C.textSec],
+                      ["Connector Payout",          c.netPayoutYTD,     C.accent ],
+                      ["TDS Deducted (Sec. 194H)",  c.tdsYTD,           C.amber  ],
+                      ["Net Payout After TDS",      c.netPayoutYTD,     C.accent ],
+                    ].map(([k,v,color]) => (
+                      <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderBottom:`1px solid ${C.border}` }}>
+                        <span style={{ fontSize:11, color:C.textTer, fontFamily:C.sans }}>{k}</span>
+                        <span style={{ fontSize:11, fontWeight:600, color, fontFamily:C.mono }}>{v}</span>
+                      </div>
+                    ))}
+                    <div style={{ marginTop:10, padding:"8px 12px", borderRadius:6, background:C.amberDim, border:`1px solid ${C.amber}30`, fontSize:10, color:C.amberText, fontFamily:C.sans }}>
+                      TDS @5% (Section 194H) deducted only when annual commission exceeds ₹15,000. Form 16A issued each financial year.
+                    </div>
+                  </Card>
+                  <Card>
+                    <div style={{ fontSize:11, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:12 }}>Bank Account (Payout Destination)</div>
+                    {[
+                      ["Account Holder", c.bank.holder],
+                      ["Bank",           c.bank.name],
+                      ["Account No.",    c.bank.account],
+                      ["IFSC Code",      c.bank.ifsc],
+                      ["Payment Rail",   "Razorpay Payouts (NEFT/IMPS)"],
+                      ["Payout TAT",     "Within 48h of commission receipt"],
+                    ].map(([k,v]) => (
+                      <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderBottom:`1px solid ${C.border}` }}>
+                        <span style={{ fontSize:11, color:C.textTer, fontFamily:C.sans }}>{k}</span>
+                        <span style={{ fontSize:11, fontWeight:600, color:C.text, fontFamily:C.mono }}>{v}</span>
+                      </div>
+                    ))}
+                    <div style={{ marginTop:12 }}>
+                      <div style={{ fontSize:10, color:C.textTer, fontFamily:C.sans, marginBottom:6 }}>Form 16A Status</div>
+                      <div style={{ padding:"8px 12px", borderRadius:6, background:c.tdsYTD!=="—"?C.accentDim:C.input, border:`1px solid ${c.tdsYTD!=="—"?C.accentMid:C.border}`, fontSize:11, color:c.tdsYTD!=="—"?C.accent:C.textSec, fontFamily:C.sans }}>
+                        {c.tdsYTD !== "—" ? "Eligible — Form 16A to be issued for FY 2025-26" : "Not applicable — annual commission below ₹15,000 threshold"}
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+                <div style={{ fontSize:11, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:10 }}>Payout History</div>
+                {c.payoutHistory.length===0 ? (
+                  <Card><div style={{ padding:20, textAlign:"center", color:C.textSec, fontSize:12, fontFamily:C.sans }}>No payouts processed yet.</div></Card>
+                ) : (
+                  <Card style={{ padding:0, overflow:"hidden" }}>
+                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                      <thead style={{ background:C.surface }}><tr>
+                        <TH>Date</TH><TH>Lead ID</TH><TH>Product</TH><TH>Gross Commission</TH><TH>TDS (194H)</TH><TH>Net Payout</TH><TH>Status</TH>
+                      </tr></thead>
+                      <tbody>
+                        {c.payoutHistory.map((p, i) => (
+                          <tr key={i} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                            <TD mono>{p.date}</TD>
+                            <TD mono color={C.accent}>{p.leadId}</TD>
+                            <TD>{p.product}</TD>
+                            <TD mono bold color={C.text}>{p.gross}</TD>
+                            <TD mono color={p.tds!=="—"?C.amber:C.textTer}>{p.tds}</TD>
+                            <TD mono bold color={C.accent}>{p.net}</TD>
+                            <TD><Badge label={p.status} color={p.status==="paid"?C.accent:C.amber} dot/></TD>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* ── Notes & Coaching ──────────────────────────────────────── */}
+            {activeTab==="notes" && (
+              <div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+                  <div style={{ fontSize:11, color:C.textSec, fontFamily:C.sans }}>AI-generated coaching tips and manual escalation flags are logged here.</div>
+                  <Btn primary small>+ Add Note</Btn>
+                </div>
+                {c.coaching.length===0 ? (
+                  <Card><div style={{ padding:20, textAlign:"center", color:C.textSec, fontSize:12, fontFamily:C.sans }}>No coaching notes or flags recorded.</div></Card>
+                ) : (
+                  <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                    {c.coaching.map((n, i) => (
+                      <Card key={i} style={{ borderLeft:`3px solid ${C.amber}` }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                          <span style={{ fontSize:10, color:C.amberText, fontFamily:C.mono }}>{n.date}</span>
+                          <Badge label="coaching flag" color={C.amber} s={9}/>
+                        </div>
+                        <div style={{ fontSize:12, color:C.text, fontFamily:C.sans, lineHeight:1.5 }}>{n.note}</div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+          </div>
+
+          {/* Suspend confirm modal */}
+          {showSuspendConfirm && (
+            <div style={{ position:"fixed", inset:0, background:"rgba(8,11,16,0.85)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
+              <div style={{ background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, width:400, padding:24 }}>
+                <div style={{ fontSize:14, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:8 }}>Suspend Connector?</div>
+                <div style={{ fontSize:12, color:C.textSec, fontFamily:C.sans, marginBottom:20, lineHeight:1.5 }}>
+                  Suspending <strong style={{ color:C.text }}>{c.name}</strong> will immediately revoke their access to the Connector App. Active leads will continue processing unaffected.
+                </div>
+                <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
+                  <Btn onClick={() => setShowSuspendConfirm(false)}>Cancel</Btn>
+                  <Btn danger onClick={() => setShowSuspendConfirm(false)}>Confirm Suspend</Btn>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // ─── VIEW: Lead Pipeline ─────────────────────────────────────────────────
+    const PipelineView = () => {
+      const [selected, setSelected] = useState(null);
+      const leads = [
+        { id:"L-3847", name:"Rajesh Kumar",  product:"Personal Loan", amount:"₹2.5L", stage:"Sanctioned",   fi:"HDFC",    sla:92, score:748, age:"6h"  },
+        { id:"L-3844", name:"Priya Sharma",  product:"Home Loan",     amount:"₹18L",  stage:"Under Review",  fi:"ICICI",   sla:55, score:701, age:"14h" },
+        { id:"L-3841", name:"Anita Rao",     product:"Business Loan", amount:"₹5L",   stage:"Sent to FI",   fi:"Axis",    sla:28, score:689, age:"22h" },
+        { id:"L-3838", name:"Vijay Kumar",   product:"Two-Wheeler",   amount:"₹65K",  stage:"AI Enrichment",fi:"—",       sla:80, score:712, age:"3h"  },
+        { id:"L-3831", name:"Suresh Patel",  product:"Personal Loan", amount:"₹1L",   stage:"Sent to FI",   fi:"Bajaj",   sla: 8, score:634, age:"48h" },
+        { id:"L-3827", name:"Kavita Singh",  product:"Gold Loan",     amount:"₹1.2L", stage:"Ready for FI", fi:"—",       sla:65, score:723, age:"8h"  },
+      ];
+      const selectedLead = selected ? leads.find(l=>l.id===selected) : null;
+      return (
+        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              <input placeholder="Search leads..." style={{ flex: 1, padding: "7px 12px", borderRadius: 5, border: `1px solid ${C.inputBorder}`, background: C.input, color: C.text, fontSize: 12, fontFamily: C.sans, outline: "none" }}/>
+              <Btn>Filter ▾</Btn>
+              <Btn primary>+ New Lead</Btn>
+            </div>
+            <Card style={{ padding: 0, overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead style={{ background: C.surface }}><tr>
+                  <TH>Lead ID</TH><TH>Borrower</TH><TH>Product</TH><TH>Amount</TH>
+                  <TH>Stage</TH><TH>FI</TH><TH>Bureau</TH><TH>SLA</TH><TH>Age</TH>
+                </tr></thead>
+                <tbody>
+                  {leads.map(l => {
+                    const { c, bg } = STAGE_COLOR[l.stage];
+                    const slaColor = l.sla < 20 ? C.red : l.sla < 50 ? C.amber : C.accent;
+                    return (
+                      <tr key={l.id} onClick={() => setSelected(l.id===selected?null:l.id)} style={{ cursor: "pointer", background: selected===l.id?C.surface:"transparent", transition: "background 0.1s" }}>
+                        <TD mono color={C.accent}>{l.id}</TD>
+                        <TD bold color={C.text}>{l.name}</TD>
+                        <TD>{l.product}</TD>
+                        <TD mono bold color={C.text}>{l.amount}</TD>
+                        <TD><Badge label={l.stage} color={c} bg={bg}/></TD>
+                        <TD mono>{l.fi}</TD>
+                        <TD><span style={{ fontFamily: C.mono, fontWeight: 700, fontSize: 12, color: l.score>720?C.accent:l.score>650?C.amber:C.red }}>{l.score}</span></TD>
+                        <TD><SlaRing pct={l.sla} label={`${l.sla}%`} color={slaColor}/></TD>
+                        <TD mono>{l.age}</TD>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </Card>
+          </div>
+
+          {selectedLead && (
+            <div style={{ width: 300, borderLeft: `1px solid ${C.border}`, background: C.sidebar, overflowY: "auto", padding: 16, flexShrink: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.sans }}>Lead Detail</div>
+                <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: C.textSec, cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
+              </div>
+              <div style={{ fontFamily: C.mono, fontSize: 11, color: C.accent, marginBottom: 12 }}>{selectedLead.id}</div>
+              {[
+                ["Borrower", selectedLead.name],
+                ["Product",  selectedLead.product],
+                ["Amount",   selectedLead.amount],
+                ["FI",       selectedLead.fi],
+                ["Bureau",   selectedLead.score],
+              ].map(([k,v])=>(
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: `1px solid ${C.border}` }}>
+                  <span style={{ fontSize: 11, color: C.textTer, fontFamily: C.sans }}>{k}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: C.text, fontFamily: C.mono }}>{v}</span>
+                </div>
+              ))}
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 10, color: C.textTer, fontFamily: C.sans, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Waterfall Route</div>
+                {["HDFC","ICICI","Axis","Bajaj"].map((fi, i) => (
+                  <div key={fi} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 4, background: i===0?C.accent:C.border, flexShrink: 0 }}/>
+                    <span style={{ fontSize: 11, fontFamily: C.mono, color: i===0?C.accent:C.textTer }}>{fi}</span>
+                    {i===0 && <Badge label="Active" color={C.accent} s={9}/>}
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 6 }}>
+                <Btn primary style={{ justifyContent: "center" }}>Advance Stage</Btn>
+                <Btn danger style={{ justifyContent: "center" }}>Reject Lead</Btn>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // ─── VIEW: SLA Tracker ────────────────────────────────────────────────────
+    const SlaView = () => {
+      const breaches = [
+        { id:"L-3831", borrower:"Suresh Patel",  fi:"Bajaj",  stage:"Sent to FI",  hours:48, limit:24 },
+        { id:"L-3819", borrower:"Dinesh Rao",    fi:"Axis",   stage:"Under Review", hours:38, limit:24 },
+        { id:"L-3804", borrower:"Meera Singh",   fi:"ICICI",  stage:"Sent to FI",  hours:31, limit:24 },
+        { id:"L-3791", borrower:"Ajay Kumar",    fi:"Yes Bk", stage:"Under Review", hours:27, limit:24 },
+      ];
+      return (
+        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
+            {[
+              { label: "Within SLA",     value: "343", color: C.accent },
+              { label: "At Risk (<20%)", value: "12",  color: C.amber  },
+              { label: "Breached",       value: "4",   color: C.red    },
+              { label: "Avg TAT (hrs)",  value: "18.4",color: C.text   },
+            ].map(({ label, value, color }) => (
+              <Card key={label} style={{ padding: "12px 14px" }}>
+                <div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color, fontFamily: C.mono }}>{value}</div>
+              </Card>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.red, marginBottom: 10, fontFamily: C.sans, display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: 3, background: C.red, display: "inline-block" }}/> SLA Breaches — Requires Escalation
+          </div>
+          <Card style={{ padding: 0, overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead style={{ background: C.surface }}><tr>
+                <TH>Lead</TH><TH>Borrower</TH><TH>FI</TH><TH>Stage</TH><TH>Hours Elapsed</TH><TH>Over By</TH><TH>Action</TH>
+              </tr></thead>
+              <tbody>
+                {breaches.map(b => (
+                  <tr key={b.id}>
+                    <TD mono color={C.red}>{b.id}</TD>
+                    <TD bold color={C.text}>{b.borrower}</TD>
+                    <TD mono>{b.fi}</TD>
+                    <TD><Badge label={b.stage} color={STAGE_COLOR[b.stage].c} bg={STAGE_COLOR[b.stage].bg}/></TD>
+                    <TD mono bold color={C.red}>{b.hours}h</TD>
+                    <TD mono color={C.redText}>+{b.hours-b.limit}h</TD>
+                    <TD style={{ display: "flex", gap: 6 }}><Btn small danger>Escalate</Btn><Btn small>Cascade →</Btn></TD>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </div>
+      );
+    };
+
+    // ─── VIEW: FI Billing ─────────────────────────────────────────────────────
+    const BillingView = () => {
+      const invoices = [
+        { inv:"INV-2026-094", fi:"HDFC Bank",        period:"Mar 2026", disbursed:18, gross:"₹3,24,000", gst:"₹58,320", net:"₹2,65,680", status:"paid"    },
+        { inv:"INV-2026-093", fi:"ICICI Bank",        period:"Mar 2026", disbursed:11, gross:"₹1,87,000", gst:"₹33,660", net:"₹1,53,340", status:"paid"    },
+        { inv:"INV-2026-092", fi:"Axis Bank",         period:"Mar 2026", disbursed:7,  gross:"₹1,12,000", gst:"₹20,160", net:"₹91,840",   status:"pending" },
+        { inv:"INV-2026-091", fi:"Bajaj Finserv",     period:"Feb 2026", disbursed:9,  gross:"₹1,44,000", gst:"₹25,920", net:"₹1,18,080", status:"paid"    },
+      ];
+      const statusColor = { paid: C.accent, pending: C.amber };
+      return (
+        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
+            {[
+              { l:"Revenue (Mar)",     v:"₹6.23L",  c:C.accent },
+              { l:"GST Collected",     v:"₹1.12L",  c:C.textSec },
+              { l:"Pending Invoices",  v:"₹91,840", c:C.amber   },
+              { l:"Total FIs",         v:"6",        c:C.text    },
+            ].map(({ l, v, c }) => (
+              <Card key={l} style={{ padding: "12px 14px" }}>
+                <div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.5px" }}>{l}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: c, fontFamily: C.mono }}>{v}</div>
+              </Card>
+            ))}
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+            <Btn primary>+ Generate Invoice</Btn>
+          </div>
+          <Card style={{ padding: 0, overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead style={{ background: C.surface }}><tr>
+                <TH>Invoice</TH><TH>FI</TH><TH>Period</TH><TH>Disbursed</TH>
+                <TH>Gross</TH><TH>GST (18%)</TH><TH>Net Receivable</TH><TH>Status</TH><TH>Actions</TH>
+              </tr></thead>
+              <tbody>
+                {invoices.map(inv => (
+                  <tr key={inv.inv} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <TD mono color={C.blue}>{inv.inv}</TD>
+                    <TD bold color={C.text}>{inv.fi}</TD>
+                    <TD>{inv.period}</TD>
+                    <TD mono bold color={C.text}>{inv.disbursed}</TD>
+                    <TD mono>{inv.gross}</TD>
+                    <TD mono color={C.textTer}>{inv.gst}</TD>
+                    <TD mono bold color={inv.status==="paid"?C.accent:C.amber}>{inv.net}</TD>
+                    <TD><Badge label={inv.status} color={statusColor[inv.status]} dot/></TD>
+                    <TD style={{ display:"flex", gap:5 }}><Btn small>PDF</Btn>{inv.status==="pending"&&<Btn small primary>Mark Paid</Btn>}</TD>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </div>
+      );
+    };
+
+    // ─── VIEW: Compliance Dashboard (DPDP / RBI) ─────────────────────────────
+    const ComplianceView = () => {
+      const events = [
+        { ts:"2026-04-05 09:14", actor:"converter:SK", action:"lead.stage_advance",  ref:"L-3847", risk:"low"  },
+        { ts:"2026-04-05 08:44", actor:"system",        action:"invoice.generated",   ref:"INV-094", risk:"low"  },
+        { ts:"2026-04-05 08:31", actor:"system",        action:"lead.cascade",        ref:"L-3831",  risk:"med"  },
+        { ts:"2026-04-05 07:19", actor:"connector:RS",  action:"consent.captured",   ref:"L-3841",  risk:"low"  },
+        { ts:"2026-04-04 22:11", actor:"admin:VK",      action:"connector.suspended", ref:"C-0311",  risk:"high" },
+      ];
+      const riskColor = { low: C.accent, med: C.amber, high: C.red };
+      return (
+        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 18 }}>
+            {[
+              { l:"DPDP Consents (Apr)",     v:"1,248",  c:C.accent },
+              { l:"Consent Withdrawals",     v:"3",       c:C.amber  },
+              { l:"Audit Log Retention",     v:"730 days",c:C.text   },
+            ].map(({ l, v, c }) => (
+              <Card key={l} style={{ padding: "12px 14px" }}>
+                <div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.5px" }}>{l}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: c, fontFamily: C.mono }}>{v}</div>
+              </Card>
+            ))}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+            <Card>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 12 }}>RBI Compliance Checklist</div>
+              {[
+                { check: "Auth audit log retained ≥2 years (RBI/2022-23/111)", ok: true  },
+                { check: "Phone stored only as SHA-256 hash in persistent DB",  ok: true  },
+                { check: "PII visible to FI only post soft-approval",           ok: true  },
+                { check: "All data on India-located servers (DPDP §16)",        ok: true  },
+                { check: "JWKS endpoint served for downstream JWT verification",ok: true  },
+                { check: "Aadhaar collection excluded from Phase 1",            ok: true  },
+                { check: "CIC reporting confirmed for sanctioned leads",         ok: false },
+              ].map(({ check, ok }) => (
+                <div key={check} style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 13, color: ok ? C.accent : C.red, flexShrink: 0, marginTop: 1 }}>{ok ? "✓" : "✗"}</span>
+                  <span style={{ fontSize: 11, color: ok ? C.textSec : C.text, fontFamily: C.sans, lineHeight: 1.5 }}>{check}</span>
+                </div>
+              ))}
+            </Card>
+            <Card>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 12 }}>DPDP Act 2023 — Data Minimisation</div>
+              {[
+                { field: "Full Name",     scope:"Connector only",       stored:"Hashed post-enrich" },
+                { field: "Phone",         scope:"SHA-256 hash only",    stored:"Redis OTP (5m TTL)" },
+                { field: "PAN",           scope:"Bureau check only",    stored:"Encrypted at rest"  },
+                { field: "Bureau Score",  scope:"Platform-wide",        stored:"Encrypted at rest"  },
+                { field: "Bank Account",  scope:"Commission payout",    stored:"Encrypted at rest"  },
+              ].map(({ field, scope, stored }) => (
+                <div key={field} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: `1px solid ${C.border}` }}>
+                  <span style={{ fontSize: 11, color: C.text, fontFamily: C.mono, fontWeight: 600 }}>{field}</span>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 10, color: C.textSec, fontFamily: C.sans }}>{scope}</div>
+                    <div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans }}>{stored}</div>
+                  </div>
+                </div>
+              ))}
+            </Card>
+          </div>
+
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 10 }}>Immutable Audit Log</div>
+          <Card style={{ padding: 0, overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead style={{ background: C.surface }}><tr>
+                <TH>Timestamp</TH><TH>Actor</TH><TH>Action</TH><TH>Reference</TH><TH>Risk</TH>
+              </tr></thead>
+              <tbody>
+                {events.map((e,i) => (
+                  <tr key={i}>
+                    <TD mono color={C.textTer}>{e.ts}</TD>
+                    <TD mono>{e.actor}</TD>
+                    <TD mono color={C.blue}>{e.action}</TD>
+                    <TD mono color={C.accent}>{e.ref}</TD>
+                    <TD><Badge label={e.risk} color={riskColor[e.risk]}/></TD>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </div>
+      );
+    };
+
+    // ─── VIEW: Analytics ────────────────────────────────────────────────────
+    const AnalyticsView = () => {
+      const months = ["Oct","Nov","Dec","Jan","Feb","Mar"];
+      const disbursal = [18,24,31,19,27,38];
+      const revenue =   [2.1,2.8,3.6,2.2,3.1,4.4];
+      const maxD = Math.max(...disbursal);
+      const maxR = Math.max(...revenue);
+      return (
+        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <Card>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 14 }}>Monthly Disbursals</div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 120 }}>
+                {months.map((m,i)=>(
+                  <div key={m} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontSize: 9, color: C.accent, fontFamily: C.mono, fontWeight: 700 }}>{disbursal[i]}</span>
+                    <div style={{ width: "100%", borderRadius: 3, background: C.accentDim, height: `${(disbursal[i]/maxD)*90}px`, position: "relative", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60%", background: C.accentMid, borderRadius: 3 }}/>
+                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "25%", background: C.accent, borderRadius: "0 0 3px 3px" }}/>
+                    </div>
+                    <span style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans }}>{m}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 14 }}>Revenue (₹ Lakh)</div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 120 }}>
+                {months.map((m,i)=>(
+                  <div key={m} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontSize: 9, color: C.purple, fontFamily: C.mono, fontWeight: 700 }}>{revenue[i]}</span>
+                    <div style={{ width: "100%", borderRadius: 3, background: C.purpleDim, height: `${(revenue[i]/maxR)*90}px` }}>
+                      <div style={{ height: "100%", background: `linear-gradient(180deg, ${C.purple}80, ${C.purple}30)`, borderRadius: 3 }}/>
+                    </div>
+                    <span style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans }}>{m}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          <Card style={{ marginTop: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 14 }}>Conversion Funnel — April 2026</div>
+            {[
+              { stage:"Leads Submitted",  n:412, pct:100, c:C.text   },
+              { stage:"Bureau Passed",    n:341, pct:83,  c:C.blue   },
+              { stage:"Sent to FI",       n:218, pct:53,  c:C.purple },
+              { stage:"FI Accepted",      n:98,  pct:24,  c:C.amber  },
+              { stage:"Sanctioned",       n:71,  pct:17,  c:C.accent },
+              { stage:"Disbursed",        n:54,  pct:13,  c:C.accent },
+            ].map(({ stage, n, pct, c }) => (
+              <div key={stage} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                <span style={{ fontSize: 11, color: C.textSec, fontFamily: C.sans, width: 140, flexShrink: 0 }}>{stage}</span>
+                <div style={{ flex: 1, height: 6, borderRadius: 3, background: C.border }}>
+                  <div style={{ width: `${pct}%`, height: "100%", borderRadius: 3, background: c }}/>
+                </div>
+                <span style={{ fontSize: 11, fontFamily: C.mono, fontWeight: 700, color: c, width: 30, textAlign: "right" }}>{n}</span>
+                <span style={{ fontSize: 10, fontFamily: C.mono, color: C.textTer, width: 36 }}>{pct}%</span>
+              </div>
+            ))}
+          </Card>
+        </div>
+      );
+    };
+
+    // ─── DATA: FI Management ─────────────────────────────────────────────────
+    const FIS = [
+      { id:"FI-001", name:"HDFC Bank",     type:"Bank",    status:"active",    products:["Personal Loan","Home Loan","Business Loan"], activeLeads:34, sla:87, systemScore:82, opsAdj:5,   lastActivity:"3h ago",  gst:"22AAAAA0000A1Z5", rm:{ name:"Arjun Mehta",  phone:"+91 98765 43210", email:"arjun.mehta@hdfc.com"   }, onboarded:"01 Nov 2025" },
+      { id:"FI-002", name:"ICICI Bank",    type:"Bank",    status:"active",    products:["Personal Loan","Home Loan"],                 activeLeads:21, sla:74, systemScore:70, opsAdj:0,   lastActivity:"1h ago",  gst:"27BBBBB1111B1Z5", rm:{ name:"Priya Sharma", phone:"+91 91234 56789", email:"priya.sharma@icici.com"  }, onboarded:"15 Nov 2025" },
+      { id:"FI-003", name:"Bajaj Finserv", type:"NBFC",   status:"active",    products:["Personal Loan","Two-Wheeler Loan"],          activeLeads:18, sla:58, systemScore:60, opsAdj:-5,  lastActivity:"6h ago",  gst:"27CCCCC2222C1Z5", rm:{ name:"Vikram Singh", phone:"+91 94567 12345", email:"vikram.singh@bajaj.com"  }, onboarded:"01 Dec 2025" },
+      { id:"FI-004", name:"Axis Bank",     type:"Bank",    status:"active",    products:["Business Loan","Home Loan"],                 activeLeads:9,  sla:91, systemScore:88, opsAdj:2,   lastActivity:"30m ago", gst:"11DDDDD3333D1Z5", rm:{ name:"Neha Rao",     phone:"+91 87654 32109", email:"neha.rao@axis.com"       }, onboarded:"10 Jan 2026" },
+      { id:"FI-005", name:"MoneyView",     type:"Fintech", status:"pending",   products:["Personal Loan"],                            activeLeads:0,  sla:null, systemScore:null, opsAdj:0, lastActivity:"2d ago",  gst:"29EEEEE4444E1Z5", rm:{ name:"Ankit Joshi",  phone:"+91 99001 23456", email:"ankit.joshi@moneyview.in"  }, onboarded:"20 Mar 2026" },
+      { id:"FI-006", name:"Yes Bank",      type:"Bank",    status:"suspended", products:["Personal Loan"],                            activeLeads:0,  sla:32, systemScore:45,  opsAdj:-10, lastActivity:"5d ago",  gst:"27FFFFF5555F1Z5", rm:{ name:"Ravi Kumar",   phone:"+91 98765 11111", email:"ravi.kumar@yesbank.in"   }, onboarded:"01 Oct 2025" },
+    ];
+
+    const FI_PRODUCTS = {
+      "FI-001": [
+        { product:"Personal Loan", scoreMin:700, scoreMax:850, loanMin:"₹1L",  loanMax:"₹10L", commission:"1.2%", pincodes:["400001","400002","400003","411001","411002","560001","560002","560003","380001"], status:"active" },
+        { product:"Home Loan",     scoreMin:680, scoreMax:850, loanMin:"₹15L", loanMax:"₹5Cr", commission:"0.8%", pincodes:["400001","400002","411001","560001"], status:"active" },
+        { product:"Business Loan", scoreMin:720, scoreMax:850, loanMin:"₹5L",  loanMax:"₹50L", commission:"1.5%", pincodes:["400001","411001"], status:"active" },
+      ],
+      "FI-002": [
+        { product:"Personal Loan", scoreMin:700, scoreMax:850, loanMin:"₹1L",  loanMax:"₹8L",  commission:"1.0%", pincodes:["400001","411001","500001","600001"], status:"active" },
+        { product:"Home Loan",     scoreMin:680, scoreMax:850, loanMin:"₹10L", loanMax:"₹3Cr", commission:"0.7%", pincodes:["400001","411001"], status:"active" },
+      ],
+      "FI-003": [
+        { product:"Personal Loan",    scoreMin:680, scoreMax:850, loanMin:"₹50K", loanMax:"₹5L",   commission:"1.5%", pincodes:["400001","411001","380001","560001","600001"], status:"active" },
+        { product:"Two-Wheeler Loan", scoreMin:640, scoreMax:850, loanMin:"₹30K", loanMax:"₹1.5L", commission:"2.0%", pincodes:["400001","411001","560001"], status:"active" },
+      ],
+      "FI-004": [
+        { product:"Business Loan", scoreMin:700, scoreMax:850, loanMin:"₹5L",  loanMax:"₹2Cr", commission:"1.1%", pincodes:["400001","411001","380001"], status:"active" },
+        { product:"Home Loan",     scoreMin:700, scoreMax:850, loanMin:"₹20L", loanMax:"₹5Cr", commission:"0.9%", pincodes:["400001","411001"], status:"active" },
+      ],
+      "FI-005": [
+        { product:"Personal Loan", scoreMin:700, scoreMax:850, loanMin:"₹1L",  loanMax:"₹5L",  commission:"2.0%", pincodes:["400001","560001","600001"], status:"active" },
+      ],
+      "FI-006": [
+        { product:"Personal Loan", scoreMin:680, scoreMax:850, loanMin:"₹50K", loanMax:"₹5L",  commission:"1.3%", pincodes:["400001","411001"], status:"paused" },
+      ],
+    };
+
+    const INITIAL_CRS = [
+      { id:"CR-041", fi:"FI-001", type:"Add Pincodes",       details:"Add 400072, 400073 to Personal Loan",  by:"Arjun Mehta",  at:"2026-04-14 10:30", status:"pending",  reason:"" },
+      { id:"CR-040", fi:"FI-002", type:"Update Score Range",  details:"Update Home Loan min score 680 → 660", by:"Priya Sharma", at:"2026-04-12 14:15", status:"pending",  reason:"" },
+      { id:"CR-039", fi:"FI-003", type:"Add Product",         details:"Add Gold Loan to product lineup",      by:"Vikram Singh", at:"2026-04-10 09:00", status:"approved", reason:"" },
+      { id:"CR-038", fi:"FI-001", type:"Remove Pincodes",     details:"Remove 380001 from Personal Loan",     by:"Arjun Mehta",  at:"2026-04-08 16:45", status:"rejected", reason:"Pincode still in active waterfall — defer to May cycle" },
+    ];
+
+    // ─── VIEW: FI Management ─────────────────────────────────────────────────
+    const FiManagementView = () => {
+      const [selectedFI, setSelectedFI]         = useState(null);
+      const [activeTab, setActiveTab]           = useState("overview");
+      const [typeFilter, setTypeFilter]         = useState("all");
+      const [statusFilter, setStatusFilter]     = useState("all");
+      const [search, setSearch]                 = useState("");
+      const [showOnboard, setShowOnboard]       = useState(false);
+      const [onboardStep, setOnboardStep]       = useState(1);
+      const [onboardData, setOnboardData]       = useState({ name:"", type:"Bank", gst:"", rmName:"", rmPhone:"", rmEmail:"" });
+      const [editingAdj, setEditingAdj]         = useState(false);
+      const [adjEdit, setAdjEdit]               = useState({ val:"", reason:"" });
+      const [expandedPincodes, setExpandedPincodes] = useState(null);
+      const [showEditProduct, setShowEditProduct]   = useState(null);
+      const [editProductData, setEditProductData]   = useState({});
+      const [crFilter, setCrFilter]             = useState("all");
+      const [crStates, setCrStates]             = useState({});
+      const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
+      const [showInviteModal, setShowInviteModal]     = useState(false);
+      const [inviteData, setInviteData]               = useState({ name:"", email:"", role:"fi_manager" });
+      const [inviteSent, setInviteSent]               = useState(false);
+      const [fiUsers, setFiUsers]                     = useState({
+        "FI-001": [
+          { id:"U-001", name:"Arjun Mehta",    email:"arjun.mehta@hdfcbank.com",   role:"fi_manager",  status:"active",    lastLogin:"2026-04-14 09:32", provisioned:"2025-11-02" },
+          { id:"U-002", name:"Riya Desai",     email:"riya.desai@hdfcbank.com",    role:"fi_viewer",   status:"active",    lastLogin:"2026-04-12 14:10", provisioned:"2025-11-02" },
+          { id:"U-003", name:"Kabir Nair",     email:"kabir.nair@hdfcbank.com",    role:"fi_manager",  status:"suspended", lastLogin:"2026-03-28 11:05", provisioned:"2025-12-15" },
+        ],
+        "FI-002": [
+          { id:"U-004", name:"Priya Sharma",   email:"priya.s@icicisec.com",       role:"fi_manager",  status:"active",    lastLogin:"2026-04-13 16:45", provisioned:"2026-01-10" },
+        ],
+        "FI-003": [
+          { id:"U-005", name:"Vikram Singh",   email:"v.singh@axisbank.com",       role:"fi_manager",  status:"active",    lastLogin:"2026-04-14 08:50", provisioned:"2026-02-01" },
+          { id:"U-006", name:"Anita Kulkarni", email:"anita.k@axisbank.com",       role:"fi_viewer",   status:"pending",   lastLogin:"Never",            provisioned:"2026-04-10" },
+        ],
+        "FI-004": [
+          { id:"U-007", name:"Deepak Rao",     email:"d.rao@bajajfinserv.com",     role:"fi_manager",  status:"active",    lastLogin:"2026-04-11 12:00", provisioned:"2026-01-20" },
+        ],
+        "FI-005": [
+          { id:"U-008", name:"Sneha Iyer",     email:"sneha.iyer@kotak.com",       role:"fi_manager",  status:"active",    lastLogin:"2026-04-14 10:15", provisioned:"2026-03-05" },
+        ],
+        "FI-006": [],
+      });
+
+      const fiStatusColor = { active: C.accent, pending: C.amber, suspended: C.red };
+
+      // ── FI LIST ─────────────────────────────────────────────────────────────
+      if (!selectedFI) {
+        const filtered = FIS.filter(fi => {
+          if (typeFilter !== "all" && fi.type !== typeFilter) return false;
+          if (statusFilter !== "all" && fi.status !== statusFilter) return false;
+          if (search && !fi.name.toLowerCase().includes(search.toLowerCase())) return false;
+          return true;
+        });
+        return (
+          <div style={{ flex:1, overflowY:"auto", padding:20 }}>
+            <div style={{ display:"flex", gap:8, marginBottom:14, alignItems:"center", flexWrap:"wrap" }}>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search FI…" style={{ padding:"7px 12px", borderRadius:5, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.sans, outline:"none", width:180 }}/>
+              {["all","Bank","NBFC","Fintech"].map(t=>(
+                <button key={t} onClick={()=>setTypeFilter(t)} style={{ padding:"5px 12px", borderRadius:4, border:`1px solid ${typeFilter===t?C.accent:C.border}`, background:typeFilter===t?C.accentDim:"transparent", color:typeFilter===t?C.accent:C.textSec, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:C.sans }}>{t==="all"?"All Types":t}</button>
+              ))}
+              <div style={{ width:1, height:16, background:C.border }}/>
+              {["all","active","pending","suspended"].map(s=>(
+                <button key={s} onClick={()=>setStatusFilter(s)} style={{ padding:"5px 12px", borderRadius:4, border:`1px solid ${statusFilter===s?C.accent:C.border}`, background:statusFilter===s?C.accentDim:"transparent", color:statusFilter===s?C.accent:C.textSec, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:C.sans, textTransform:"capitalize" }}>{s==="all"?"All Status":s}</button>
+              ))}
+              <div style={{ flex:1 }}/>
+              <Btn primary onClick={()=>{ setShowOnboard(true); setOnboardStep(1); setOnboardData({name:"",type:"Bank",gst:"",rmName:"",rmPhone:"",rmEmail:""}); }}>+ Onboard FI</Btn>
+            </div>
+
+            <Card style={{ padding:0, overflow:"hidden" }}>
+              <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                <thead style={{ background:C.surface }}><tr>
+                  <TH>FI Name</TH><TH>Type</TH><TH>Status</TH><TH>Products</TH>
+                  <TH>Active Leads</TH><TH>SLA Compliance</TH><TH>Bid Priority</TH><TH>Last Activity</TH><TH>Actions</TH>
+                </tr></thead>
+                <tbody>
+                  {filtered.map(fi => {
+                    const finalScore = fi.systemScore !== null ? Math.min(100, Math.max(0, fi.systemScore + fi.opsAdj)) : null;
+                    const slaColor = fi.sla===null?C.textTer:fi.sla>=80?C.accent:fi.sla>=60?C.amber:C.red;
+                    const scoreColor = finalScore===null?C.textTer:finalScore>=75?C.accent:finalScore>=55?C.amber:C.red;
+                    return (
+                      <tr key={fi.id} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                        <TD bold color={C.text}>{fi.name}<div style={{ fontSize:9, color:C.textTer, fontFamily:C.mono }}>{fi.id}</div></TD>
+                        <TD><Badge label={fi.type} color={fi.type==="Bank"?C.blue:fi.type==="NBFC"?C.purple:C.amber}/></TD>
+                        <TD><Badge label={fi.status} color={fiStatusColor[fi.status]} dot/></TD>
+                        <TD><div style={{ display:"flex", flexWrap:"wrap", gap:3 }}>{fi.products.slice(0,2).map(p=><Badge key={p} label={p.split(" ")[0]} s={9} color={C.textSec}/>)}{fi.products.length>2&&<Badge label={`+${fi.products.length-2}`} s={9} color={C.textTer}/>}</div></TD>
+                        <TD mono bold color={C.text}>{fi.activeLeads}</TD>
+                        <TD><span style={{ fontFamily:C.mono, fontWeight:700, fontSize:12, color:slaColor }}>{fi.sla!==null?`${fi.sla}%`:"—"}</span></TD>
+                        <TD>{finalScore!==null?<span style={{ fontFamily:C.mono, fontWeight:700, fontSize:12, color:scoreColor }}>{finalScore}{fi.opsAdj!==0&&<span style={{ fontSize:10, color:C.amber, marginLeft:4 }}>{fi.opsAdj>0?`+${fi.opsAdj}`:fi.opsAdj}</span>}</span>:<span style={{ fontFamily:C.mono, fontSize:11, color:C.textTer }}>—</span>}</TD>
+                        <TD>{fi.lastActivity}</TD>
+                        <TD><Btn small onClick={()=>{ setSelectedFI(fi.id); setActiveTab("overview"); }}>View →</Btn></TD>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </Card>
+
+            {showOnboard && (
+              <div style={{ position:"fixed", inset:0, background:"rgba(8,11,16,0.85)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
+                <div style={{ background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, width:480, padding:24 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:18 }}>
+                    <div><div style={{ fontSize:14, fontWeight:700, color:C.text, fontFamily:C.sans }}>Onboard New FI</div><div style={{ fontSize:10, color:C.textTer, fontFamily:C.sans }}>Step {onboardStep} of 2</div></div>
+                    <button onClick={()=>setShowOnboard(false)} style={{ background:"none", border:"none", color:C.textSec, cursor:"pointer", fontSize:20 }}>×</button>
+                  </div>
+                  <div style={{ display:"flex", gap:6, marginBottom:20 }}>{[1,2].map(s=><div key={s} style={{ flex:1, height:3, borderRadius:2, background:s<=onboardStep?C.accent:C.border }}/>)}</div>
+                  {onboardStep===1 ? (
+                    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:C.text, fontFamily:C.sans }}>Basic Registration</div>
+                      {[{label:"FI Name",key:"name",placeholder:"e.g. Kotak Mahindra Bank"},{label:"GST Number",key:"gst",placeholder:"e.g. 27XXXXX0000X1Z5"}].map(({label,key,placeholder})=>(
+                        <div key={key}><div style={{ fontSize:10, color:C.textSec, fontFamily:C.sans, marginBottom:4 }}>{label}</div><input value={onboardData[key]} onChange={e=>setOnboardData(d=>({...d,[key]:e.target.value}))} placeholder={placeholder} style={{ width:"100%", padding:"8px 12px", borderRadius:5, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.sans, outline:"none", boxSizing:"border-box" }}/></div>
+                      ))}
+                      <div><div style={{ fontSize:10, color:C.textSec, fontFamily:C.sans, marginBottom:4 }}>FI Type</div><div style={{ display:"flex", gap:8 }}>{["Bank","NBFC","Fintech"].map(t=><button key={t} onClick={()=>setOnboardData(d=>({...d,type:t}))} style={{ flex:1, padding:"8px", borderRadius:5, border:`1px solid ${onboardData.type===t?C.accent:C.border}`, background:onboardData.type===t?C.accentDim:"transparent", color:onboardData.type===t?C.accent:C.textSec, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:C.sans }}>{t}</button>)}</div></div>
+                      <div style={{ display:"flex", justifyContent:"flex-end", marginTop:6 }}><Btn primary onClick={()=>setOnboardStep(2)}>Next →</Btn></div>
+                    </div>
+                  ) : (
+                    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:C.text, fontFamily:C.sans }}>RM Contact Details</div>
+                      {[{label:"RM Name",key:"rmName",placeholder:"Relationship Manager name"},{label:"RM Phone",key:"rmPhone",placeholder:"+91 XXXXX XXXXX"},{label:"RM Email",key:"rmEmail",placeholder:"rm@finame.com"}].map(({label,key,placeholder})=>(
+                        <div key={key}><div style={{ fontSize:10, color:C.textSec, fontFamily:C.sans, marginBottom:4 }}>{label}</div><input value={onboardData[key]} onChange={e=>setOnboardData(d=>({...d,[key]:e.target.value}))} placeholder={placeholder} style={{ width:"100%", padding:"8px 12px", borderRadius:5, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.sans, outline:"none", boxSizing:"border-box" }}/></div>
+                      ))}
+                      <div style={{ padding:"10px 12px", borderRadius:7, background:C.accentDim, border:`1px solid ${C.accentMid}`, fontSize:10, color:C.accent, fontFamily:C.sans }}>FI will be created with status <strong>Pending Setup</strong>. Configure eligibility in the detail page before going live.</div>
+                      <div style={{ display:"flex", gap:8, justifyContent:"flex-end", marginTop:6 }}><Btn onClick={()=>setOnboardStep(1)}>← Back</Btn><Btn primary onClick={()=>setShowOnboard(false)}>Create FI Record</Btn></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // ── FI DETAIL PAGE ───────────────────────────────────────────────────────
+      const fi = FIS.find(f=>f.id===selectedFI);
+      const products = FI_PRODUCTS[selectedFI] || [];
+      const crs = INITIAL_CRS.filter(cr=>cr.fi===selectedFI).map(cr=>({...cr, status:crStates[cr.id]||cr.status}));
+      const visibleCRs = crFilter==="all"?crs:crFilter==="pending"?crs.filter(c=>c.status==="pending"):crs.filter(c=>c.status!=="pending");
+      const finalScore = fi.systemScore!==null?Math.min(100,Math.max(0,fi.systemScore+fi.opsAdj)):null;
+      const crStatusColor = { pending:C.amber, approved:C.accent, rejected:C.red };
+      const pendingCRCount = crs.filter(c=>c.status==="pending").length;
+
+      return (
+        <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          <div style={{ padding:"10px 20px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", gap:12, flexShrink:0, background:C.sidebar }}>
+            <button onClick={()=>setSelectedFI(null)} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:4, padding:"4px 10px", color:C.textSec, fontSize:11, cursor:"pointer", fontFamily:C.sans }}>← FI List</button>
+            <div style={{ fontSize:15, fontWeight:700, color:C.text, fontFamily:C.sans }}>{fi.name}</div>
+            <Badge label={fi.type} color={fi.type==="Bank"?C.blue:fi.type==="NBFC"?C.purple:C.amber}/>
+            <Badge label={fi.status} color={{ active:C.accent, pending:C.amber, suspended:C.red }[fi.status]} dot/>
+            <div style={{ flex:1 }}/>
+            {fi.status!=="suspended"?<Btn danger ghost small onClick={()=>setShowSuspendConfirm(true)}>Suspend FI</Btn>:<Btn small style={{ color:C.accent, borderColor:C.accentMid }}>Reactivate FI</Btn>}
+          </div>
+
+          <div style={{ display:"flex", gap:0, borderBottom:`1px solid ${C.border}`, padding:"0 20px", flexShrink:0, background:C.sidebar }}>
+            {[{id:"overview",label:"Overview"},{id:"eligibility",label:"Eligibility & Products"},{id:"requests",label:"Change Requests",badge:pendingCRCount||null},{id:"billing",label:"Billing & Commission"},{id:"users",label:"Users"}].map(({id,label,badge})=>(
+              <button key={id} onClick={()=>setActiveTab(id)} style={{ padding:"10px 14px", background:"none", border:"none", borderBottom:`2px solid ${activeTab===id?C.accent:"transparent"}`, color:activeTab===id?C.accent:C.textSec, fontSize:12, fontWeight:activeTab===id?600:400, cursor:"pointer", fontFamily:C.sans, display:"flex", alignItems:"center", gap:6 }}>
+                {label}{badge?<span style={{ fontSize:9, fontWeight:700, padding:"1px 5px", borderRadius:8, background:C.amberDim, color:C.amber, fontFamily:C.mono }}>{badge}</span>:null}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ flex:1, overflowY:"auto", padding:20 }}>
+
+            {activeTab==="overview" && (
+              <div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:10, marginBottom:18 }}>
+                  {[
+                    {label:"Active Leads",     value:fi.activeLeads,                                 color:C.text  },
+                    {label:"SLA Compliance",   value:fi.sla!==null?`${fi.sla}%`:"—",                 color:fi.sla===null?C.textTer:fi.sla>=80?C.accent:fi.sla>=60?C.amber:C.red},
+                    {label:"Bid Priority",     value:finalScore!==null?finalScore:"—",                color:finalScore===null?C.textTer:finalScore>=75?C.accent:finalScore>=55?C.amber:C.red},
+                    {label:"Acceptance Rate",  value:fi.status==="active"?"72%":"—",                  color:C.green },
+                    {label:"Avg Disbursal TAT",value:fi.status==="active"?"5.2 days":"—",             color:C.text  },
+                    {label:"Commission (MTD)", value:fi.status==="active"?"₹1.4L":"—",                color:C.amber },
+                  ].map(({label,value,color})=>(
+                    <Card key={label} style={{ padding:"12px 14px" }}>
+                      <div style={{ fontSize:9, color:C.textTer, textTransform:"uppercase", letterSpacing:"0.6px", marginBottom:6, fontFamily:C.sans }}>{label}</div>
+                      <div style={{ fontSize:20, fontWeight:700, color, fontFamily:C.mono, letterSpacing:"-0.5px" }}>{value}</div>
+                    </Card>
+                  ))}
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+                  <Card>
+                    <div style={{ fontSize:11, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:12 }}>Registration Details</div>
+                    {[["FI Name",fi.name],["FI Type",fi.type],["GST Number",fi.gst],["RM Name",fi.rm.name],["RM Phone",fi.rm.phone],["RM Email",fi.rm.email],["Onboarded",fi.onboarded],["Status",fi.status]].map(([k,v])=>(
+                      <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderBottom:`1px solid ${C.border}` }}>
+                        <span style={{ fontSize:11, color:C.textTer, fontFamily:C.sans }}>{k}</span>
+                        <span style={{ fontSize:11, fontWeight:600, color:C.text, fontFamily:C.mono }}>{v}</span>
+                      </div>
+                    ))}
+                  </Card>
+                  <Card>
+                    <div style={{ fontSize:11, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:12 }}>Bid Priority Score</div>
+                    {fi.systemScore!==null?(
+                      <div>
+                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
+                          {[{label:"SLA × 50%",value:`${Math.round(fi.sla*0.5)}`,color:C.accent},{label:"Accept × 30%",value:fi.status==="active"?"22":"—",color:C.blue},{label:"TAT × 20%",value:fi.status==="active"?"16":"—",color:C.purple}].map(({label,value,color})=>(
+                            <div key={label} style={{ padding:"10px 12px", borderRadius:6, background:C.surface, border:`1px solid ${C.border}`, textAlign:"center" }}>
+                              <div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans, marginBottom:4 }}>{label}</div>
+                              <div style={{ fontSize:18, fontWeight:700, color, fontFamily:C.mono }}>{value}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ padding:"12px 14px", borderRadius:7, background:C.surface, border:`1px solid ${C.borderLight}`, marginBottom:12 }}>
+                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}><span style={{ fontSize:11, color:C.textSec, fontFamily:C.sans }}>System Score</span><span style={{ fontSize:16, fontWeight:700, color:C.text, fontFamily:C.mono }}>{fi.systemScore}</span></div>
+                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:editingAdj?12:8 }}>
+                            <span style={{ fontSize:11, color:C.textSec, fontFamily:C.sans }}>Ops Adjustment</span>
+                            {editingAdj?(
+                              <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                                <input type="number" min="-10" max="10" value={adjEdit.val} onChange={e=>setAdjEdit(a=>({...a,val:e.target.value}))} style={{ width:60, padding:"4px 8px", borderRadius:4, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.amber, fontSize:12, fontFamily:C.mono, outline:"none", textAlign:"center" }}/>
+                                <Btn small primary onClick={()=>setEditingAdj(false)}>Save</Btn><Btn small onClick={()=>setEditingAdj(false)}>Cancel</Btn>
+                              </div>
+                            ):(
+                              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                                <span style={{ fontSize:16, fontWeight:700, color:fi.opsAdj!==0?C.amber:C.textSec, fontFamily:C.mono }}>{fi.opsAdj>0?`+${fi.opsAdj}`:fi.opsAdj}</span>
+                                <Btn small onClick={()=>{ setEditingAdj(true); setAdjEdit({val:String(fi.opsAdj),reason:""}); }}>Edit</Btn>
+                              </div>
+                            )}
+                          </div>
+                          {editingAdj&&<div style={{ marginBottom:8 }}><div style={{ fontSize:10, color:C.textSec, fontFamily:C.sans, marginBottom:4 }}>Reason (required)</div><input value={adjEdit.reason} onChange={e=>setAdjEdit(a=>({...a,reason:e.target.value}))} placeholder="e.g. Consistent SLA improvement in Q1" style={{ width:"100%", padding:"6px 10px", borderRadius:4, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:11, fontFamily:C.sans, outline:"none", boxSizing:"border-box" }}/></div>}
+                          <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:8, marginTop:8, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                            <span style={{ fontSize:11, fontWeight:700, color:C.text, fontFamily:C.sans }}>Final Score</span>
+                            <span style={{ fontSize:22, fontWeight:700, color:finalScore>=75?C.accent:finalScore>=55?C.amber:C.red, fontFamily:C.mono }}>{finalScore}</span>
+                          </div>
+                        </div>
+                        <div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans }}>Last updated by admin:VK · 2026-04-10 · all adjustments are audit-logged</div>
+                      </div>
+                    ):<div style={{ padding:20, textAlign:"center", color:C.textSec, fontSize:12, fontFamily:C.sans }}>Bid priority score computed after first lead cycle completes.</div>}
+                  </Card>
+                </div>
+              </div>
+            )}
+
+            {activeTab==="eligibility" && (
+              <div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+                  <div style={{ fontSize:11, color:C.textSec, fontFamily:C.sans }}>Pincode and score changes take effect in the routing engine immediately on save.</div>
+                  <Btn primary small>+ Add Product</Btn>
+                </div>
+                <Card style={{ padding:0, overflow:"hidden", marginBottom:14 }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                    <thead style={{ background:C.surface }}><tr>
+                      <TH>Product</TH><TH>Score Range</TH><TH>Loan Amount Range</TH><TH>Commission</TH><TH>Coverage Pincodes</TH><TH>Status</TH><TH>Actions</TH>
+                    </tr></thead>
+                    <tbody>
+                      {products.map(p=>(
+                        <React.Fragment key={p.product}>
+                          <tr onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                            <TD bold color={C.text}>{p.product}</TD>
+                            <TD mono>{p.scoreMin}–{p.scoreMax}</TD>
+                            <TD mono>{p.loanMin}–{p.loanMax}</TD>
+                            <TD mono bold color={C.accent}>{p.commission}</TD>
+                            <TD><button onClick={()=>setExpandedPincodes(expandedPincodes===p.product?null:p.product)} style={{ padding:"3px 8px", borderRadius:4, border:`1px solid ${C.border}`, background:expandedPincodes===p.product?C.accentDim:"transparent", color:expandedPincodes===p.product?C.accent:C.textSec, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:C.mono }}>{p.pincodes.length} pincodes {expandedPincodes===p.product?"▲":"▼"}</button></TD>
+                            <TD><Badge label={p.status} color={p.status==="active"?C.accent:C.amber} dot/></TD>
+                            <TD style={{ display:"flex", gap:5 }}>
+                              <Btn small onClick={()=>{ setShowEditProduct(p.product); setEditProductData({scoreMin:String(p.scoreMin),scoreMax:String(p.scoreMax),loanMin:p.loanMin,loanMax:p.loanMax,commission:p.commission}); }}>Edit</Btn>
+                              <Btn small danger={p.status==="active"} style={p.status!=="active"?{color:C.accent,borderColor:C.accentMid}:{}}>{p.status==="active"?"Pause":"Resume"}</Btn>
+                            </TD>
+                          </tr>
+                          {expandedPincodes===p.product&&(
+                            <tr><td colSpan={7} style={{ padding:"10px 14px", background:C.surface, borderBottom:`1px solid ${C.border}` }}>
+                              <div style={{ fontSize:10, color:C.textSec, fontFamily:C.sans, marginBottom:8 }}>Coverage Pincodes — {p.product}</div>
+                              <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:10 }}>
+                                {p.pincodes.map(pin=><span key={pin} style={{ padding:"3px 8px", borderRadius:4, background:C.input, border:`1px solid ${C.border}`, fontSize:11, color:C.text, fontFamily:C.mono, display:"flex", alignItems:"center", gap:5 }}>{pin}<button style={{ background:"none", border:"none", color:C.red, cursor:"pointer", padding:0, fontSize:12, lineHeight:1 }}>×</button></span>)}
+                              </div>
+                              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                                <input placeholder="400001, 400002 …" style={{ padding:"6px 10px", borderRadius:5, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:11, fontFamily:C.mono, outline:"none", width:240 }}/>
+                                <Btn small primary>Add Pincodes</Btn>
+                              </div>
+                            </td></tr>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </Card>
+                {showEditProduct&&(
+                  <div style={{ position:"fixed", inset:0, background:"rgba(8,11,16,0.85)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
+                    <div style={{ background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, width:420, padding:24 }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+                        <div style={{ fontSize:13, fontWeight:700, color:C.text, fontFamily:C.sans }}>Edit — {showEditProduct}</div>
+                        <button onClick={()=>setShowEditProduct(null)} style={{ background:"none", border:"none", color:C.textSec, cursor:"pointer", fontSize:20 }}>×</button>
+                      </div>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                        {[{label:"Min Score",key:"scoreMin"},{label:"Max Score",key:"scoreMax"},{label:"Min Loan",key:"loanMin"},{label:"Max Loan",key:"loanMax"}].map(({label,key})=>(
+                          <div key={key}><div style={{ fontSize:10, color:C.textSec, fontFamily:C.sans, marginBottom:4 }}>{label}</div><input value={editProductData[key]||""} onChange={e=>setEditProductData(d=>({...d,[key]:e.target.value}))} style={{ width:"100%", padding:"7px 10px", borderRadius:5, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.mono, outline:"none", boxSizing:"border-box" }}/></div>
+                        ))}
+                      </div>
+                      <div style={{ marginTop:10 }}><div style={{ fontSize:10, color:C.textSec, fontFamily:C.sans, marginBottom:4 }}>Commission Rate</div><input value={editProductData.commission||""} onChange={e=>setEditProductData(d=>({...d,commission:e.target.value}))} style={{ width:"100%", padding:"7px 10px", borderRadius:5, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.mono, outline:"none", boxSizing:"border-box" }}/></div>
+                      <div style={{ display:"flex", gap:8, justifyContent:"flex-end", marginTop:16 }}><Btn onClick={()=>setShowEditProduct(null)}>Cancel</Btn><Btn primary onClick={()=>setShowEditProduct(null)}>Save Changes</Btn></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab==="requests" && (
+              <div>
+                <div style={{ display:"flex", gap:0, borderBottom:`1px solid ${C.border}`, marginBottom:14 }}>
+                  {["all","pending","resolved"].map(f=><button key={f} onClick={()=>setCrFilter(f)} style={{ padding:"7px 14px", background:"none", border:"none", borderBottom:`2px solid ${crFilter===f?C.accent:"transparent"}`, color:crFilter===f?C.accent:C.textSec, fontSize:11, fontWeight:crFilter===f?600:400, cursor:"pointer", fontFamily:C.sans, textTransform:"capitalize" }}>{f}</button>)}
+                </div>
+                {visibleCRs.length===0?(
+                  <div style={{ padding:40, textAlign:"center", color:C.textSec, fontSize:12, fontFamily:C.sans }}>No {crFilter==="all"?"":crFilter} change requests.</div>
+                ):(
+                  <Card style={{ padding:0, overflow:"hidden" }}>
+                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                      <thead style={{ background:C.surface }}><tr>
+                        <TH>Request ID</TH><TH>Type</TH><TH>Details</TH><TH>Requested By</TH><TH>Requested At</TH><TH>Status</TH><TH>Actions</TH>
+                      </tr></thead>
+                      <tbody>
+                        {visibleCRs.map(cr=>(
+                          <tr key={cr.id} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                            <TD mono color={C.blue}>{cr.id}</TD>
+                            <TD bold color={C.text}>{cr.type}</TD>
+                            <TD style={{ maxWidth:220 }}><span style={{ fontSize:11, color:C.textSec, fontFamily:C.sans, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cr.details}</span></TD>
+                            <TD>{cr.by}</TD>
+                            <TD mono color={C.textTer}>{cr.at}</TD>
+                            <TD><Badge label={cr.status} color={crStatusColor[cr.status]} dot/>{cr.status==="rejected"&&cr.reason&&<div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans, marginTop:2, maxWidth:160 }}>{cr.reason}</div>}</TD>
+                            <TD style={{ display:"flex", gap:5 }}>{cr.status==="pending"&&<><Btn small primary onClick={()=>setCrStates(s=>({...s,[cr.id]:"approved"}))}>Approve</Btn><Btn small danger onClick={()=>setCrStates(s=>({...s,[cr.id]:"rejected"}))}>Reject</Btn></>}</TD>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {activeTab==="billing" && (
+              <div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:18 }}>
+                  {[{l:"Revenue (Mar)",v:"₹3,24,000",c:C.accent},{l:"GST Collected",v:"₹58,320",c:C.textSec},{l:"Pending",v:fi.status==="active"?"₹0":"—",c:C.amber},{l:"Total Paid (FY)",v:"₹9,12,400",c:C.text}].map(({l,v,c})=>(
+                    <Card key={l} style={{ padding:"12px 14px" }}><div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans, marginBottom:5, textTransform:"uppercase", letterSpacing:"0.5px" }}>{l}</div><div style={{ fontSize:22, fontWeight:700, color:c, fontFamily:C.mono }}>{v}</div></Card>
+                  ))}
+                </div>
+                <Card style={{ padding:0, overflow:"hidden" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                    <thead style={{ background:C.surface }}><tr>
+                      <TH>Invoice</TH><TH>Period</TH><TH>Disbursed</TH><TH>Gross</TH><TH>GST (18%)</TH><TH>Net Receivable</TH><TH>Status</TH><TH></TH>
+                    </tr></thead>
+                    <tbody>
+                      {[
+                        {inv:"INV-2026-094",period:"Mar 2026",disbursed:18,gross:"₹3,24,000",gst:"₹58,320",net:"₹2,65,680",status:"paid"},
+                        {inv:"INV-2026-087",period:"Feb 2026",disbursed:14,gross:"₹2,38,000",gst:"₹42,840",net:"₹1,95,160",status:"paid"},
+                        {inv:"INV-2026-081",period:"Jan 2026",disbursed:9,gross:"₹1,53,000",gst:"₹27,540",net:"₹1,25,460",status:"pending"},
+                      ].map(inv=>(
+                        <tr key={inv.inv} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                          <TD mono color={C.blue}>{inv.inv}</TD><TD>{inv.period}</TD><TD mono bold color={C.text}>{inv.disbursed}</TD>
+                          <TD mono>{inv.gross}</TD><TD mono color={C.textTer}>{inv.gst}</TD>
+                          <TD mono bold color={inv.status==="paid"?C.accent:C.amber}>{inv.net}</TD>
+                          <TD><Badge label={inv.status} color={inv.status==="paid"?C.accent:C.amber} dot/></TD>
+                          <TD style={{ display:"flex", gap:5 }}><Btn small>PDF</Btn>{inv.status==="pending"&&<Btn small primary>Mark Paid</Btn>}</TD>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Card>
+              </div>
+            )}
+
+            {activeTab==="users" && (() => {
+              const users = fiUsers[selectedFI] || [];
+              const roleColor = { fi_manager: C.accent, fi_viewer: C.blue };
+              const roleLabel = { fi_manager: "Manager", fi_viewer: "Viewer" };
+              const statusColor = { active: C.accent, suspended: C.red, pending: C.amber };
+
+              const toggleStatus = (uid) => {
+                setFiUsers(prev => ({
+                  ...prev,
+                  [selectedFI]: prev[selectedFI].map(u =>
+                    u.id === uid
+                      ? { ...u, status: u.status === "active" ? "suspended" : "active" }
+                      : u
+                  )
+                }));
+              };
+
+              const sendInvite = () => {
+                if (!inviteData.name || !inviteData.email) return;
+                const newUser = {
+                  id: `U-${String(Date.now()).slice(-4)}`,
+                  name: inviteData.name,
+                  email: inviteData.email,
+                  role: inviteData.role,
+                  status: "pending",
+                  lastLogin: "Never",
+                  provisioned: "2026-04-15",
+                };
+                setFiUsers(prev => ({ ...prev, [selectedFI]: [...(prev[selectedFI]||[]), newUser] }));
+                setInviteData({ name:"", email:"", role:"fi_manager" });
+                setInviteSent(true);
+                setTimeout(() => { setInviteSent(false); setShowInviteModal(false); }, 1600);
+              };
+
+              return (
+                <div>
+                  {/* Header row */}
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+                    <div style={{ fontSize:11, color:C.textSec, fontFamily:C.sans }}>
+                      {users.filter(u=>u.status==="active").length} active · {users.filter(u=>u.status==="pending").length} pending invite · {users.filter(u=>u.status==="suspended").length} suspended
+                    </div>
+                    <Btn primary small onClick={()=>{ setShowInviteModal(true); setInviteSent(false); }}>+ Invite User</Btn>
+                  </div>
+
+                  {/* Users table */}
+                  {users.length === 0 ? (
+                    <div style={{ padding:40, textAlign:"center", color:C.textSec, fontSize:12, fontFamily:C.sans }}>
+                      No users provisioned for this FI yet. Use "Invite User" to create the first account.
+                    </div>
+                  ) : (
+                    <Card style={{ padding:0, overflow:"hidden" }}>
+                      <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                        <thead style={{ background:C.surface }}><tr>
+                          <TH>Name</TH><TH>Email</TH><TH>Role</TH><TH>Status</TH><TH>Last Login</TH><TH>Provisioned</TH><TH>Actions</TH>
+                        </tr></thead>
+                        <tbody>
+                          {users.map(u => (
+                            <tr key={u.id}
+                              onMouseEnter={e=>e.currentTarget.style.background=C.surface}
+                              onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                              <TD bold color={C.text}>
+                                {u.name}
+                                <div style={{ fontSize:9, color:C.textTer, fontFamily:C.mono }}>{u.id}</div>
+                              </TD>
+                              <TD mono color={C.textSec}>{u.email}</TD>
+                              <TD><Badge label={roleLabel[u.role]} color={roleColor[u.role]} dot/></TD>
+                              <TD><Badge label={u.status} color={statusColor[u.status]} dot/></TD>
+                              <TD mono color={u.lastLogin==="Never"?C.textTer:C.textSec}>{u.lastLogin}</TD>
+                              <TD mono color={C.textTer}>{u.provisioned}</TD>
+                              <TD>
+                                <div style={{ display:"flex", gap:5 }}>
+                                  {u.status !== "pending" && (
+                                    <Btn small danger={u.status==="active"} style={u.status==="suspended"?{color:C.accent,borderColor:C.accentMid}:{}}
+                                      onClick={()=>toggleStatus(u.id)}>
+                                      {u.status === "active" ? "Suspend" : "Reinstate"}
+                                    </Btn>
+                                  )}
+                                  {u.status === "pending" && (
+                                    <Btn small onClick={()=>{}}>Resend Invite</Btn>
+                                  )}
+                                  <Btn small onClick={()=>{}}>Reset Password</Btn>
+                                </div>
+                              </TD>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </Card>
+                  )}
+
+                  {/* Role legend */}
+                  <div style={{ marginTop:14, display:"flex", gap:16 }}>
+                    {[["Manager","fi_manager","Full portal access — lead feed, bids, analytics, billing"],["Viewer","fi_viewer","Read-only — lead feed and analytics only, no bid submission"]].map(([label,id,desc])=>(
+                      <div key={id} style={{ display:"flex", gap:8, alignItems:"flex-start" }}>
+                        <Badge label={label} color={roleColor[id]} dot/>
+                        <span style={{ fontSize:10, color:C.textTer, fontFamily:C.sans, lineHeight:1.5 }}>{desc}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Invite modal */}
+                  {showInviteModal && (
+                    <div style={{ position:"fixed", inset:0, background:"rgba(8,11,16,0.88)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
+                      <div style={{ background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, width:420, padding:24 }}>
+                        {inviteSent ? (
+                          <div style={{ textAlign:"center", padding:"20px 0" }}>
+                            <div style={{ fontSize:28, marginBottom:10 }}>✓</div>
+                            <div style={{ fontSize:14, fontWeight:700, color:C.accent, fontFamily:C.sans }}>Invite sent</div>
+                            <div style={{ fontSize:11, color:C.textSec, fontFamily:C.sans, marginTop:6 }}>
+                              Credentials email dispatched to {inviteData.email || "the user"}.
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:18 }}>
+                              <div>
+                                <div style={{ fontSize:14, fontWeight:700, color:C.text, fontFamily:C.sans }}>Invite User</div>
+                                <div style={{ fontSize:10, color:C.textTer, fontFamily:C.sans, marginTop:2 }}>
+                                  Provisions a Lead Market account for {FIS.find(f=>f.id===selectedFI)?.name}
+                                </div>
+                              </div>
+                              <button onClick={()=>setShowInviteModal(false)} style={{ background:"none", border:"none", color:C.textSec, cursor:"pointer", fontSize:20 }}>×</button>
+                            </div>
+
+                            {/* Full name */}
+                            <div style={{ marginBottom:12 }}>
+                              <div style={{ fontSize:10, color:C.textTer, fontFamily:C.sans, marginBottom:5 }}>Full Name</div>
+                              <input value={inviteData.name} onChange={e=>setInviteData(d=>({...d,name:e.target.value}))}
+                                placeholder="Manisha Kapoor"
+                                style={{ width:"100%", padding:"8px 12px", borderRadius:6, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.sans, outline:"none", boxSizing:"border-box" }}/>
+                            </div>
+
+                            {/* Work email */}
+                            <div style={{ marginBottom:12 }}>
+                              <div style={{ fontSize:10, color:C.textTer, fontFamily:C.sans, marginBottom:5 }}>Work Email</div>
+                              <input type="email" value={inviteData.email} onChange={e=>setInviteData(d=>({...d,email:e.target.value}))}
+                                placeholder="user@theirbank.com"
+                                style={{ width:"100%", padding:"8px 12px", borderRadius:6, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.mono, outline:"none", boxSizing:"border-box" }}/>
+                            </div>
+
+                            {/* Role */}
+                            <div style={{ marginBottom:18 }}>
+                              <div style={{ fontSize:10, color:C.textTer, fontFamily:C.sans, marginBottom:8 }}>Portal Role</div>
+                              <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+                                {[["fi_manager","Manager","Full access — feed, bids, analytics, billing"],["fi_viewer","Viewer","Read-only — feed and analytics only"]].map(([id,label,desc])=>(
+                                  <button key={id} onClick={()=>setInviteData(d=>({...d,role:id}))}
+                                    style={{ padding:"9px 12px", borderRadius:6, border:`1px solid ${inviteData.role===id?C.accent:C.border}`, background:inviteData.role===id?C.accentDim:C.surface, textAlign:"left", display:"flex", gap:8, alignItems:"center", cursor:"pointer" }}>
+                                    <span style={{ fontFamily:C.mono, fontSize:11, color:inviteData.role===id?C.accent:C.textTer }}>{inviteData.role===id?"●":"○"}</span>
+                                    <div>
+                                      <div style={{ fontSize:12, fontWeight:600, color:inviteData.role===id?C.accent:C.textSec, fontFamily:C.sans }}>{label}</div>
+                                      <div style={{ fontSize:9, color:C.textTer, fontFamily:C.mono, marginTop:1 }}>{desc}</div>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Info notice */}
+                            <div style={{ padding:"9px 12px", borderRadius:6, background:C.accentDim, border:`1px solid ${C.accentMid}`, marginBottom:16, fontSize:10, color:C.accent, fontFamily:C.sans, lineHeight:1.55 }}>
+                              An email with a one-time setup link will be sent. The account activates on first login.
+                            </div>
+
+                            <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
+                              <Btn onClick={()=>setShowInviteModal(false)}>Cancel</Btn>
+                              <Btn primary onClick={sendInvite}
+                                style={{ opacity:(!inviteData.name||!inviteData.email)?0.5:1 }}>
+                                Send Invite
+                              </Btn>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+          </div>
+
+          {showSuspendConfirm&&(
+            <div style={{ position:"fixed", inset:0, background:"rgba(8,11,16,0.85)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
+              <div style={{ background:C.card, border:`1px solid ${C.red}30`, borderRadius:10, width:400, padding:24 }}>
+                <div style={{ fontSize:14, fontWeight:700, color:C.redText, fontFamily:C.sans, marginBottom:10 }}>Suspend FI</div>
+                <div style={{ fontSize:12, color:C.textSec, fontFamily:C.sans, marginBottom:16, lineHeight:1.6 }}>Suspending <strong style={{ color:C.text }}>{fi.name}</strong> will immediately remove them from the routing engine. All pending leads will cascade to the next eligible FI.</div>
+                <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}><Btn onClick={()=>setShowSuspendConfirm(false)}>Cancel</Btn><Btn danger onClick={()=>setShowSuspendConfirm(false)}>Confirm Suspension</Btn></div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // ─── Login Page ──────────────────────────────────────────────────────────
+    // Aesthetic: Terminal command-centre — stark, purposeful, zero decoration.
+    // IBM Plex Mono dominates labels and system notices, creating an authentic
+    // back-office feel. The dot-grid background subtly echoes a circuit board.
+    // Memorable: Role-based access selector with monospaced radio indicators,
+    // a top system banner enforcing compliance awareness, and the footer that
+    // quotes both IT Act 2000 and DPDP Act 2023 — real regulatory weight.
+    const LoginPage = ({ onLogin }) => {
+      const [email, setEmail]       = useState("");
+      const [password, setPassword] = useState("");
+      const [role, setRole]         = useState("converter");
+      const [loading, setLoading]   = useState(false);
+      const [error, setError]       = useState("");
+      const [showPass, setShowPass] = useState(false);
+
+      const ROLES = [
+        { id:"converter", label:"Converter",      desc:"Lead processing & FI coordination"   },
+        { id:"onboarder", label:"Onboarder",      desc:"Connector recruitment & activation"   },
+        { id:"admin",     label:"Platform Admin", desc:"Full platform access — elevated audit" },
+      ];
+
+      const handleLogin = () => {
+        if (!email || !password) { setError("Credentials required."); return; }
+        setLoading(true); setError("");
+        setTimeout(() => { setLoading(false); onLogin({ email, role }); }, 1000);
+      };
+
+      return (
+        <div style={{ display:"flex", height:"100vh", background:C.bg, fontFamily:C.sans, alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
+          <style>{`* { box-sizing:border-box; margin:0; padding:0; }
+            ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:${C.border}; border-radius:2px; }
+            button { cursor:pointer; } button:focus,input:focus,select:focus { outline:none; }
+            input { font-family:${C.mono}; color:${C.text} !important; }
+            @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+            @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+          `}</style>
+
+          {/* Dot-grid background — subtle circuit-board reference */}
+          <div style={{ position:"fixed", inset:0, backgroundImage:`radial-gradient(circle at 1px 1px, ${C.border} 1px, transparent 0)`, backgroundSize:"24px 24px", opacity:0.55 }}/>
+
+          {/* Top system banner — compliance-first framing */}
+          <div style={{ position:"fixed", top:0, left:0, right:0, padding:"7px 24px", background:C.sidebar, borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", gap:8, zIndex:10 }}>
+            <div style={{ width:5, height:5, borderRadius:3, background:C.accent }}/>
+            <span style={{ fontSize:9, color:C.textTer, fontFamily:C.mono, letterSpacing:"0.8px" }}>
+              CREDITBRIDGE INTERNAL SYSTEM · AUTHORIZED PERSONNEL ONLY · DPDP ACT 2023 COMPLIANCE APPLIES
+            </span>
+          </div>
+
+          {/* Login card */}
+          <div style={{ position:"relative", zIndex:1, width:440, background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, animation:"fadeUp 0.4s ease" }}>
+            {/* Card header */}
+            <div style={{ padding:"18px 22px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:30, height:30, borderRadius:6, background:C.accent, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:12, color:C.bg, fontFamily:C.mono }}>CB</div>
+              <div>
+                <div style={{ fontSize:13, fontWeight:700, color:C.text }}>CreditBridge</div>
+                <div style={{ fontSize:9, color:C.textTer, letterSpacing:"0.7px", fontFamily:C.mono }}>CONVERTER PORTAL</div>
+              </div>
+              <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:5 }}>
+                <div style={{ width:5, height:5, borderRadius:3, background:C.accent }}/>
+                <span style={{ fontSize:9, color:C.textSec, fontFamily:C.mono }}>SYS ONLINE</span>
+              </div>
+            </div>
+
+            {/* Card body */}
+            <div style={{ padding:"22px" }}>
+              <div style={{ marginBottom:18 }}>
+                <div style={{ fontSize:15, fontWeight:700, color:C.text, marginBottom:3 }}>Authenticate</div>
+                <div style={{ fontSize:11, color:C.textSec, fontFamily:C.mono }}>Enter credentials to access the platform</div>
+              </div>
+
+              {/* Role selector — monospaced radio buttons for command-centre feel */}
+              <div style={{ marginBottom:16 }}>
+                <div style={{ fontSize:9, fontWeight:700, color:C.textTer, letterSpacing:"0.9px", textTransform:"uppercase", marginBottom:8, fontFamily:C.mono }}>Access Role</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                  {ROLES.map(r => (
+                    <button key={r.id} onClick={()=>setRole(r.id)}
+                      style={{ padding:"9px 12px", borderRadius:6, border:`1px solid ${role===r.id ? C.accent : C.border}`, background:role===r.id ? C.accentDim : C.surface, textAlign:"left", display:"flex", gap:8, alignItems:"center" }}>
+                      <span style={{ fontFamily:C.mono, fontSize:12, color:role===r.id ? C.accent : C.textTer, flexShrink:0 }}>
+                        {role===r.id ? "●" : "○"}
+                      </span>
+                      <div>
+                        <div style={{ fontSize:12, fontWeight:600, color:role===r.id ? C.accent : C.textSec }}>{r.label}</div>
+                        <div style={{ fontSize:9, color:role===r.id ? C.textSec : C.textTer, fontFamily:C.mono, marginTop:1 }}>{r.desc}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Email field */}
+              <div style={{ marginBottom:12 }}>
+                <div style={{ fontSize:9, fontWeight:700, color:C.textTer, letterSpacing:"0.9px", textTransform:"uppercase", marginBottom:6, fontFamily:C.mono }}>Work Email</div>
+                <input type="email" value={email} onChange={e=>{ setEmail(e.target.value); setError(""); }}
+                  placeholder="you@creditbridge.in"
+                  style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:`1px solid ${error ? C.red : C.inputBorder}`, background:C.input, fontSize:13 }}/>
+              </div>
+
+              {/* Password field */}
+              <div style={{ marginBottom: error ? 8 : 16 }}>
+                <div style={{ fontSize:9, fontWeight:700, color:C.textTer, letterSpacing:"0.9px", textTransform:"uppercase", marginBottom:6, fontFamily:C.mono }}>Password</div>
+                <div style={{ position:"relative" }}>
+                  <input type={showPass ? "text" : "password"} value={password} onChange={e=>{ setPassword(e.target.value); setError(""); }}
+                    placeholder="••••••••"
+                    style={{ width:"100%", padding:"9px 48px 9px 12px", borderRadius:6, border:`1px solid ${error ? C.red : C.inputBorder}`, background:C.input, fontSize:13 }}/>
+                  <button onClick={()=>setShowPass(s=>!s)}
+                    style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:C.textTer, fontSize:9, letterSpacing:"0.5px", fontFamily:C.mono }}>
+                    {showPass ? "HIDE" : "SHOW"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Inline error */}
+              {error && (
+                <div style={{ fontSize:11, color:C.red, marginBottom:10, padding:"8px 12px", borderRadius:6, background:C.redDim, border:`1px solid ${C.red}30`, fontFamily:C.mono }}>
+                  {error}
+                </div>
+              )}
+
+              {/* Primary CTA — monospaced all-caps matches command-centre tone */}
+              <button onClick={handleLogin} disabled={loading}
+                style={{ width:"100%", padding:"10px", borderRadius:6, border:"none", background:loading ? C.accentDim : C.accent, color:loading ? C.accent : C.bg, fontSize:12, fontWeight:700, cursor:loading?"not-allowed":"pointer", fontFamily:C.mono, letterSpacing:"0.6px", transition:"background 0.15s, color 0.15s" }}>
+                {loading ? "AUTHENTICATING…" : "ACCESS PLATFORM →"}
+              </button>
+            </div>
+
+            {/* Card footer — dual regulatory citation */}
+            <div style={{ padding:"11px 22px", borderTop:`1px solid ${C.border}`, background:C.surface, borderRadius:"0 0 10px 10px" }}>
+              <div style={{ fontSize:9, color:C.textTer, fontFamily:C.mono, lineHeight:1.65 }}>
+                Access is logged and monitored. Unauthorised access is an offence under IT Act 2000.
+                All data handling is subject to DPDP Act 2023.
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ─── Root App ────────────────────────────────────────────────────────────
+    function LeadPlatform() {
+      const [active, setActive]     = useState("dashboard");
+      const [loggedIn, setLoggedIn] = useState(false);
+
+      const views = {
+        dashboard:  { title:"Operations Dashboard",  sub:"Live platform overview", component: DashboardView },
+        connectors: { title:"Connector Management",  sub:"Lifecycle · KYC · Performance · Payouts", component: ConnectorsView },
+        pipeline:   { title:"Lead Pipeline",         sub:"Stage management · Routing", component: PipelineView },
+        sla:        { title:"SLA Tracker",           sub:"Breach detection · Escalation", component: SlaView },
+        compliance: { title:"Compliance Dashboard",  sub:"DPDP Act · RBI/2022-23/111 · Audit log", component: ComplianceView },
+        analytics:  { title:"Analytics",            sub:"Conversion funnel · Revenue", component: AnalyticsView },
+        fi_management: { title:"FI Management", sub:"Onboarding · Eligibility · Change Requests · Bid Priority", component: FiManagementView },
+        config:     { title:"Platform Configuration",sub:"RBAC · FI config · System", component: () => <div style={{padding:40,color:C.textSec,fontFamily:C.sans}}>Configuration — Admin access required</div> },
+      };
+
+      const { title, sub, component: View } = views[active] || views.dashboard;
+
+      if (typeof window !== "undefined") injectFont();
+      if (!loggedIn) return <LoginPage onLogin={() => setLoggedIn(true)} />;
+
+      return (
+        <div style={{ display:"flex", height:"100vh", background:C.bg, fontFamily:C.sans, overflow:"hidden" }}>
+          <style>{`* { box-sizing:border-box; margin:0; padding:0; } ::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:${C.border}; border-radius:2px; } input { font-family:${C.sans}; } button { font-family:${C.sans}; }`}</style>
+          <Sidebar active={active} onNav={setActive}/>
+          <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+            <Topbar title={title} sub={sub} actions={<>
+              <Badge label="● Live" color={C.accent} dot={false}/>
+              <span style={{ fontSize:11, color:C.textSec, fontFamily:C.mono }}>04 Apr 2026 · 09:41 IST</span>
+            </>}/>
+            <View/>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<LeadPlatform />);
+  </script>
+</body>
+</html>

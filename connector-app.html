@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connector App — CreditBridge</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body style="margin:0;padding:0;background:#06080D;">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONNECTOR APP — CreditBridge
+    // ─────────────────────────────────────────────────────────────────────
+    // Aesthetic: Warm minimal dark — accessible for field DSAs in Tier 2–6
+    //   markets using budget Android phones on 2G/3G.
+    // Font: Outfit — geometric, warm, highly legible at all weights.
+    // Memorable: Phone-shell container, DPDP consent wizard step, live
+    //   offline sync indicator, and TDS/GST commission breakdown.
+    // PRD Modules: M1 Auth, M2 Home, M3 Lead Submission, M4 Lead Tracking,
+    //   M5 DPDP Consent, M6 Commission, M11 Settings
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const injectFont = () => {
+      if (document.querySelector("#cb-font")) return;
+      const l = document.createElement("link");
+      l.id = "cb-font";
+      l.rel = "stylesheet";
+      l.href = "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap";
+      document.head.appendChild(l);
+    };
+
+    // ─── Design tokens (matches PRD status colour spec) ───────────────────
+    const C = {
+      bg: "#0D1117", bgCard: "#151B27", bgInput: "#1A2035", bgSurface: "#0F1420",
+      accent: "#00C896", accentDim: "#00C89620", accentMid: "#00C89640", accentText: "#00E5A5",
+      red: "#FF5A5A", redDim: "#FF5A5A20",
+      amber: "#FFAA33", amberDim: "#FFAA3320",
+      blue: "#4A90FF", blueDim: "#4A90FF20",
+      purple: "#A78BFA", purpleDim: "#A78BFA20",
+      text: "#EEF0F8", textSec: "#8892A8", textTer: "#4D556A",
+      border: "#1E2640", borderLight: "#2A3452",
+    };
+
+    // PRD status colour tokens (full state machine per PRD)
+    const STATUS = {
+      submitted:        { color: C.textSec, bg: "#8A8FA820", label: "Submitted"         },
+      qualified:        { color: C.blue,    bg: C.blueDim,   label: "Qualified"          },
+      docs_pending:     { color: C.amber,   bg: C.amberDim,  label: "Docs Pending"       },
+      sent_to_fi:       { color: C.blue,    bg: C.blueDim,   label: "Sent to FI"         },
+      reviewing:        { color: C.blue,    bg: C.blueDim,   label: "Under Review"       },
+      soft_sanctioned:  { color: C.accent,  bg: C.accentDim, label: "Soft Sanctioned"    },
+      sanctioned:       { color: C.accent,  bg: C.accentDim, label: "Hard Sanctioned"    },
+      disbursed:        { color: C.accent,  bg: C.accentDim, label: "Disbursed"          },
+      rejected:         { color: C.red,     bg: C.redDim,    label: "Rejected"           },
+      processing:       { color: C.amber,   bg: C.amberDim,  label: "Processing"         },
+      pending:          { color: C.amber,   bg: C.amberDim,  label: "Pending"            },
+      stale:            { color: C.textTer, bg: "#3A3A3A20", label: "Cold / Stale"       },
+    };
+
+    // ─── Icons ─────────────────────────────────────────────────────────────
+    const I = {
+      Home: ({ a }) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 10.5L12 3l9 7.5V20a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 20V10.5z" stroke={a?C.accent:C.textSec} strokeWidth="1.7" fill={a?C.accentDim:"none"}/><path d="M9 21V13h6v8" stroke={a?C.accent:C.textSec} strokeWidth="1.7"/></svg>,
+      Bag: ({ a }) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="7" width="20" height="14" rx="2" stroke={a?C.accent:C.textSec} strokeWidth="1.7" fill={a?C.accentDim:"none"}/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" stroke={a?C.accent:C.textSec} strokeWidth="1.7"/></svg>,
+      Wallet: ({ a }) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M21 12V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2v-5z" stroke={a?C.accent:C.textSec} strokeWidth="1.7"/><circle cx="16" cy="12" r="1.2" fill={a?C.accent:C.textSec}/></svg>,
+      Gear: ({ a }) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke={a?C.accent:C.textSec} strokeWidth="1.7"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke={a?C.accent:C.textSec} strokeWidth="1.7"/></svg>,
+      Back: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 18L9 12L15 6" stroke={C.text} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+      Plus: ({ c = C.text, s = 22 }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke={c} strokeWidth="2.5" strokeLinecap="round"/></svg>,
+      Check: ({ c = C.accent, s = 14 }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke={c} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+      Shield: ({ s = 18, c = C.accent }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke={c} strokeWidth="1.7"/></svg>,
+      User: ({ s = 18, c = C.textSec }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke={c} strokeWidth="1.7"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={c} strokeWidth="1.7" strokeLinecap="round"/></svg>,
+      ChevR: ({ c = C.textSec, s = 16 }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke={c} strokeWidth="2" strokeLinecap="round"/></svg>,
+      Alert: ({ c = C.amber, s = 15 }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke={c} strokeWidth="1.7"/><path d="M12 8v4M12 16h.01" stroke={c} strokeWidth="2" strokeLinecap="round"/></svg>,
+      Wifi: ({ off }) => <svg width="15" height="15" viewBox="0 0 24 24" fill="none">{off?<path d="M1 1l22 22" stroke={C.red} strokeWidth="1.7" strokeLinecap="round"/>:<><path d="M5 12.55a11 11 0 0114.08 0" stroke={C.accent} strokeWidth="1.7" strokeLinecap="round"/><path d="M1.42 9a16 16 0 0121.16 0" stroke={C.accent} strokeWidth="1.7" strokeLinecap="round"/><path d="M8.53 16.11a6 6 0 016.95 0" stroke={C.accent} strokeWidth="1.7" strokeLinecap="round"/></>}<circle cx="12" cy="20" r="1.2" fill={off?C.red:C.accent}/></svg>,
+      TrendUp: ({ c = C.accent, s = 15 }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><polyline points="17 6 23 6 23 12" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    };
+
+    // ─── Layout Shell ──────────────────────────────────────────────────────
+    const PhoneShell = ({ children }) => (
+      <div style={{ display:"flex", justifyContent:"center", alignItems:"flex-start", minHeight:"100vh", background:"#06080D", padding:"24px 0", fontFamily:"'Outfit', -apple-system, sans-serif" }}>
+        <div style={{ width:390, minHeight:844, background:C.bg, borderRadius:48, overflow:"hidden", boxShadow:"0 40px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.07), inset 0 1px 0 rgba(255,255,255,0.05)", display:"flex", flexDirection:"column", position:"relative" }}>
+          {children}
+        </div>
+      </div>
+    );
+
+    const StatusBar = ({ offline }) => (
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 24px 4px", fontSize:13, fontWeight:600, color:C.text, flexShrink:0 }}>
+        <span>9:41</span>
+        <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+          {offline && <span style={{ fontSize:10, color:C.red, fontWeight:700 }}>OFFLINE</span>}
+          <I.Wifi off={offline}/>
+          <div style={{ border:`1.5px solid ${C.textSec}`, borderRadius:3, width:24, height:12, padding:2 }}>
+            <div style={{ background:C.accent, borderRadius:1, width:"80%", height:"100%" }}/>
+          </div>
+        </div>
+      </div>
+    );
+
+    const Header = ({ title, onBack, sub, right }) => (
+      <div style={{ padding:"8px 20px 14px", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
+        {onBack && <button onClick={onBack} style={{ background:C.bgCard, border:`1px solid ${C.border}`, borderRadius:10, width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}><I.Back/></button>}
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:20, fontWeight:700, color:C.text, letterSpacing:"-0.3px" }}>{title}</div>
+          {sub && <div style={{ fontSize:12, color:C.textSec, marginTop:1 }}>{sub}</div>}
+        </div>
+        {right}
+      </div>
+    );
+
+    const BottomNav = ({ active, onNav }) => {
+      const tabs = [
+        { id:"home",       label:"Home",     I: I.Home   },
+        { id:"leads",      label:"Leads",    I: I.Bag    },
+        { id:"newLead",    label:"",         fab:true    },
+        { id:"commission", label:"Earnings", I: I.Wallet },
+        { id:"settings",   label:"Profile",  I: I.Gear   },
+      ];
+      return (
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-around", padding:"8px 0 28px", background:C.bgSurface, borderTop:`1px solid ${C.border}`, flexShrink:0 }}>
+          {tabs.map(({ id, label, I:Icon, fab }) => (
+            <button key={id} onClick={()=>onNav(id)} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:3, padding:"4px 8px", minWidth:56 }}>
+              {fab
+                ? <div style={{ width:52, height:52, borderRadius:18, background:C.accent, display:"flex", alignItems:"center", justifyContent:"center", marginTop:-16, boxShadow:`0 8px 24px ${C.accent}55` }}><I.Plus c="#0D1117" s={24}/></div>
+                : <><Icon a={active===id}/><span style={{ fontSize:10, fontWeight:active===id?600:400, color:active===id?C.accent:C.textSec }}>{label}</span></>
+              }
+            </button>
+          ))}
+        </div>
+      );
+    };
+
+    const Chip = ({ label, color, bg }) => <span style={{ fontSize:11, fontWeight:600, padding:"3px 10px", borderRadius:20, background:bg, color, letterSpacing:"0.1px" }}>{label}</span>;
+
+    const TextInput = ({ label, placeholder, value, onChange, type="text" }) => (
+      <div style={{ marginBottom:14 }}>
+        {label && <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.4px" }}>{label}</div>}
+        <input type={type} placeholder={placeholder} value={value} onChange={e=>onChange(e.target.value)}
+          style={{ width:"100%", padding:"13px 16px", borderRadius:12, border:`1px solid ${C.border}`, background:C.bgInput, color:C.text, fontSize:15, fontFamily:"inherit", outline:"none", boxSizing:"border-box" }}/>
+      </div>
+    );
+
+    const PrimaryBtn = ({ children, onClick, disabled }) => (
+      <button onClick={onClick} disabled={disabled}
+        style={{ width:"100%", padding:"15px", borderRadius:14, background:disabled?C.bgCard:C.accent, color:disabled?C.textTer:"#0D1117", fontSize:16, fontWeight:700, border:"none", cursor:disabled?"not-allowed":"pointer", fontFamily:"inherit", letterSpacing:"0.1px" }}>
+        {children}
+      </button>
+    );
+
+    // ─── SCREEN: Auth (M1) ─────────────────────────────────────────────────
+    const AuthScreen = ({ onLogin, onRegister }) => {
+      const [step, setStep] = useState("phone");
+      const [phone, setPhone] = useState("");
+      const [otp, setOtp] = useState(["","","","","",""]);
+      const handleOtp = (i, v) => {
+        if (!/^\d?$/.test(v)) return;
+        const n=[...otp]; n[i]=v; setOtp(n);
+        if (v && i<5) document.getElementById(`otp${i+1}`)?.focus();
+      };
+      return (
+        <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 24px 40px" }}>
+          <div style={{ paddingTop:48, paddingBottom:36 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:32 }}>
+              <div style={{ width:44, height:44, borderRadius:14, background:C.accent, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:16, color:"#0D1117" }}>CB</div>
+              <div><div style={{ fontSize:22, fontWeight:800, color:C.text }}>CreditBridge</div><div style={{ fontSize:12, color:C.textSec }}>Connector Portal</div></div>
+            </div>
+            <div style={{ fontSize:28, fontWeight:800, color:C.text, lineHeight:1.2 }}>{step==="phone"?"Welcome back 👋":"Verify your\nnumber"}</div>
+            <div style={{ marginTop:8, fontSize:14, color:C.textSec, lineHeight:1.6 }}>{step==="phone"?"Sign in with your registered mobile number":`Enter the 6-digit code sent to +91 ${phone}`}</div>
+          </div>
+
+          {step==="phone" ? <>
+            <div>
+              <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.4px" }}>Mobile Number</div>
+              <div style={{ display:"flex", gap:10 }}>
+                <div style={{ padding:"13px 14px", borderRadius:12, border:`1px solid ${C.border}`, background:C.bgInput, color:C.textSec, fontSize:15, fontWeight:600, flexShrink:0 }}>+91</div>
+                <input type="tel" placeholder="98765 43210" value={phone} onChange={e=>setPhone(e.target.value)} maxLength={10}
+                  style={{ flex:1, padding:"13px 16px", borderRadius:12, border:`1px solid ${C.border}`, background:C.bgInput, color:C.text, fontSize:15, fontFamily:"inherit", outline:"none" }}/>
+              </div>
+            </div>
+            <div style={{ marginTop:"auto" }}>
+              <div style={{ padding:"12px 14px", borderRadius:12, background:C.bgCard, border:`1px solid ${C.border}`, marginBottom:16, display:"flex", gap:10, alignItems:"flex-start" }}>
+                <I.Shield s={16} c={C.textSec}/>
+                <div style={{ fontSize:12, color:C.textSec, lineHeight:1.5 }}>Your OTP is secured using Android SMS Retriever API and delivered via MSG91.</div>
+              </div>
+              <PrimaryBtn onClick={()=>setStep("otp")} disabled={phone.length<10}>Send OTP →</PrimaryBtn>
+              <div style={{ textAlign:"center", marginTop:16 }}>
+                <span style={{ fontSize:13, color:C.textSec }}>New connector? </span>
+                <button onClick={onRegister} style={{ background:"none", border:"none", color:C.accent, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Register here →</button>
+              </div>
+            </div>
+          </> : <>
+            <div>
+              <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:10, textTransform:"uppercase", letterSpacing:"0.4px" }}>Enter OTP</div>
+              <div style={{ display:"flex", gap:8, justifyContent:"space-between" }}>
+                {otp.map((d,i)=>(
+                  <input key={i} id={`otp${i}`} type="tel" maxLength={1} value={d} onChange={e=>handleOtp(i,e.target.value)}
+                    style={{ width:46, height:58, borderRadius:14, border:`1.5px solid ${d?C.accent:C.border}`, background:d?C.accentDim:C.bgInput, color:C.text, fontSize:24, fontWeight:700, textAlign:"center", fontFamily:"inherit", outline:"none" }}/>
+                ))}
+              </div>
+              <div style={{ marginTop:14, fontSize:13, color:C.textSec }}>Didn't receive? <span style={{ color:C.accent, fontWeight:600, cursor:"pointer" }}>Resend in 45s</span></div>
+            </div>
+            <div style={{ marginTop:"auto" }}>
+              <PrimaryBtn onClick={onLogin} disabled={otp.join("").length<6}>Verify & Sign In →</PrimaryBtn>
+              <button onClick={()=>setStep("phone")} style={{ background:"none", border:"none", color:C.textSec, fontSize:14, cursor:"pointer", width:"100%", marginTop:12, padding:"8px", fontFamily:"inherit" }}>← Change number</button>
+            </div>
+          </>}
+        </div>
+      );
+    };
+
+    // ─── SCREEN: Home Dashboard (M2) ───────────────────────────────────────
+    const HomeScreen = ({ onNav }) => {
+      const kpis = [
+        { label:"Active Leads",  value:"12",    trend:"+3 this week", color:C.blue   },
+        { label:"Earnings Due",  value:"₹4,820",trend:"Apr payout",   color:C.accent },
+        { label:"Conversion",    value:"38%",   trend:"↑5% vs last",  color:C.purple },
+      ];
+      const recent = [
+        { name:"Rajesh Kumar",  product:"Personal Loan · PL", amount:"₹2.5L", status:"soft_sanctioned", age:"2h ago" },
+        { name:"Priya Sharma",  product:"Home Loan · HL",     amount:"₹18L",  status:"docs_pending",   age:"Yesterday" },
+        { name:"Mohammed Ali",  product:"Business Loan · BL", amount:"₹5L",   status:"sent_to_fi",     age:"2 days ago" },
+        { name:"Sunita Devi",   product:"Personal Loan · PL", amount:"₹80K",  status:"rejected",       age:"3 days ago" },
+      ];
+      return (
+        <div style={{ flex:1, overflowY:"auto" }}>
+          <div style={{ padding:"8px 20px 0" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+              <div><div style={{ fontSize:13, color:C.textSec }}>Good morning,</div><div style={{ fontSize:22, fontWeight:800, color:C.text }}>Ravi Shankar 👋</div></div>
+              <div style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:20, background:C.accentDim, border:`1px solid ${C.accentMid}` }}>
+                <div style={{ width:6, height:6, borderRadius:3, background:C.accent }}/>
+                <span style={{ fontSize:11, color:C.accent, fontWeight:600 }}>Online</span>
+              </div>
+            </div>
+            <div style={{ marginTop:10, padding:"9px 12px", borderRadius:10, background:C.amberDim, border:`1px solid ${C.amber}30`, display:"flex", alignItems:"center", gap:8 }}>
+              <I.Alert s={14} c={C.amber}/>
+              <span style={{ fontSize:12, color:C.amber, flex:1 }}>2 leads queued offline — will sync on reconnect</span>
+            </div>
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, padding:"14px 20px 0" }}>
+            {kpis.map(({ label, value, trend, color })=>(
+              <div key={label} style={{ background:C.bgCard, borderRadius:14, padding:"12px 10px", border:`1px solid ${C.border}` }}>
+                <div style={{ fontSize:9, color:C.textSec, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.4px" }}>{label}</div>
+                <div style={{ fontSize:18, fontWeight:800, color, marginTop:4, letterSpacing:"-0.5px" }}>{value}</div>
+                <div style={{ fontSize:9, color:C.textTer, marginTop:3 }}>{trend}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ padding:"16px 20px 0" }}>
+            <button onClick={()=>onNav("newLead")} style={{ width:"100%", padding:"14px 18px", borderRadius:14, background:`linear-gradient(135deg, ${C.accent}, #00A878)`, color:"#0D1117", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width:32, height:32, borderRadius:10, background:"rgba(0,0,0,0.15)", display:"flex", alignItems:"center", justifyContent:"center" }}><I.Plus c="#0D1117" s={18}/></div>
+                <div style={{ textAlign:"left" }}><div style={{ fontSize:15, fontWeight:700 }}>Submit New Lead</div><div style={{ fontSize:11, opacity:0.7 }}>10 fields · instant qualification result</div></div>
+              </div>
+              <I.ChevR c="#0D1117" s={20}/>
+            </button>
+          </div>
+
+          <div style={{ padding:"20px 20px 100px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <div style={{ fontSize:15, fontWeight:700, color:C.text }}>Recent Leads</div>
+              <button onClick={()=>onNav("leads")} style={{ background:"none", border:"none", color:C.accent, fontSize:12, cursor:"pointer", fontWeight:600 }}>View all →</button>
+            </div>
+            {recent.map((l,i)=>{ const s=STATUS[l.status]; return (
+              <div key={i} style={{ background:C.bgCard, borderRadius:14, padding:"12px 14px", marginBottom:8, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:s.bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <I.User s={16} c={s.color}/>
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:14, fontWeight:600, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{l.name}</div>
+                  <div style={{ fontSize:12, color:C.textSec }}>{l.product} · {l.amount}</div>
+                </div>
+                <div style={{ textAlign:"right", flexShrink:0 }}>
+                  <Chip label={s.label} color={s.color} bg={s.bg}/>
+                  <div style={{ fontSize:10, color:C.textTer, marginTop:3 }}>{l.age}</div>
+                </div>
+              </div>
+            );})}
+          </div>
+        </div>
+      );
+    };
+
+    // ─── SCREEN: Qualification Result (M8 — Phase 1) ─────────────────────
+    const QualResultScreen = ({ onBack, qualified, reasonCode }) => {
+      const REASONS = {
+        Q001:{ title:"Bureau Score Below Threshold", suggestion:"Score is in 650–680 band. Suggest Gold Loan or 6-month improvement plan." },
+        Q002:{ title:"Active 90+ DPD Delinquency",  suggestion:"Active default detected. Advise customer to resolve before reapplying." },
+        Q003:{ title:"PAN Invalid or Inactive",     suggestion:"Ask customer to confirm PAN number and check with Income Tax portal." },
+        Q004:{ title:"Aadhaar OKYC Failed",         suggestion:"Try with mobile number linked to Aadhaar. Retry in 10 minutes." },
+        Q005:{ title:"Declared Income Insufficient",suggestion:"Income band too low for requested amount. Reduce loan ask to ₹1.5L." },
+        Q006:{ title:"Geographic Restriction",      suggestion:"Pin code not served by any active FI. Try nearby pin code." },
+        Q007:{ title:"FOIR Too High",               suggestion:"Estimated obligations exceed 60% of income. Suggest smaller amount." },
+      };
+      const r = REASONS[reasonCode] || {};
+      return (
+        <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 24px 40px", overflowY:"auto" }}>
+          <Header title="Qualification Result" onBack={onBack}/>
+          <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:20 }}>
+            <div style={{ width:80, height:80, borderRadius:28, background:qualified?C.accentDim:C.redDim, display:"flex", alignItems:"center", justifyContent:"center", border:`2px solid ${qualified?C.accent:C.red}` }}>
+              {qualified
+                ? <I.Check s={36} c={C.accent}/>
+                : <svg width="36" height="36" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke={C.red} strokeWidth="2.5" strokeLinecap="round"/></svg>
+              }
+            </div>
+            <div style={{ textAlign:"center" }}>
+              <div style={{ fontSize:22, fontWeight:800, color:qualified?C.accent:C.red, letterSpacing:"-0.3px" }}>{qualified?"Qualified ✓":"Not Qualified"}</div>
+              {qualified && <div style={{ fontSize:14, color:C.textSec, marginTop:6, lineHeight:1.6 }}>Customer's KYC and bureau check passed.<br/>Document collection has been initiated via WhatsApp.</div>}
+              {!qualified && reasonCode && <div style={{ fontSize:12, color:C.red, marginTop:4, fontWeight:600 }}>Reason: {reasonCode}</div>}
+            </div>
+            {!qualified && r.title && (
+              <div style={{ background:C.bgCard, borderRadius:16, padding:"18px", border:`1px solid ${C.border}`, width:"100%" }}>
+                <div style={{ fontSize:14, fontWeight:700, color:C.text, marginBottom:6 }}>{r.title}</div>
+                <div style={{ display:"flex", gap:8, alignItems:"flex-start" }}>
+                  <I.Alert s={14} c={C.amber}/>
+                  <div style={{ fontSize:13, color:C.textSec, lineHeight:1.6 }}>{r.suggestion}</div>
+                </div>
+              </div>
+            )}
+            {qualified && (
+              <div style={{ background:C.bgCard, borderRadius:16, padding:"16px", border:`1px solid ${C.accentMid}`, width:"100%" }}>
+                <div style={{ fontSize:12, fontWeight:700, color:C.accent, marginBottom:10, textTransform:"uppercase", letterSpacing:"0.4px" }}>Next Steps</div>
+                {[
+                  "Customer will receive a WhatsApp message for document collection",
+                  "Documents requested will vary by loan type and score",
+                  "You'll be notified at each milestone",
+                  "If customer is unresponsive after 36 hours, you'll receive a follow-up alert",
+                ].map((s,i)=>(
+                  <div key={i} style={{ display:"flex", gap:10, alignItems:"flex-start", marginBottom:8 }}>
+                    <div style={{ width:18, height:18, borderRadius:9, background:C.accentDim, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>
+                      <span style={{ fontSize:9, fontWeight:700, color:C.accent }}>{i+1}</span>
+                    </div>
+                    <span style={{ fontSize:12, color:C.textSec, lineHeight:1.55 }}>{s}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <PrimaryBtn onClick={onBack}>{qualified?"View in My Leads →":"Back to Home"}</PrimaryBtn>
+        </div>
+      );
+    };
+
+    // ─── SCREEN: New Lead Wizard (M3 + M5 DPDP consent) ────────────────────
+    const NewLeadScreen = ({ onBack }) => {
+      const [step, setStep] = useState(0);
+      const [showResult, setShowResult] = useState(false);
+      const [qualified, setQualified] = useState(false);
+      const [f, setF] = useState({ name:"", phone:"", aadhaarLast4:"", pan:"", employment:"", product:"", amount:"", income:"", pincode:"", c1:false, c2:false, c3:false });
+      const set = (k,v) => setF(p=>({...p,[k]:v}));
+      const steps = ["Borrower","Financials","Consent","Review"];
+      const products = [
+        { code:"PL",   label:"Personal Loan"   },
+        { code:"HL",   label:"Home Loan"        },
+        { code:"BL",   label:"Business Loan"    },
+        { code:"MSME", label:"MSME Loan"        },
+        { code:"LAP",  label:"Loan vs Property" },
+        { code:"VL",   label:"Vehicle Loan"     },
+        { code:"GL",   label:"Gold Loan"        },
+      ];
+      const amountBands = ["₹50K–₹1L","₹1L–₹3L","₹3L–₹10L","₹10L–₹25L","₹25L–₹1Cr","₹1Cr+"];
+      const incomeBands = ["< ₹20K/mo","₹20K–₹40K/mo","₹40K–₹60K/mo","₹60K–₹1L/mo","₹1L+/mo"];
+      const employmentTypes = ["Salaried","Self-Employed","Professional","Business Owner"];
+      const allConsent = f.c1 && f.c2 && f.c3;
+      const canNext = [
+        f.name.length>1 && f.phone.length>=10 && f.aadhaarLast4.length===4,
+        f.product && f.amount && f.income && f.employment,
+        allConsent,
+        true,
+      ][step];
+
+      if (showResult) return <QualResultScreen onBack={onBack} qualified={qualified} reasonCode={qualified?null:"Q001"}/>;
+
+
+      return (
+        <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          <Header title="New Lead" onBack={onBack}/>
+
+          <div style={{ padding:"0 20px 16px", flexShrink:0 }}>
+            <div style={{ display:"flex", gap:0, alignItems:"center", marginBottom:6 }}>
+              {steps.map((s,i)=>(
+                <div key={i} style={{ display:"flex", alignItems:"center", flex:1 }}>
+                  <div style={{ width:26, height:26, borderRadius:13, background:i<step?C.accent:i===step?C.accent:C.bgCard, border:`1.5px solid ${i<=step?C.accent:C.border}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, zIndex:1 }}>
+                    {i<step?<I.Check s={11} c="#0D1117"/>:<span style={{ fontSize:11, fontWeight:700, color:i===step?"#0D1117":C.textTer }}>{i+1}</span>}
+                  </div>
+                  {i<3 && <div style={{ flex:1, height:2, background:i<step?C.accent:C.border }}/>}
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize:12, color:C.textSec }}>Step {step+1}/4 — <span style={{ color:C.accent, fontWeight:600 }}>{steps[step]}</span></div>
+          </div>
+
+          <div style={{ flex:1, overflowY:"auto", padding:"0 20px 12px" }}>
+            {step===0 && <>
+              <TextInput label="Full Name" placeholder="Rajesh Kumar" value={f.name} onChange={v=>set("name",v)}/>
+              <TextInput label="Mobile Number (WhatsApp-linked)" placeholder="98765 43210" value={f.phone} onChange={v=>set("phone",v)} type="tel"/>
+              <TextInput label="PAN Number" placeholder="ABCDE1234F" value={f.pan} onChange={v=>set("pan",v)}/>
+              <TextInput label="Aadhaar (Last 4 Digits Only)" placeholder="6789" value={f.aadhaarLast4} onChange={v=>{ if(/^\d{0,4}$/.test(v)) set("aadhaarLast4",v); }} type="tel"/>
+              <TextInput label="Pincode (Residence / Property)" placeholder="400001" value={f.pincode} onChange={v=>set("pincode",v)} type="tel"/>
+              <div style={{ padding:"10px 12px", borderRadius:10, background:C.bgCard, border:`1px solid ${C.border}`, marginTop:4, display:"flex", gap:8, alignItems:"flex-start" }}>
+                <I.Shield s={14} c={C.textSec}/>
+                <span style={{ fontSize:11, color:C.textSec, lineHeight:1.55 }}>Last 4 digits only stored now. Full Aadhaar captured via OKYC (OTP sent to customer) — per UIDAI guidelines.</span>
+              </div>
+            </>}
+
+            {step===1 && <>
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:8, textTransform:"uppercase", letterSpacing:"0.4px" }}>Loan Type</div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                  {products.map(p=>(
+                    <button key={p.code} onClick={()=>set("product",p.code)} style={{ padding:"7px 12px", borderRadius:10, border:`1.5px solid ${f.product===p.code?C.accent:C.border}`, background:f.product===p.code?C.accentDim:C.bgInput, color:f.product===p.code?C.accent:C.textSec, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                      <span style={{ fontSize:9, opacity:0.7, display:"block" }}>{p.code}</span>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.4px" }}>Loan Amount Required</div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                  {amountBands.map(b=>(
+                    <button key={b} onClick={()=>set("amount",b)} style={{ padding:"7px 12px", borderRadius:10, border:`1.5px solid ${f.amount===b?C.accent:C.border}`, background:f.amount===b?C.accentDim:C.bgInput, color:f.amount===b?C.accent:C.textSec, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>{b}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.4px" }}>Monthly Income (Declared)</div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                  {incomeBands.map(b=>(
+                    <button key={b} onClick={()=>set("income",b)} style={{ padding:"7px 12px", borderRadius:10, border:`1.5px solid ${f.income===b?C.accent:C.border}`, background:f.income===b?C.accentDim:C.bgInput, color:f.income===b?C.accent:C.textSec, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>{b}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.4px" }}>Employment Type</div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                  {employmentTypes.map(t=>(
+                    <button key={t} onClick={()=>set("employment",t)} style={{ padding:"7px 12px", borderRadius:10, border:`1.5px solid ${f.employment===t?C.accent:C.border}`, background:f.employment===t?C.accentDim:C.bgInput, color:f.employment===t?C.accent:C.textSec, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>{t}</button>
+                  ))}
+                </div>
+              </div>
+            </>}
+
+            {step===2 && <>
+              <div style={{ padding:"14px", borderRadius:14, background:C.bgCard, border:`1px solid ${C.border}`, marginBottom:14 }}>
+                <div style={{ display:"flex", gap:10, marginBottom:8, alignItems:"center" }}>
+                  <I.Shield s={20} c={C.accent}/>
+                  <div><div style={{ fontSize:14, fontWeight:700, color:C.text }}>DPDP Consent Capture</div><div style={{ fontSize:11, color:C.textSec }}>Digital Personal Data Protection Act 2023</div></div>
+                </div>
+                <div style={{ fontSize:12, color:C.textSec, lineHeight:1.7 }}>Borrower consent record will be stored immutably with: Connector ID, borrower mobile hash, product, timestamp, app version, and OS — per RBI/2022-23/111.</div>
+              </div>
+              {[
+                { k:"c1", text:"Borrower has given verbal consent to share their personal and financial data for credit assessment" },
+                { k:"c2", text:"Data will be used solely for loan processing and credit evaluation — not for any other purpose" },
+                { k:"c3", text:"Borrower consents to a bureau check (CIBIL / Experian / Equifax / CRIF) on their credit profile" },
+              ].map(({ k, text })=>(
+                <button key={k} onClick={()=>set(k,!f[k])} style={{ display:"flex", gap:12, alignItems:"flex-start", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${f[k]?C.accent:C.border}`, background:f[k]?C.accentDim:C.bgCard, cursor:"pointer", textAlign:"left", width:"100%", marginBottom:10, fontFamily:"inherit" }}>
+                  <div style={{ width:20, height:20, borderRadius:6, border:`2px solid ${f[k]?C.accent:C.border}`, background:f[k]?C.accent:"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>
+                    {f[k]&&<I.Check s={10} c="#0D1117"/>}
+                  </div>
+                  <span style={{ fontSize:13, color:f[k]?C.text:C.textSec, lineHeight:1.55 }}>{text}</span>
+                </button>
+              ))}
+            </>}
+
+            {step===3 && <>
+              <div style={{ padding:"10px 14px", borderRadius:10, background:C.accentDim, border:`1px solid ${C.accentMid}`, display:"flex", gap:8, alignItems:"center", marginBottom:12 }}>
+                <I.Alert s={13} c={C.accent}/>
+                <span style={{ fontSize:11, color:C.accent, lineHeight:1.5 }}>Qualification result (KYC + bureau) will be ready in <strong>≤90 seconds</strong> after submission.</span>
+              </div>
+              <div style={{ background:C.bgCard, borderRadius:14, padding:"16px", border:`1px solid ${C.border}`, marginBottom:12 }}>
+                <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:12, textTransform:"uppercase", letterSpacing:"0.4px" }}>Review Summary</div>
+                {[
+                  { l:"Name",             v: f.name||"—"           },
+                  { l:"Mobile",           v: f.phone||"—"          },
+                  { l:"Aadhaar (last 4)", v: f.aadhaarLast4||"—"  },
+                  { l:"PAN",              v: f.pan||"—"            },
+                  { l:"Pincode",          v: f.pincode||"—"        },
+                  { l:"Loan Type",        v: f.product||"—"        },
+                  { l:"Amount Band",      v: f.amount||"—"         },
+                  { l:"Income Band",      v: f.income||"—"         },
+                  { l:"Employment",       v: f.employment||"—"     },
+                ].map(({ l, v })=>(
+                  <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderBottom:`1px solid ${C.border}` }}>
+                    <span style={{ fontSize:13, color:C.textSec }}>{l}</span>
+                    <span style={{ fontSize:13, fontWeight:600, color:C.text }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ padding:"10px 14px", borderRadius:10, background:C.accentDim, border:`1px solid ${C.accentMid}`, display:"flex", gap:8, alignItems:"center" }}>
+                <I.Check s={14} c={C.accent}/>
+                <span style={{ fontSize:12, color:C.accent }}>DPDP consent captured · immutable audit record will be created on submit</span>
+              </div>
+            </>}
+          </div>
+
+          <div style={{ padding:"12px 20px 24px", borderTop:`1px solid ${C.border}`, display:"flex", gap:10, flexShrink:0 }}>
+            {step>0 && <button onClick={()=>setStep(s=>s-1)} style={{ flex:1, padding:"14px", borderRadius:14, border:`1px solid ${C.border}`, background:C.bgCard, color:C.text, fontSize:15, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Back</button>}
+            <button onClick={()=>{ if(step<3) setStep(s=>s+1); else { setQualified(Math.random()>0.3); setShowResult(true); } }} disabled={!canNext}
+              style={{ flex:2, padding:"14px", borderRadius:14, border:"none", background:canNext?C.accent:C.bgCard, color:canNext?"#0D1117":C.textTer, fontSize:15, fontWeight:700, cursor:canNext?"pointer":"not-allowed", fontFamily:"inherit" }}>
+              {step<3?"Continue →":"✓ Submit & Qualify"}
+            </button>
+          </div>
+        </div>
+      );
+    };
+
+    // ─── SCREEN: Leads List (M4) ───────────────────────────────────────────
+    const LeadsScreen = ({ onBack }) => {
+      const [filter, setFilter] = useState("all");
+      const leads = [
+        { name:"Rajesh Kumar",  product:"Personal Loan · PL",  amount:"₹2.5L", status:"soft_sanctioned", date:"Apr 4" },
+        { name:"Priya Sharma",  product:"Home Loan · HL",      amount:"₹18L",  status:"docs_pending",    date:"Apr 3" },
+        { name:"Mohammed Ali",  product:"Business Loan · BL",  amount:"₹5L",   status:"sent_to_fi",      date:"Apr 2" },
+        { name:"Sunita Devi",   product:"Personal Loan · PL",  amount:"₹80K",  status:"rejected",        date:"Apr 1" },
+        { name:"Arun Gupta",    product:"Gold Loan · GL",      amount:"₹1.2L", status:"disbursed",       date:"Mar 30" },
+        { name:"Kavita Singh",  product:"Vehicle Loan · VL",   amount:"₹65K",  status:"qualified",       date:"Mar 28" },
+        { name:"Neha Patel",    product:"MSME Loan · MSME",    amount:"₹8L",   status:"stale",           date:"Mar 25" },
+      ];
+      const filtered = filter==="all" ? leads : filter==="active" ? leads.filter(l=>["qualified","docs_pending","sent_to_fi","reviewing","soft_sanctioned"].includes(l.status)) : leads.filter(l=>l.status===filter);
+      return (
+        <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          <Header title="My Leads" onBack={onBack} sub={`${leads.length} total · ${leads.filter(l=>["reviewing","processing"].includes(l.status)).length} active`}/>
+          <div style={{ padding:"0 20px 12px", display:"flex", gap:6, overflowX:"auto", flexShrink:0 }}>
+            {["all","active","disbursed","rejected"].map(f=>(
+              <button key={f} onClick={()=>setFilter(f)} style={{ padding:"6px 14px", borderRadius:20, border:`1.5px solid ${filter===f?C.accent:C.border}`, background:filter===f?C.accentDim:C.bgCard, color:filter===f?C.accent:C.textSec, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0, textTransform:"capitalize" }}>{f}</button>
+            ))}
+          </div>
+          <div style={{ flex:1, overflowY:"auto", padding:"0 20px 100px" }}>
+            {filtered.map((l,i)=>{ const s=STATUS[l.status]; return (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 14px", borderRadius:14, background:C.bgCard, border:`1px solid ${C.border}`, marginBottom:8 }}>
+                <div style={{ width:42, height:42, borderRadius:12, background:s.bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <I.User s={16} c={s.color}/>
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:14, fontWeight:600, color:C.text }}>{l.name}</div>
+                  <div style={{ fontSize:12, color:C.textSec }}>{l.product} · {l.amount}</div>
+                </div>
+                <div style={{ textAlign:"right", flexShrink:0 }}>
+                  <Chip label={s.label} color={s.color} bg={s.bg}/>
+                  <div style={{ fontSize:10, color:C.textTer, marginTop:3 }}>{l.date}</div>
+                </div>
+              </div>
+            );})}
+          </div>
+        </div>
+      );
+    };
+
+    // ─── SCREEN: Commission Dashboard (M6 — TDS/GST display) ───────────────
+    const CommissionScreen = ({ onBack }) => {
+      const months = [
+        { month:"April 2026",    gross:7240,  tds:724,  net:6516, status:"pending" },
+        { month:"March 2026",    gross:9800,  tds:980,  net:8820, status:"paid"    },
+        { month:"February 2026", gross:6100,  tds:610,  net:5490, status:"paid"    },
+      ];
+      const fmt = n=>`₹${n.toLocaleString("en-IN")}`;
+      return (
+        <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          <Header title="My Earnings" onBack={onBack}/>
+          <div style={{ flex:1, overflowY:"auto", padding:"0 20px 100px" }}>
+            <div style={{ background:`linear-gradient(135deg, ${C.accentDim}, ${C.blueDim})`, borderRadius:20, padding:"20px", border:`1px solid ${C.accentMid}`, marginBottom:20 }}>
+              <div style={{ fontSize:11, color:C.textSec, marginBottom:4, textTransform:"uppercase", letterSpacing:"0.4px" }}>Total Earned · FY 2025-26</div>
+              <div style={{ fontSize:34, fontWeight:800, color:C.accent, letterSpacing:"-1px" }}>₹23,140</div>
+              <div style={{ fontSize:12, color:C.textSec, marginTop:2 }}>After TDS deduction (Sec. 194H)</div>
+              <div style={{ display:"flex", gap:24, marginTop:16 }}>
+                <div><div style={{ fontSize:10, color:C.textTer }}>TDS Deducted</div><div style={{ fontSize:15, fontWeight:700, color:C.red }}>₹2,314</div></div>
+                <div><div style={{ fontSize:10, color:C.textTer }}>Pending Payout</div><div style={{ fontSize:15, fontWeight:700, color:C.amber }}>₹6,516</div></div>
+                <div><div style={{ fontSize:10, color:C.textTer }}>Leads Converted</div><div style={{ fontSize:15, fontWeight:700, color:C.text }}>14</div></div>
+              </div>
+            </div>
+
+            <div style={{ fontSize:14, fontWeight:700, color:C.text, marginBottom:12 }}>Monthly Breakdown</div>
+            {months.map((m,i)=>(
+              <div key={i} style={{ background:C.bgCard, borderRadius:14, padding:"14px 16px", marginBottom:10, border:`1px solid ${C.border}` }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:C.text }}>{m.month}</div>
+                  <Chip label={m.status==="paid"?"Paid ✓":"Pending"} color={m.status==="paid"?C.accent:C.amber} bg={m.status==="paid"?C.accentDim:C.amberDim}/>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+                  {[
+                    { l:"Gross",       v:fmt(m.gross), c:C.text   },
+                    { l:"TDS (10%)",   v:`-${fmt(m.tds)}`, c:C.red  },
+                    { l:"Net Payout",  v:fmt(m.net),   c:C.accent },
+                  ].map(({ l, v, c })=>(
+                    <div key={l}>
+                      <div style={{ fontSize:9, color:C.textTer, textTransform:"uppercase", letterSpacing:"0.3px" }}>{l}</div>
+                      <div style={{ fontSize:14, fontWeight:700, color:c, marginTop:2 }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // ─── SCREEN: Settings (M11 — language, notifications, eKYC) ────────────
+    const SettingsScreen = ({ onBack, onLogout }) => {
+      const [lang, setLang] = useState("EN");
+      const [notifs, setNotifs] = useState(true);
+      return (
+        <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          <Header title="Profile & Settings" onBack={onBack}/>
+          <div style={{ flex:1, overflowY:"auto", padding:"0 20px 100px" }}>
+            <div style={{ background:C.bgCard, borderRadius:18, padding:"18px", border:`1px solid ${C.border}`, marginBottom:20, display:"flex", alignItems:"center", gap:14 }}>
+              <div style={{ width:56, height:56, borderRadius:18, background:C.accentDim, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <span style={{ fontSize:22, fontWeight:800, color:C.accent }}>RS</span>
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:18, fontWeight:700, color:C.text }}>Ravi Shankar</div>
+                <div style={{ fontSize:13, color:C.textSec }}>+91 98765 43210</div>
+                <Chip label="Active Connector" color={C.accent} bg={C.accentDim}/>
+              </div>
+            </div>
+
+            <div style={{ background:C.bgCard, borderRadius:14, border:`1px solid ${C.border}`, marginBottom:10 }}>
+              <div style={{ padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div><div style={{ fontSize:14, fontWeight:600, color:C.text }}>Language / भाषा</div><div style={{ fontSize:12, color:C.textSec }}>App display language</div></div>
+                <div style={{ display:"flex", borderRadius:10, overflow:"hidden", border:`1px solid ${C.border}` }}>
+                  {["EN","HI"].map(l=><button key={l} onClick={()=>setLang(l)} style={{ padding:"7px 16px", background:lang===l?C.accent:C.bgInput, color:lang===l?"#0D1117":C.textSec, fontSize:13, fontWeight:700, border:"none", cursor:"pointer", fontFamily:"inherit" }}>{l}</button>)}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background:C.bgCard, borderRadius:14, border:`1px solid ${C.border}`, marginBottom:10 }}>
+              <div style={{ padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div><div style={{ fontSize:14, fontWeight:600, color:C.text }}>Lead Status Alerts</div><div style={{ fontSize:12, color:C.textSec }}>Notify on status changes</div></div>
+                <button onClick={()=>setNotifs(v=>!v)} style={{ width:44, height:24, borderRadius:12, background:notifs?C.accent:C.bgInput, border:`1px solid ${notifs?C.accent:C.border}`, cursor:"pointer", position:"relative", padding:0 }}>
+                  <div style={{ width:18, height:18, borderRadius:9, background:"#fff", position:"absolute", top:2, left:notifs?22:3, transition:"left 0.2s" }}/>
+                </button>
+              </div>
+            </div>
+
+            <div style={{ background:C.bgCard, borderRadius:14, border:`1px solid ${C.amber}30`, marginBottom:16, padding:"14px 16px" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div><div style={{ fontSize:14, fontWeight:600, color:C.text }}>eKYC Verification</div><div style={{ fontSize:12, color:C.amber }}>Aadhaar OTP + PAN · Available Phase 2</div></div>
+                <Chip label="Pending" color={C.amber} bg={C.amberDim}/>
+              </div>
+            </div>
+
+            <button onClick={onLogout} style={{ width:"100%", padding:"14px", borderRadius:14, background:C.redDim, border:`1px solid ${C.red}30`, color:C.red, fontSize:15, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Sign Out</button>
+          </div>
+        </div>
+      );
+    };
+
+    // ─── SCREEN: Onboarding (Connector Registration) ──────────────────────────
+    const OnboardingScreen = ({ onComplete }) => {
+      const [step, setStep] = useState(0);
+      const [f, setF] = useState({
+        fullName:"", email:"", dob:"", pincode:"", city:"", state:"",
+        experience:"", affiliation:"", monthlyLeads:"",
+        loanProducts:[], regions:[],
+        accHolderName:"", accNumber:"", ifsc:"", upi:"",
+        pan:"", aadhaarLast4:"",
+        aadhaarDoc:null, panDoc:null, addressDoc:null, cheque:null,
+        locationConsent:true, perfConsent:true, commConsent:true,
+      });
+      const set = (k,v) => setF(p=>({...p,[k]:v}));
+      const tog = k => setF(p=>({...p,[k]:!p[k]}));
+      const toggleArr = (k,val) => setF(p=>({...p,[k]:p[k].includes(val)?p[k].filter(x=>x!==val):[...p[k],val]}));
+
+      const STEPS = ['Personal','Professional','Bank & Payout','KYC Docs','Consent'];
+      const expOpts = [['<1yr','< 1 year'],['1-3yr','1–3 years'],['3-5yr','3–5 years'],['5-10yr','5–10 years'],['10+yr','10+ years']];
+      const leadsOpts = [['1-5','1–5 leads'],['5-15','5–15 leads'],['15-30','15–30 leads'],['30+','30+ leads']];
+      const productOpts = ['LAP','Home Loan','Gold Loan','Business Loan','Personal Loan','Vehicle Loan','Education Loan'];
+      const regionOpts = ['Mumbai','Pune','Ahmedabad','Surat','Jaipur','Delhi NCR','Bangalore','Chennai','Hyderabad','Kolkata','Other'];
+      const stateOpts = [['MH','Maharashtra'],['GJ','Gujarat'],['RJ','Rajasthan'],['KA','Karnataka'],['TN','Tamil Nadu'],['DL','Delhi'],['UP','Uttar Pradesh'],['MP','Madhya Pradesh'],['WB','West Bengal'],['Other','Other']];
+
+      const SelectField = ({ label, value, onChange, opts, placeholder }) => (
+        <div style={{ marginBottom:14 }}>
+          {label && <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.4px" }}>{label}</div>}
+          <select value={value} onChange={e=>onChange(e.target.value)}
+            style={{ width:"100%", padding:"13px 16px", borderRadius:12, border:`1px solid ${C.border}`, background:C.bgInput, color:value?C.text:C.textTer, fontSize:15, fontFamily:"inherit", outline:"none" }}>
+            <option value="">{placeholder||"Select..."}</option>
+            {opts.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+          </select>
+        </div>
+      );
+
+      const NavBar = () => step > 0 && step < 6 ? (
+        <div style={{ padding:"4px 20px 12px", flexShrink:0 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:6 }}>
+            <button onClick={()=>setStep(s=>Math.max(0,s-1))} style={{ background:C.bgCard, border:`1px solid ${C.border}`, borderRadius:10, width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}>
+              <I.Back/>
+            </button>
+            <div style={{ display:"flex", gap:4, flex:1 }}>
+              {STEPS.map((_,i)=><div key={i} style={{ flex:1, height:4, borderRadius:2, background:i<step?C.accent:C.bgCard }}/>)}
+            </div>
+          </div>
+          <div style={{ fontSize:12, color:C.textSec, paddingLeft:48 }}>Step {step}/{STEPS.length} — <span style={{ color:C.accent, fontWeight:600 }}>{STEPS[step-1]}</span></div>
+        </div>
+      ) : null;
+
+      const Welcome = () => (
+        <div style={{ flex:1, overflowY:"auto", padding:"0 24px 40px" }}>
+          <div style={{ paddingTop:48, display:"flex", flexDirection:"column", alignItems:"center", marginBottom:32 }}>
+            <div style={{ width:72, height:72, borderRadius:36, background:C.accent, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:24 }}>
+              <I.Wallet a/>
+            </div>
+            <div style={{ fontSize:26, fontWeight:800, color:C.text, textAlign:"center", lineHeight:1.2, letterSpacing:"-0.3px" }}>Become a<br/>CreditBridge Connector</div>
+            <div style={{ fontSize:14, color:C.textSec, textAlign:"center", marginTop:10, lineHeight:1.6 }}>Join 2,000+ connectors earning 3–5× more through AI-powered lead enrichment.</div>
+          </div>
+          {[
+            { title:"Higher Commissions",  sub:"1.5–3.5% on LAP, up to 3× more than typical DSA rates",      c:C.accent  },
+            { title:"AI-Enriched Files",   sub:"AI compiles, verifies, and enriches every lead automatically", c:C.blue   },
+            { title:"15+ FI Partners",     sub:"HDFC, ICICI, Axis, Piramal, Muthoot and more",                c:C.purple },
+            { title:"Real-Time Tracking",  sub:"Live lead status, commission tracking, and instant payouts",   c:C.amber  },
+          ].map(({ title, sub, c })=>(
+            <div key={title} style={{ background:C.bgCard, borderRadius:12, padding:"14px", border:`1px solid ${C.border}`, marginBottom:10, display:"flex", alignItems:"center", gap:14 }}>
+              <div style={{ width:40, height:40, borderRadius:10, background:`${c}20`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <I.TrendUp c={c} s={18}/>
+              </div>
+              <div>
+                <div style={{ fontSize:14, fontWeight:600, color:C.text }}>{title}</div>
+                <div style={{ fontSize:12, color:C.textSec, marginTop:2, lineHeight:1.5 }}>{sub}</div>
+              </div>
+            </div>
+          ))}
+          <div style={{ padding:"12px 14px", borderRadius:12, background:C.bgCard, border:`1px solid ${C.border}`, display:"flex", gap:10, alignItems:"flex-start", margin:"16px 0 24px" }}>
+            <I.Alert s={14} c={C.textSec}/>
+            <span style={{ fontSize:12, color:C.textSec, lineHeight:1.55 }}>Takes about 5 minutes. You'll need PAN, Aadhaar & bank details.</span>
+          </div>
+          <PrimaryBtn onClick={()=>setStep(1)}>Start Registration →</PrimaryBtn>
+        </div>
+      );
+
+      const Personal = () => (
+        <div style={{ flex:1, overflowY:"auto", padding:"0 24px 24px" }}>
+          <div style={{ marginBottom:24 }}>
+            <div style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:"-0.3px" }}>Personal Details</div>
+            <div style={{ fontSize:12, color:C.textSec, marginTop:4 }}>As per your PAN card</div>
+          </div>
+          <TextInput label="Full Name (as per PAN)" placeholder="e.g. Amit Kumar Patel" value={f.fullName} onChange={v=>set("fullName",v)}/>
+          <TextInput label="Email Address" placeholder="e.g. amit@example.com" value={f.email} onChange={v=>set("email",v)}/>
+          <div style={{ marginBottom:14 }}>
+            <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.4px" }}>Date of Birth</div>
+            <input type="date" value={f.dob} onChange={e=>set("dob",e.target.value)}
+              style={{ width:"100%", padding:"12px 16px", borderRadius:12, border:`1px solid ${C.border}`, background:C.bgInput, color:f.dob?C.text:C.textTer, fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box" }}/>
+          </div>
+          <TextInput label="Pincode" placeholder="e.g. 400001" value={f.pincode} onChange={v=>set("pincode",v)} type="tel"/>
+          <TextInput label="City" placeholder="Tap to use GPS or type your city" value={f.city} onChange={v=>set("city",v)}/>
+          <SelectField label="State" value={f.state} onChange={v=>set("state",v)} opts={stateOpts} placeholder="Select state"/>
+          <div style={{ marginTop:4 }}><PrimaryBtn onClick={()=>setStep(2)}>Continue →</PrimaryBtn></div>
+        </div>
+      );
+
+      const Professional = () => (
+        <div style={{ flex:1, overflowY:"auto", padding:"0 24px 24px" }}>
+          <div style={{ marginBottom:24 }}>
+            <div style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:"-0.3px" }}>Professional Background</div>
+          </div>
+          <SelectField label="Experience in Loan Distribution" value={f.experience} onChange={v=>set("experience",v)} opts={expOpts} placeholder="Select experience"/>
+          <TextInput label="Current Affiliation (optional)" placeholder="e.g. Andromeda, IndiaLends, Independent" value={f.affiliation} onChange={v=>set("affiliation",v)}/>
+          <SelectField label="Avg. Monthly Leads (optional)" value={f.monthlyLeads} onChange={v=>set("monthlyLeads",v)} opts={leadsOpts} placeholder="Select range"/>
+          <div style={{ marginBottom:16 }}>
+            <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:8, textTransform:"uppercase", letterSpacing:"0.4px" }}>Loan Products Handled</div>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+              {productOpts.map(p=>{ const sel=f.loanProducts.includes(p); return (
+                <button key={p} onClick={()=>toggleArr("loanProducts",p)}
+                  style={{ padding:"7px 14px", borderRadius:20, border:`1.5px solid ${sel?C.accent:C.border}`, background:sel?C.accentDim:C.bgCard, color:sel?C.accent:C.textSec, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>{p}</button>
+              );})}
+            </div>
+          </div>
+          <div style={{ marginBottom:24 }}>
+            <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:8, textTransform:"uppercase", letterSpacing:"0.4px" }}>Active Regions / Cities</div>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+              {regionOpts.map(r=>{ const sel=f.regions.includes(r); return (
+                <button key={r} onClick={()=>toggleArr("regions",r)}
+                  style={{ padding:"7px 14px", borderRadius:20, border:`1.5px solid ${sel?C.accent:C.border}`, background:sel?C.accentDim:C.bgCard, color:sel?C.accent:C.textSec, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>{r}</button>
+              );})}
+            </div>
+          </div>
+          <PrimaryBtn onClick={()=>setStep(3)}>Continue →</PrimaryBtn>
+        </div>
+      );
+
+      const Bank = () => (
+        <div style={{ flex:1, overflowY:"auto", padding:"0 24px 24px" }}>
+          <div style={{ marginBottom:24 }}>
+            <div style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:"-0.3px" }}>Bank & Payout Details</div>
+            <div style={{ fontSize:12, color:C.textSec, marginTop:4 }}>Commissions processed on the 15th of each month.</div>
+          </div>
+          <TextInput label="Account Holder Name" placeholder="Must match your PAN name" value={f.accHolderName} onChange={v=>set("accHolderName",v)}/>
+          <TextInput label="Account Number" placeholder="Your bank account number" value={f.accNumber} onChange={v=>set("accNumber",v)} type="tel"/>
+          <TextInput label="IFSC Code" placeholder="e.g. HDFC0001234" value={f.ifsc} onChange={v=>set("ifsc",v.toUpperCase())}/>
+          <div style={{ marginBottom:14 }}>
+            <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.4px" }}>Bank Name</div>
+            <div style={{ padding:"13px 16px", borderRadius:12, border:`1px solid ${C.border}`, background:C.bgCard, color:f.ifsc.length===11?C.text:C.textTer, fontSize:14 }}>
+              {f.ifsc.length===11 ? "HDFC Bank — Auto-filled from IFSC" : "Auto-filled from IFSC"}
+            </div>
+          </div>
+          <TextInput label="UPI ID (optional)" placeholder="e.g. name@upi" value={f.upi} onChange={v=>set("upi",v)}/>
+          <div style={{ padding:"10px 12px", borderRadius:10, background:C.bgCard, border:`1px solid ${C.border}`, marginBottom:24, fontSize:11, color:C.textSec, lineHeight:1.6 }}>
+            TDS deducted at source per Income Tax Act. GST invoicing required if annual turnover exceeds ₹20L.
+          </div>
+          <PrimaryBtn onClick={()=>setStep(4)}>Continue →</PrimaryBtn>
+        </div>
+      );
+
+      const KycDoc = ({ label, subtitle, docKey }) => {
+        const uploaded = !!f[docKey];
+        return (
+          <div onClick={()=>set(docKey, uploaded?null:`${label.replace(/[/ ]/g,"_").toLowerCase()}.pdf`)}
+            style={{ background:C.bgCard, borderRadius:12, padding:"14px", border:`1.5px solid ${uploaded?C.accent:C.border}`, marginBottom:10, display:"flex", alignItems:"center", gap:14, cursor:"pointer" }}>
+            <div style={{ width:40, height:40, borderRadius:10, background:uploaded?C.accentDim:C.bgInput, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              {uploaded?<I.Check s={18} c={C.accent}/>:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke={C.textSec} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2 }}>
+                <span style={{ fontSize:13, fontWeight:600, color:C.text }}>{label}</span>
+                <span style={{ fontSize:10, padding:"2px 6px", borderRadius:4, background:C.accentDim, color:C.accent }}>Required</span>
+              </div>
+              <div style={{ fontSize:12, color:uploaded?C.accent:C.textSec, textOverflow:"ellipsis", overflow:"hidden", whiteSpace:"nowrap" }}>
+                {uploaded?f[docKey]:subtitle}
+              </div>
+            </div>
+            <span style={{ fontSize:11, color:C.accent, flexShrink:0 }}>{uploaded?"Change":"Tap to upload"}</span>
+          </div>
+        );
+      };
+
+      const Kyc = () => (
+        <div style={{ flex:1, overflowY:"auto", padding:"0 24px 24px" }}>
+          <div style={{ marginBottom:24 }}>
+            <div style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:"-0.3px" }}>KYC Documents</div>
+            <div style={{ fontSize:12, color:C.textSec, marginTop:4 }}>Accepted formats: JPG, PNG, PDF</div>
+          </div>
+          <TextInput label="PAN Number" placeholder="e.g. ABCDE1234F" value={f.pan} onChange={v=>{ if(/^[A-Z0-9]{0,10}$/.test(v.toUpperCase())) set("pan",v.toUpperCase()); }}/>
+          <TextInput label="Aadhaar Last 4 Digits (optional)" placeholder="e.g. 4321" value={f.aadhaarLast4} onChange={v=>{ if(/^\d{0,4}$/.test(v)) set("aadhaarLast4",v); }} type="tel"/>
+          <div style={{ height:1, background:C.border, margin:"16px 0 12px" }}/>
+          <div style={{ fontSize:12, fontWeight:600, color:C.textSec, marginBottom:12, textTransform:"uppercase", letterSpacing:"0.4px" }}>Document Uploads</div>
+          <KycDoc label="Aadhaar Card" subtitle="Front & back" docKey="aadhaarDoc"/>
+          <KycDoc label="PAN Card" subtitle="Clear photo or scan" docKey="panDoc"/>
+          <KycDoc label="Address Proof" subtitle="Utility bill, passport, or voter ID" docKey="addressDoc"/>
+          <KycDoc label="Cancelled Cheque / Passbook" subtitle="For bank account verification" docKey="cheque"/>
+          <div style={{ marginTop:8 }}><PrimaryBtn onClick={()=>setStep(5)}>Continue →</PrimaryBtn></div>
+        </div>
+      );
+
+      const ConsentRow = ({ title, subtitle, mandatory, value, onToggle }) => (
+        <div style={{ background:C.bgCard, borderRadius:12, padding:"14px", border:`1px solid ${mandatory?C.accentMid:C.border}`, marginBottom:10 }}>
+          <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
+            <div style={{ flex:1 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4, flexWrap:"wrap" }}>
+                <span style={{ fontSize:13, fontWeight:600, color:C.text }}>{title}</span>
+                {mandatory && <span style={{ fontSize:10, padding:"2px 6px", borderRadius:4, background:C.accentDim, color:C.accent }}>Mandatory</span>}
+              </div>
+              <div style={{ fontSize:12, color:C.textSec, lineHeight:1.55 }}>{subtitle}</div>
+            </div>
+            <button onClick={mandatory?undefined:onToggle} disabled={mandatory}
+              style={{ width:44, height:24, borderRadius:12, background:value?C.accent:C.bgInput, border:`1px solid ${value?C.accent:C.border}`, cursor:mandatory?"not-allowed":"pointer", position:"relative", padding:0, flexShrink:0 }}>
+              <div style={{ width:18, height:18, borderRadius:9, background:"#fff", position:"absolute", top:2, left:value?22:3, transition:"left 0.2s" }}/>
+            </button>
+          </div>
+        </div>
+      );
+
+      const Consent = () => (
+        <div style={{ flex:1, overflowY:"auto", padding:"0 24px 24px" }}>
+          <div style={{ marginBottom:24 }}>
+            <div style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:"-0.3px" }}>Review & Consent</div>
+            <div style={{ fontSize:14, color:C.textSec, marginTop:6, lineHeight:1.5 }}>Before we proceed, please review the following disclosures.</div>
+          </div>
+          <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:10, textTransform:"uppercase", letterSpacing:"1.2px" }}>Mandatory</div>
+          <ConsentRow title="KYC & Identity Verification" subtitle="Verify your Aadhaar, PAN, and bank account for onboarding and regulatory compliance." mandatory={true} value={true}/>
+          <ConsentRow title="Financial Data Processing" subtitle="Process your earnings data for TDS deduction, GST invoicing, and commission payments. Data shared with tax authorities as required by law." mandatory={true} value={true}/>
+          <div style={{ fontSize:11, fontWeight:600, color:C.textSec, margin:"16px 0 10px", textTransform:"uppercase", letterSpacing:"1.2px" }}>Optional</div>
+          <ConsentRow title="Location Tracking (Field Visits)" subtitle="Track GPS location during field operations to verify customer visits. You can disable this anytime in Settings." mandatory={false} value={f.locationConsent} onToggle={()=>tog("locationConsent")}/>
+          <ConsentRow title="Performance Profiling" subtitle="CreditBridge may score your lead quality and activity for matching optimisation under DPDP." mandatory={false} value={f.perfConsent} onToggle={()=>tog("perfConsent")}/>
+          <ConsentRow title="Communication (WhatsApp & SMS)" subtitle="Receive lead updates, payout notifications, and announcements. Opt out anytime." mandatory={false} value={f.commConsent} onToggle={()=>tog("commConsent")}/>
+          <div style={{ padding:"12px 14px", borderRadius:12, background:C.bgCard, border:`1px solid ${C.border}`, fontSize:11, color:C.textSec, lineHeight:1.6, marginBottom:24 }}>
+            Data stored on Indian servers with AES-256 encryption. Retained for 3 years post last activity or as required by tax law. Full policy at creditbridge.in/privacy.
+          </div>
+          <PrimaryBtn onClick={()=>setStep(6)}>Submit Registration →</PrimaryBtn>
+        </div>
+      );
+
+      const Success = () => (
+        <div style={{ flex:1, overflowY:"auto", padding:"48px 24px 40px" }}>
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", marginBottom:32 }}>
+            <div style={{ width:80, height:80, borderRadius:40, background:C.accent, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:24 }}>
+              <I.Check s={44} c="#0D1117"/>
+            </div>
+            <div style={{ fontSize:24, fontWeight:800, color:C.text, textAlign:"center", letterSpacing:"-0.3px" }}>Registration Submitted!</div>
+            <div style={{ fontSize:14, color:C.textSec, textAlign:"center", marginTop:12, lineHeight:1.6 }}>Your profile is under review. We'll verify your KYC documents within 24–48 hours and notify you once approved.</div>
+          </div>
+          <div style={{ background:C.bgCard, borderRadius:14, padding:"16px", border:`1px solid ${C.accentMid}`, marginBottom:32 }}>
+            <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:12, textTransform:"uppercase", letterSpacing:"0.4px" }}>Submitted Profile</div>
+            {[
+              { l:"Name",     v:f.fullName||"—"                              },
+              { l:"Email",    v:f.email||"—"                                 },
+              { l:"PAN",      v:f.pan?`${f.pan.substring(0,5)}*****`:"—"    },
+              { l:"City",     v:f.city||"—"                                  },
+              { l:"Products", v:f.loanProducts.join(", ")||"—"               },
+              { l:"Regions",  v:f.regions.join(", ")||"—"                    },
+            ].map(({ l, v })=>(
+              <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderBottom:`1px solid ${C.border}` }}>
+                <span style={{ fontSize:13, color:C.textSec, width:72, flexShrink:0 }}>{l}</span>
+                <span style={{ fontSize:13, fontWeight:600, color:C.text, flex:1, textAlign:"right", wordBreak:"break-all" }}>{v}</span>
+              </div>
+            ))}
+          </div>
+          <PrimaryBtn onClick={onComplete}>Go to Dashboard →</PrimaryBtn>
+        </div>
+      );
+
+      return (
+        <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          <NavBar/>
+          {step===0 && <Welcome/>}
+          {step===1 && <Personal/>}
+          {step===2 && <Professional/>}
+          {step===3 && <Bank/>}
+          {step===4 && <Kyc/>}
+          {step===5 && <Consent/>}
+          {step===6 && <Success/>}
+        </div>
+      );
+    };
+
+    // ─── Root App ──────────────────────────────────────────────────────────
+    function ConnectorApp() {
+      const [authed, setAuthed] = useState(false);
+      const [screen, setScreen] = useState("home");
+      useEffect(()=>{ injectFont(); }, []);
+
+      const nav = s => setScreen(s);
+
+      return (
+        <PhoneShell>
+          <style>{`* { box-sizing: border-box; } input { color: #EEF0F8 !important; } input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); } input::placeholder { color: #4D556A; } select option { background: #1A2035; } button { -webkit-tap-highlight-color: transparent; } ::-webkit-scrollbar { width: 0; }`}</style>
+          <StatusBar offline={false}/>
+          {!authed
+            ? <AuthScreen onLogin={()=>setAuthed(true)} onRegister={()=>{ setAuthed(true); setScreen("onboarding"); }}/>
+            : <>
+                {screen==="onboarding" && <OnboardingScreen onComplete={()=>nav("home")}/>}
+                {screen==="home"       && <HomeScreen onNav={nav}/>}
+                {screen==="leads"      && <LeadsScreen onBack={()=>nav("home")}/>}
+                {screen==="newLead"    && <NewLeadScreen onBack={()=>nav("home")}/>}
+                {screen==="commission" && <CommissionScreen onBack={()=>nav("home")}/>}
+                {screen==="settings"   && <SettingsScreen onBack={()=>nav("home")} onLogout={()=>{ setAuthed(false); setScreen("home"); }}/>}
+                {screen!=="onboarding" && <BottomNav active={screen} onNav={nav}/>}
+              </>
+          }
+        </PhoneShell>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<ConnectorApp />);
+  </script>
+</body>
+</html>
