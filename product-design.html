@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Product Design — CreditBridge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" />
+<style>
+  :root {
+    --bg: #0D1117;
+    --bg-2: #0A0E14;
+    --card: #151B27;
+    --card-2: #1A2233;
+    --border: #1E2640;
+    --border-2: #2A3350;
+    --text: #EEF0F8;
+    --muted: #8892A8;
+    --muted-2: #5A647C;
+    --faint: #4D556A;
+    --accent: #00C896;
+    --accent-dim: rgba(0,200,150,0.12);
+    --accent-glow: rgba(0,200,150,0.25);
+    /* phase palette */
+    --p0: #00C896;
+    --p1: #4D9FFF;
+    --p2: #B06CFF;
+    --p3: #FF9F45;
+    /* status palette */
+    --open: #FF6B6B;
+    --decided: #00C896;
+    --review: #FFC857;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  ::selection { background: var(--accent-glow); color: #fff; }
+
+  /* ============ ambient background ============ */
+  .bg-orbs { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .orb { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.18; }
+  .orb-1 { width: 520px; height: 520px; background: var(--accent); top: -160px; right: -120px; animation: float1 18s ease-in-out infinite; }
+  .orb-2 { width: 420px; height: 420px; background: var(--p1); bottom: -140px; left: -100px; animation: float2 22s ease-in-out infinite; }
+  .orb-3 { width: 300px; height: 300px; background: var(--p2); top: 40%; left: 55%; opacity: 0.1; animation: float1 26s ease-in-out infinite; }
+  @keyframes float1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-40px,40px)} }
+  @keyframes float2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(50px,-30px)} }
+
+  /* ============ top nav ============ */
+  header.nav {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 40px;
+    background: rgba(13,17,23,0.78);
+    backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-left { display: flex; align-items: center; gap: 14px; }
+  .nav-logo { font-size: 13px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
+  .nav-logo .dot { color: var(--text); }
+  .nav-crumb { font-size: 12px; color: var(--faint); letter-spacing: 0.06em; }
+  .nav-links { display: flex; gap: 4px; }
+  .nav-links a {
+    font-size: 13px; color: var(--muted); text-decoration: none;
+    padding: 7px 13px; border-radius: 9px; transition: all 0.18s; font-weight: 500;
+  }
+  .nav-links a:hover { color: var(--text); background: var(--card); }
+  .nav-back {
+    font-size: 12px; color: var(--muted); text-decoration: none; font-weight: 500;
+    padding: 7px 14px; border: 1px solid var(--border); border-radius: 9px; transition: all 0.18s;
+  }
+  .nav-back:hover { border-color: var(--accent); color: var(--accent); }
+  @media (max-width: 880px){ .nav-links{ display:none; } header.nav{ padding: 12px 20px; } }
+
+  /* ============ layout ============ */
+  main { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; padding: 0 32px 120px; }
+  section { scroll-margin-top: 80px; padding-top: 70px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 26px; flex-wrap: wrap; }
+  .sec-kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
+  .sec-title { font-size: 28px; font-weight: 700; letter-spacing: -0.01em; }
+  .sec-sub { font-size: 14px; color: var(--muted); margin-left: auto; max-width: 420px; text-align: right; }
+  @media (max-width: 700px){ .sec-sub{ text-align:left; margin-left:0; width:100%; } }
+
+  /* ============ hero ============ */
+  .hero { padding-top: 64px; padding-bottom: 10px; }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 600; color: var(--accent);
+    background: var(--accent-dim); border: 1px solid var(--accent-glow);
+    padding: 6px 14px; border-radius: 100px; margin-bottom: 24px;
+  }
+  .hero-badge .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 var(--accent-glow); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 var(--accent-glow)} 70%{box-shadow:0 0 0 10px transparent} 100%{box-shadow:0 0 0 0 transparent} }
+  .hero h1 { font-size: clamp(34px, 6vw, 60px); font-weight: 800; letter-spacing: -0.025em; line-height: 1.04; margin-bottom: 18px; }
+  .hero h1 .grad { background: linear-gradient(120deg, var(--accent), var(--p1)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p.lede { font-size: 17px; color: var(--muted); max-width: 680px; line-height: 1.65; }
+  .hero-flow {
+    display: flex; align-items: center; gap: 12px; margin-top: 30px; flex-wrap: wrap;
+    font-size: 13px; font-weight: 500;
+  }
+  .flow-node { padding: 9px 16px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
+  .flow-node.mid { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 24px -8px var(--accent-glow); }
+  .flow-arrow { color: var(--faint); font-size: 16px; }
+
+  /* ============ stat strip ============ */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 48px; }
+  .stat {
+    background: linear-gradient(160deg, var(--card), var(--bg-2));
+    border: 1px solid var(--border); border-radius: 16px; padding: 22px 22px 20px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .stat:hover { border-color: var(--border-2); transform: translateY(-2px); }
+  .stat-num { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
+  .stat-num .unit { font-size: 16px; color: var(--muted); font-weight: 500; }
+  .stat-label { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  @media (max-width: 760px){ .stats{ grid-template-columns: repeat(2,1fr); } .hero-flow{ font-size:12px; } }
+
+  /* ============ control bar ============ */
+  .controls {
+    position: sticky; top: 61px; z-index: 30;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: rgba(13,17,23,0.82); backdrop-filter: blur(14px);
+    border: 1px solid var(--border); border-radius: 14px;
+    padding: 12px 16px; margin-bottom: 28px;
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; }
+  .search-wrap svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; stroke: var(--faint); }
+  .search-wrap input {
+    width: 100%; background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px 10px 36px; color: var(--text);
+    font-family: inherit; font-size: 13.5px; transition: border-color 0.18s;
+  }
+  .search-wrap input:focus { outline: none; border-color: var(--accent); }
+  .search-wrap input::placeholder { color: var(--faint); }
+  .filter-group { display: flex; gap: 6px; }
+  .chip {
+    font-size: 12.5px; font-weight: 600; color: var(--muted);
+    background: var(--bg-2); border: 1px solid var(--border);
+    padding: 8px 14px; border-radius: 9px; cursor: pointer; transition: all 0.16s;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .chip:hover { color: var(--text); border-color: var(--border-2); }
+  .chip .swatch { width: 8px; height: 8px; border-radius: 50%; }
+  .chip.active { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+  .chip.active.p0 { background: var(--p0); border-color: var(--p0); }
+  .chip.active.p1 { background: var(--p1); border-color: var(--p1); }
+  .chip.active.p2 { background: var(--p2); border-color: var(--p2); }
+  .chip.active.p3 { background: var(--p3); border-color: var(--p3); }
+  .chip.active .swatch { background: var(--bg) !important; }
+  .ctrl-divider { width: 1px; align-self: stretch; background: var(--border); margin: 2px 2px; }
+  .result-count { font-size: 12px; color: var(--faint); margin-left: auto; white-space: nowrap; }
+
+  /* ============ feature grid ============ */
+  .feat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+  .feat-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .feat-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background: var(--accent); opacity:0; transition: opacity 0.2s; }
+  .feat-card:hover { border-color: var(--border-2); transform: translateY(-3px); box-shadow: 0 18px 40px -24px rgba(0,0,0,0.8); }
+  .feat-card:hover::before { opacity:1; }
+  .feat-card.p0::before{ background: var(--p0);} .feat-card.p1::before{ background: var(--p1);} .feat-card.p2::before{ background: var(--p2);} .feat-card.p3::before{ background: var(--p3);}
+  .feat-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .feat-surface { font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .feat-name { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
+  .feat-story { font-size: 13px; color: var(--muted); line-height: 1.55; }
+  .feat-flow { font-size: 12px; color: var(--faint); line-height: 1.5; display: none; border-top: 1px dashed var(--border); padding-top: 10px; margin-top: 2px; }
+  .feat-card.expanded .feat-flow { display: block; }
+  .feat-card.expanded { background: var(--card-2); }
+  .phase-pill { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 100px; letter-spacing: 0.04em; white-space: nowrap; }
+  .phase-pill.p0 { background: rgba(0,200,150,0.14); color: var(--p0); }
+  .phase-pill.p1 { background: rgba(77,159,255,0.14); color: var(--p1); }
+  .phase-pill.p2 { background: rgba(176,108,255,0.14); color: var(--p2); }
+  .phase-pill.p3 { background: rgba(255,159,69,0.14); color: var(--p3); }
+  .empty-state { grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--faint); font-size: 14px; }
+
+  /* ============ timeline ============ */
+  .timeline { position: relative; padding-left: 8px; }
+  .tl-track { position: absolute; left: 26px; top: 8px; bottom: 8px; width: 2px; background: linear-gradient(var(--p0), var(--p1), var(--p2), var(--p3)); opacity: 0.4; }
+  .tl-phase { position: relative; padding-left: 64px; padding-bottom: 36px; }
+  .tl-phase:last-child { padding-bottom: 0; }
+  .tl-marker {
+    position: absolute; left: 8px; top: 2px; width: 38px; height: 38px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;
+    background: var(--card); border: 2px solid var(--border); z-index: 2;
+  }
+  .tl-phase.p0 .tl-marker { border-color: var(--p0); color: var(--p0); box-shadow: 0 0 20px -6px var(--p0); }
+  .tl-phase.p1 .tl-marker { border-color: var(--p1); color: var(--p1); box-shadow: 0 0 20px -6px var(--p1); }
+  .tl-phase.p2 .tl-marker { border-color: var(--p2); color: var(--p2); box-shadow: 0 0 20px -6px var(--p2); }
+  .tl-phase.p3 .tl-marker { border-color: var(--p3); color: var(--p3); box-shadow: 0 0 20px -6px var(--p3); }
+  .tl-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; transition: border-color 0.2s; }
+  .tl-card:hover { border-color: var(--border-2); }
+  .tl-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .tl-name { font-size: 18px; font-weight: 700; }
+  .tl-theme { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .tl-phase.p0 .tl-theme { color: var(--p0);} .tl-phase.p1 .tl-theme{color:var(--p1);} .tl-phase.p2 .tl-theme{color:var(--p2);} .tl-phase.p3 .tl-theme{color:var(--p3);}
+  .tl-count { font-size: 11px; color: var(--faint); margin-left: auto; }
+  .tl-lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 12px; margin-top: 14px; }
+  .tl-lane { background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .tl-lane-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 7px; }
+  .tl-lane ul { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+  .tl-lane li { font-size: 12.5px; color: var(--text); opacity: 0.85; padding-left: 14px; position: relative; line-height: 1.4; }
+  .tl-lane li::before { content: '▸'; position: absolute; left: 0; color: var(--faint); font-size: 10px; }
+
+  /* ============ stories ============ */
+  .story-list { display: flex; flex-direction: column; gap: 10px; }
+  .story {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 20px; transition: all 0.18s;
+  }
+  .story:hover { border-color: var(--border-2); background: var(--card-2); }
+  .story-actor {
+    font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-dim);
+    padding: 6px 12px; border-radius: 8px; white-space: nowrap; min-width: 110px; text-align: center;
+  }
+  .story-text { font-size: 14px; color: var(--text); line-height: 1.5; }
+  .story-text b { color: var(--accent); font-weight: 600; }
+  @media (max-width: 640px){ .story{ grid-template-columns: 1fr; gap: 10px; } .story-actor{ min-width:0; justify-self:start; } }
+
+  /* ============ open questions ============ */
+  .oq-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px,1fr)); gap: 16px; }
+  .oq {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px;
+    border-left: 3px solid var(--open); transition: all 0.2s;
+  }
+  .oq:hover { transform: translateY(-2px); border-color: var(--border-2); }
+  .oq.review { border-left-color: var(--review); }
+  .oq.directed { border-left-color: var(--p1); }
+  .oq-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .oq-id { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .oq-status { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; border-radius: 100px; }
+  .oq-status.open { background: rgba(255,107,107,0.14); color: var(--open); }
+  .oq-status.review { background: rgba(255,200,87,0.14); color: var(--review); }
+  .oq-status.directed { background: rgba(77,159,255,0.14); color: var(--p1); }
+  .oq-title { font-size: 14.5px; font-weight: 600; margin-bottom: 6px; line-height: 1.4; }
+  .oq-body { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+  .oq-surface { font-size: 11px; color: var(--faint); margin-top: 10px; display: inline-flex; gap: 6px; align-items: center; }
+
+  /* ============ decisions ============ */
+  .dec-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px,1fr)); gap: 14px; }
+  .dec {
+    background: linear-gradient(160deg, var(--card), var(--bg-2));
+    border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; transition: all 0.2s;
+    display: flex; gap: 14px;
+  }
+  .dec:hover { border-color: var(--accent-glow); }
+  .dec-check {
+    flex-shrink: 0; width: 26px; height: 26px; border-radius: 8px; background: var(--accent-dim);
+    display: flex; align-items: center; justify-content: center; color: var(--accent);
+  }
+  .dec-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; line-height: 1.35; }
+  .dec-body { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+  .dec-tag { display: inline-block; font-size: 10px; font-weight: 600; color: var(--review); margin-top: 8px; letter-spacing: 0.04em; }
+
+  /* ============ actors ============ */
+  .actor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 14px; }
+  .actor { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; transition: all 0.2s; }
+  .actor:hover { border-color: var(--border-2); transform: translateY(-2px); }
+  .actor-avatar { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+  .actor-name { font-size: 16px; font-weight: 700; }
+  .actor-surface { font-size: 11px; color: var(--accent); font-weight: 600; letter-spacing: 0.04em; margin: 2px 0 10px; }
+  .actor-desc { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+
+  /* ============ doc links ============ */
+  .doc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: 16px; }
+  a.doc-card {
+    display: flex; flex-direction: column; gap: 8px; text-decoration: none;
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;
+    transition: all 0.2s; position: relative; overflow: hidden;
+  }
+  a.doc-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 20px 44px -26px var(--accent-glow); }
+  .doc-icon { font-size: 22px; margin-bottom: 4px; }
+  .doc-tag { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+  .doc-title { font-size: 17px; font-weight: 600; }
+  .doc-desc { font-size: 13px; color: var(--muted); line-height: 1.55; }
+  .doc-arrow { margin-top: auto; padding-top: 12px; font-size: 18px; color: var(--faint); transition: color 0.2s; }
+  a.doc-card:hover .doc-arrow { color: var(--accent); }
+  a.doc-card.locked { cursor: not-allowed; opacity: 0.7; }
+  a.doc-card.locked:hover { border-color: var(--border); transform: none; box-shadow: none; }
+
+  footer { text-align: center; padding: 60px 20px 0; color: var(--faint); font-size: 13px; }
+  footer .fdiv { width: 60px; height: 1px; background: var(--border); margin: 0 auto 24px; }
+
+  /* scroll reveal */
+  .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+</style>
+</head>
+<body>
+<div class="bg-orbs"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+
+<header class="nav">
+  <div class="nav-left">
+    <span class="nav-logo">Credit<span class="dot">Bridge</span></span>
+    <span class="nav-crumb">/ Product Design</span>
+  </div>
+  <nav class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#timeline">Timeline</a>
+    <a href="#stories">User Stories</a>
+    <a href="#decisions">Decisions</a>
+    <a href="#questions">Open Questions</a>
+    <a href="#prototypes">Prototypes</a>
+  </nav>
+  <a class="nav-back" href="index.html">← All UI</a>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero" id="top">
+    <span class="hero-badge"><span class="pulse"></span>PRD v1.0 · Draft — Pending Business Review · 5 May 2026</span>
+    <h1>The credit distribution<br>marketplace, <span class="grad">made visible.</span></h1>
+    <p class="lede">An RBI-registered Lending Service Provider under the Digital Lending Directions, 2025. CreditBridge sources credit leads through a physical connector network, qualifies them in real time, and routes them to the most eligible financial institution on a success-fee basis — across four product surfaces.</p>
+    <div class="hero-flow">
+      <span class="flow-node">Connectors / DSAs</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node mid">CreditBridge — qualify · enrich · route</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node">Financial Institutions</span>
+    </div>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="sec-head">
+      <span class="sec-kicker">01 — Capability Map</span>
+      <h2 class="sec-title">Features</h2>
+      <p class="sec-sub">Every product module across the four surfaces. Filter by phase or surface, search by name, and click any card to reveal its flow.</p>
+    </div>
+
+    <div class="controls">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input id="search" type="text" placeholder="Search features, surfaces, user stories…" />
+      </div>
+      <div class="ctrl-divider"></div>
+      <div class="filter-group" id="phaseFilters">
+        <button class="chip active" data-phase="all">All Phases</button>
+        <button class="chip" data-phase="0"><span class="swatch" style="background:var(--p0)"></span>P0</button>
+        <button class="chip" data-phase="1"><span class="swatch" style="background:var(--p1)"></span>P1</button>
+        <button class="chip" data-phase="2"><span class="swatch" style="background:var(--p2)"></span>P2</button>
+        <button class="chip" data-phase="3"><span class="swatch" style="background:var(--p3)"></span>P3</button>
+      </div>
+      <div class="ctrl-divider"></div>
+      <div class="filter-group" id="surfaceFilters">
+        <button class="chip active" data-surface="all">All Surfaces</button>
+        <button class="chip" data-surface="Connector App">Connector</button>
+        <button class="chip" data-surface="Lead Market">Market</button>
+        <button class="chip" data-surface="Converter Portal">Converter</button>
+        <button class="chip" data-surface="Lead Lifecycle">Lifecycle</button>
+      </div>
+      <span class="result-count" id="resultCount"></span>
+    </div>
+
+    <div class="feat-grid" id="featGrid"></div>
+  </section>
+
+  <!-- TIMELINE -->
+  <section id="timeline">
+    <div class="sec-head">
+      <span class="sec-kicker">02 — Phased Delivery</span>
+      <h2 class="sec-title">Timeline</h2>
+      <p class="sec-sub">Four phases from Foundation to Scale. Each phase shows the themed deliverables per surface.</p>
+    </div>
+    <div class="timeline" id="timeline"><div class="tl-track"></div></div>
+  </section>
+
+  <!-- STORIES -->
+  <section id="stories">
+    <div class="sec-head">
+      <span class="sec-kicker">03 — Voice of the User</span>
+      <h2 class="sec-title">User Stories</h2>
+      <p class="sec-sub">Shares the search and filter controls above. Grouped by the actor who lives the need.</p>
+    </div>
+    <div class="story-list" id="storyList"></div>
+  </section>
+
+  <!-- DECISIONS -->
+  <section id="decisions">
+    <div class="sec-head">
+      <span class="sec-kicker">04 — Locked In</span>
+      <h2 class="sec-title">Decisions</h2>
+      <p class="sec-sub">Design and policy decisions taken — several pending final business sign-off, flagged accordingly.</p>
+    </div>
+    <div class="dec-list" id="decList"></div>
+  </section>
+
+  <!-- OPEN QUESTIONS -->
+  <section id="questions">
+    <div class="sec-head">
+      <span class="sec-kicker">05 — Unresolved</span>
+      <h2 class="sec-title">Open Questions</h2>
+      <p class="sec-sub">Items needing business or compliance review before the affected features are finalised.</p>
+    </div>
+    <div class="oq-grid" id="oqGrid"></div>
+  </section>
+
+  <!-- ACTORS -->
+  <section id="actors">
+    <div class="sec-head">
+      <span class="sec-kicker">06 — Cast</span>
+      <h2 class="sec-title">Actors &amp; Roles</h2>
+      <p class="sec-sub">Who acts on which surface, and what authority they carry.</p>
+    </div>
+    <div class="actor-grid" id="actorGrid"></div>
+  </section>
+
+  <!-- PROTOTYPES / DOCS -->
+  <section id="prototypes">
+    <div class="sec-head">
+      <span class="sec-kicker">07 — See It Live</span>
+      <h2 class="sec-title">Prototypes &amp; Documents</h2>
+      <p class="sec-sub">Interactive UI prototypes for each surface. Open them in a new tab and walk the flows live.</p>
+    </div>
+    <div class="doc-grid">
+      <a class="doc-card" href="connector-app.html">
+        <span class="doc-icon">📱</span>
+        <span class="doc-tag">Mobile · Flutter</span>
+        <span class="doc-title">Connector App</span>
+        <span class="doc-desc">Field DSA app — lead submission, tracking, DPDP consent, commission dashboard.</span>
+        <span class="doc-arrow">→</span>
+      </a>
+      <a class="doc-card" href="lead-market.html">
+        <span class="doc-icon">📈</span>
+        <span class="doc-tag">Web · Flutter</span>
+        <span class="doc-title">Lead Market</span>
+        <span class="doc-desc">FI buyer portal — lead discovery, filtering, bid/accept flows, analytics.</span>
+        <span class="doc-arrow">→</span>
+      </a>
+      <a class="doc-card" href="lead-converter.html">
+        <span class="doc-icon">⚙️</span>
+        <span class="doc-tag">Web · Flutter</span>
+        <span class="doc-title">Converter Portal</span>
+        <span class="doc-desc">Internal ops — lead pipeline, FI management, compliance, billing.</span>
+        <span class="doc-arrow">→</span>
+      </a>
+      <a class="doc-card locked" title="Backend service — no UI surface">
+        <span class="doc-icon">🔌</span>
+        <span class="doc-tag">Go · Backend</span>
+        <span class="doc-title">Lead Platform</span>
+        <span class="doc-desc">Shared backend orchestrating the lead lifecycle — qualification to payout. No UI.</span>
+        <span class="doc-arrow">●</span>
+      </a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="fdiv"></div>
+    CreditBridge · Internal Product Review · Built for fluid team discussion<br>
+    <span style="opacity:0.6">Source: Combined PRD v1.0 — <code style="font-family:'JetBrains Mono',monospace;font-size:11px">.claude/context/business/product/prd.md</code></span>
+  </footer>
+</main>
+
+<script>
+/* ============================ DATA ============================ */
+const SURF = { CA:'Connector App', LM:'Lead Market', CP:'Converter Portal', LL:'Lead Lifecycle' };
+
+const FEATURES = [
+  // Connector App
+  {s:SURF.CA, n:'Authentication', p:0, actor:'Connector', story:'Log in securely with my registered mobile number so only I can access my leads and commission.', flow:'Enter mobile → OTP → verified → session established → token auto-refreshed on subsequent opens.'},
+  {s:SURF.CA, n:'Home Dashboard', p:0, actor:'Connector', story:'See active lead count, commission due and conversion rate on open so I can assess my business at a glance.', flow:'Loads dashboard → active leads, estimated commission, conversion %, activity feed → cached locally for offline read.'},
+  {s:SURF.CA, n:'Lead Submission', p:0, actor:'Connector', story:'Submit borrower details through a guided form so the lead enters qualification immediately, even offline.', flow:'4-step form (name, mobile, Aadhaar last-4, PAN, loan type/band, income band, employment, pincode, notes) → offline-queued → confirmation with Lead ID.'},
+  {s:SURF.CA, n:'Lead Tracking', p:0, actor:'Connector', story:'View all submitted leads with current status so I know where each borrower stands.', flow:'Lead list → filter by status/date → timeline: Submitted → Qualified → Docs Pending → Sent to FI → Soft/Hard Sanctioned → Disbursed (or Rejected/Stale).'},
+  {s:SURF.CA, n:'Commission Display', p:0, actor:'Connector', story:'See expected commission per qualified lead and confirmed payouts at disbursement to manage income expectations.', flow:'Lead view → estimated commission for qualified → confirmed on disbursement → payout history → TDS shown → payout notification per credit.'},
+  {s:SURF.CA, n:'Settings & Profile', p:0, actor:'Connector', story:'Update my display name, switch language and control notifications so the app works the way I prefer.', flow:'Settings → edit name → toggle English/Hindi → configure push preferences.'},
+  {s:SURF.CA, n:'Qualification Result', p:1, actor:'Connector', story:'See qualified/disqualified within 90 seconds with a plain-language reason so I can give the borrower an immediate answer.', flow:'Submitted → bureau soft pull, PAN, OKYC, income/FOIR, geography → QUALIFIED (est. commission) or DISQUALIFIED (reason Q001–Q007) ≤ 90s.'},
+  {s:SURF.CA, n:'DPDP Consent', p:1, actor:'Connector', story:'Capture borrower consent for data processing at submission so CreditBridge\'s use of data is lawful and auditable.', flow:'Granular consent (purpose + data categories) captured pre-submit → immutable audit trail → withdrawal flagged for Converter review (OQ-1).'},
+  {s:SURF.CA, n:'eKYC', p:1, actor:'Connector', story:'Have borrower identity verified digitally so we confirm who they are before sending the lead to an FI.', flow:'Initiate eKYC → Aadhaar OTP to borrower → confirmed → PAN verified against tax records → KYC status on lead.'},
+  {s:SURF.CA, n:'Document Tasks', p:1, actor:'Connector', story:'A clear task list of documents to collect so I know exactly what action is required at each stage.', flow:'Checklist generated → 3 task types: digital (auto), physical (collect in person), upload → escalations T+4h/8h/24h/36h/48h.'},
+  {s:SURF.CA, n:'Document Upload', p:2, actor:'Connector', story:'Photograph and upload physical documents from my phone so I complete tasks without visiting an office.', flow:'Select upload task → camera capture → OCR field extraction → confirm/correct → uploaded and linked to lead.'},
+  {s:SURF.CA, n:'FI Offer Display', p:2, actor:'Connector', story:'Show the borrower loan offers ranked by interest rate, with each KFS, so they can choose informed.', flow:'Offer stage → AI eligibility assessment → eligible FI offers ranked by APR → select offer → KFS delivered to borrower via WhatsApp.'},
+  {s:SURF.CA, n:'Connector Quality Score', p:2, actor:'Connector', story:'See my quality score band so I understand my performance and what it means for lead prioritisation.', flow:'Profile → band shown (High/Medium/Low) from conversion, doc completeness, SLA compliance → numeric score hidden (anti-gaming).'},
+  {s:SURF.CA, n:'Competitive Earnings', p:2, actor:'Connector', story:'See how my earnings compare to peers so I stay motivated and understand where I stand.', flow:'Anonymised peer benchmark — "top 20% in your city/product" — with own earnings trend. No connector named (named leaderboard = OQ-14).'},
+  {s:SURF.CA, n:'Lead Visibility Controls', p:2, actor:'Connector', story:'Hide my CreditBridge leads from specific FIs so leads aren\'t routed to institutions I\'d rather not share with.', flow:'Profile → Lead Visibility → select FIs to hide → excluded from this connector\'s matching (routing-level). Editable anytime (OQ-15).'},
+  {s:SURF.CA, n:'Team Mode', p:3, actor:'Connector', story:'Manage a group of sub-agents under my code so I can track their leads, aggregate commission and onboard via referral.', flow:'Team view → sub-agent list with lead counts + commission → aggregated team commission → referral link → sub-agent signs up under team lead.'},
+
+  // Lead Market
+  {s:SURF.LM, n:'Lead Feed', p:0, actor:'FI Manager', story:'See a continuously updated feed of pre-qualified leads matching my product and geography so I skip ineligible borrowers.', flow:'Pre-filter against FI eligibility (product, pincode, CIBIL band) → anonymised cards (no PII) → filter + sort (freshness, score, amount, completeness, quality) → default sort OQ-11.'},
+  {s:SURF.LM, n:'Lead Detail — Pre-Accept', p:0, actor:'FI Manager', story:'Review a lead\'s anonymised profile before accepting so I decide informed without exposing identity prematurely.', flow:'Anonymised card → full anonymised profile → KFS shown before acceptance → accept or pass.'},
+  {s:SURF.LM, n:'Soft Approval & Pass', p:0, actor:'FI Manager', story:'Signal acceptance or disinterest so CreditBridge routes correctly and the borrower gets a timely outcome.', flow:'Accept → PII unlocked, lead to inbox. Pass → returned to routing pool for cascade. Pass recorded in SLA history.'},
+  {s:SURF.LM, n:'Lead Detail — Post-Accept', p:0, actor:'FI Manager', story:'Full access to PII, documents and bureau score once accepted so underwriting proceeds without delay.', flow:'Name, mobile, address shown → document vault (view/download, 24h signed links re-issued on demand) until reject/cascade → bureau band → connector contact.'},
+  {s:SURF.LM, n:'Lead Status Update', p:0, actor:'FI Manager', story:'Update a lead through sanctioning/disbursement so CreditBridge, connector and borrower are informed in real time.', flow:'Sequential actions: Additional Docs → Soft Sanctioned → Hard Sanctioned → Disbursed/Declined (mandatory reason) → per-stage SLA countdown with "−X pts if missed".'},
+  {s:SURF.LM, n:'Document Request', p:0, actor:'FI Manager', story:'Request additional documents and be notified when uploaded so underwriting doesn\'t follow up manually.', flow:'Specify doc type + instructions → borrower notified (WhatsApp + voice) → connector notified (app) → uploaded → FI notified → status updates.'},
+  {s:SURF.LM, n:'Lead Inbox', p:1, actor:'FI Manager', story:'A consolidated view of accepted leads with SLA timers so my team doesn\'t miss deadlines.', flow:'Accepted leads with status chips + per-stage SLA countdown → penalty + projected SLA score shown → near-breach highlighted.'},
+  {s:SURF.LM, n:'Bid Submission', p:1, actor:'FI Manager', story:'Submit a competitive bid — rate, processing fee, TAT — within the active window to win matching leads.', flow:'Notified of 2-working-hour window → form pre-filled with defaults → adjust rate/fee within range → enter TAT → submit → countdown shown.'},
+  {s:SURF.LM, n:'Bid Window Status', p:1, actor:'FI Manager', story:'See the live window countdown and win/loss result so I manage my team\'s pipeline expectations.', flow:'Window opens → live countdown → own bid status → on close, win/loss notification in-portal + notification centre.'},
+  {s:SURF.LM, n:'Analytics Dashboard', p:1, actor:'FI Manager', story:'View conversion, TAT, rejection breakdown and SLA compliance by product to assess lead and team quality.', flow:'TAT-vs-platform hero scorecard (direction/delta/colour) → product filter → conversion, avg TAT, rejection reasons, SLA score + self-diagnosis. FI\'s own data only.'},
+  {s:SURF.LM, n:'Billing & Invoices', p:1, actor:'FI Billing', story:'View daily invoices with per-loan breakdowns and download PDFs so finance reconciles without manual work.', flow:'Daily invoices filterable by date/status/loan type/Lead ID → per-loan rows (Lead ID, product, disbursed, rate, gross, GST, net) → PDF → receivables summary. fi_billing only.'},
+  {s:SURF.LM, n:'FI Eligibility Configuration', p:1, actor:'FI Manager', story:'View my eligibility config — multiple variants per product, each with its published rate — and manage change requests.', flow:'Per-variant cards (score, amount, APR, commission, pincodes) → change request with effective-from date → FI-admin approves self-approvable; CreditBridge override for geography/compliance (OQ-4).'},
+  {s:SURF.LM, n:'FI Org User Management', p:1, actor:'FI Manager', story:'Create and manage users in my own FI org so I control who acts on leads and billing, without depending on CreditBridge.', flow:'CreditBridge onboards only the FI Manager → invite users, assign sub-roles (RM, billing) → per-user lead detail (handled, conversion, SLA record). Confined to own tenant.'},
+  {s:SURF.LM, n:'Notification Centre', p:2, actor:'FI Manager', story:'All platform notifications in one place with direct action links so I don\'t miss windows, uploads or SLA alerts.', flow:'Chronological list with type labels + CTA per notification → read/unread tracked. Email confirmed for key events (push+email Phase 2; pull-forward OQ-8).'},
+  {s:SURF.LM, n:'User Preferences', p:1, actor:'FI Manager', story:'Save my preferred lead feed filters so I don\'t re-apply them every session.', flow:'Set default filters (product, score band, city) → auto-applied on feed load → override per session without losing defaults.'},
+
+  // Converter Portal
+  {s:SURF.CP, n:'Operations Dashboard', p:1, actor:'Converter', story:'A single-screen view of platform KPIs and pipeline so I identify bottlenecks and prioritise daily.', flow:'KPIs (active leads, disbursed MTD, SLA breaches, conversion, FI revenue, active connectors) → pipeline funnel → last 20 events.'},
+  {s:SURF.CP, n:'Lead Pipeline Management', p:1, actor:'Converter', story:'View every lead, advance stage, override and manage escalations so the pipeline never stalls on edge cases.', flow:'Filter by stage/FI/connector/loan type → full detail incl. borrower mobile, events, docs, bureau, FI activity → advance with reason → override → escalate to queue.'},
+  {s:SURF.CP, n:'Connector Lifecycle Management', p:1, actor:'Converter', story:'Manage connector applications from submission to activation, and suspend/blacklist where warranted.', flow:'Application → approval queue → trigger KYC → approve/reject with reason → monitor score → suspend/blacklist with reason → connector notified.'},
+  {s:SURF.CP, n:'SLA Tracker', p:1, actor:'Converter', story:'Real-time monitoring of every lead\'s SLA at the FI so breaches are caught before they compound.', flow:'All leads at FI with countdowns → within-6h highlighted → breached flagged → trigger escalation/cascade manually → breach events logged.'},
+  {s:SURF.CP, n:'FI Onboarding', p:1, actor:'Converter', story:'Onboard a new FI through a structured wizard so it\'s correctly configured before any leads route.', flow:'Step 1: registration (name, entity, GSTIN, FI Manager contact) → pending_setup. Step 2: eligibility (products, variants, ranges, rates, pincodes) → active.'},
+  {s:SURF.CP, n:'FI Eligibility & Bid Priority', p:1, actor:'Converter', story:'Configure each FI\'s eligibility and bid priority so routing reflects appetite and operational performance.', flow:'Per-product settings → org users with per-user lead detail → system bid-priority score → operational override ±10 pts with mandatory reason → logged.'},
+  {s:SURF.CP, n:'FI Eligibility Override', p:1, actor:'Converter', story:'Override a routing-geography or compliance-sensitive change so an FI can\'t self-apply a breach.', flow:'Changes approved within Lead Market by FI admin (no Converter review queue) → CreditBridge retains override to reverse/block geography/compliance change with reason (OQ-4/OQ-10).'},
+  {s:SURF.CP, n:'FI Suspension & Reactivation', p:1, actor:'Converter', story:'Suspend an FI from new leads and reactivate when resolved so platform integrity holds during disputes.', flow:'Suspend with reason → excluded from routing immediately (in-flight accepted unaffected) → reactivate with reason. pending_setup → active → suspended → active.'},
+  {s:SURF.CP, n:'FI Billing & Reconciliation', p:1, actor:'Converter', story:'Generate invoices, track FI payments and reconcile commissions so receivables stay accurate.', flow:'Disbursement → invoice to FI billing view → track payment → flag overdue receivables → reconciliation: gross collected vs connector payouts vs net margin.'},
+  {s:SURF.CP, n:'Connector Commission Payout', p:1, actor:'Converter', story:'Review commission calculations and approve payout batches so connectors are paid within 48 hours.', flow:'Disbursement → calc (gross − share − GST = gross payout − TDS = net) → batch review → approve → payout to connector account → notified.'},
+  {s:SURF.CP, n:'Compliance Dashboard', p:1, actor:'Converter', story:'A single view of DPDP consent, bureau retention flags and RBI audit log so compliance is monitored continuously.', flow:'DPDP consent coverage rate → bureau retention flags (approaching limit) → RBI audit log export by date/lead/actor.'},
+  {s:SURF.CP, n:'Admin — User & Platform', p:1, actor:'Admin', story:'Create, edit and suspend accounts for all roles and configure platform settings so access is tightly controlled.', flow:'User management (all roles) → edit/suspend → platform config (commission defaults, SLA thresholds, templates, pincode master) → full audit log queries.'},
+
+  // Lead Lifecycle
+  {s:SURF.LL, n:'Borrower Qualification', p:0, actor:'CreditBridge', story:'Qualify or disqualify every lead within 90 seconds so connectors get an immediate answer.', flow:'PAN check → Aadhaar OKYC → bureau soft pull (score + 90-DPD, no footprint) → income/FOIR → geography → QUALIFIED/DISQUALIFIED (Q001–Q007) ≤ 90s.'},
+  {s:SURF.LL, n:'Document Collection & Enrichment', p:1, actor:'CreditBridge', story:'Collect all required documents through the most efficient channel so the file is complete before any FI sees it.', flow:'Checklist by loan type × employment × score × amount → 4 parallel channels (API, Account Aggregator, WhatsApp, physical) → escalations T+4h..48h → advance at 80% complete.'},
+  {s:SURF.LL, n:'FI Matching & Routing', p:1, actor:'CreditBridge', story:'Match each ready lead to the most eligible FI via bid or waterfall so borrower gets the best offer.', flow:'3-gate pre-filter → bid (2h window, weighted scoring) or waterfall (priority order) → accept releases PII + 48h SLA → pass/breach cascades → receiving FI never named.'},
+  {s:SURF.LL, n:'Disbursement Tracking', p:1, actor:'CreditBridge', story:'Track every FI status update to disbursement and notify all parties so connectors/borrowers stay informed.', flow:'FI updates status → event timestamped → connector push + borrower WhatsApp + Converter pipeline updated → Disbursed triggers commission calc.'},
+  {s:SURF.LL, n:'Commission Calculation & Payout', p:1, actor:'CreditBridge', story:'Calculate commission on disbursement, invoice the FI and pay the connector within 48h so economics are transparent.', flow:'Disbursed → gross commission → platform fee, GST, TDS → net payout → CreditBridge fronts connector payout per-lead (decoupled from FI cycle) → FI invoiced on configurable cadence (OQ-13).'},
+];
+
+const PHASES = [
+  {id:0, name:'Phase 0', theme:'Foundation', lanes:{
+    'Connector App':['Lead capture','Pipeline tracker','Commission display','Push notifications'],
+    'Lead Market':['Lead feed (filter+sort)','Soft approval / pass','Post-accept PII + doc vault','Status update','Document request','Cascade display','Source-IP gate'],
+    'Converter Portal':['Manual email workflow (no portal yet)'],
+    'Lead Lifecycle':['90-second qualification','Basic routing'],
+  }},
+  {id:1, name:'Phase 1', theme:'Intelligence', lanes:{
+    'Connector App':['Qualification result','Document tasks','eKYC','WhatsApp doc guidance','DPDP consent'],
+    'Lead Market':['Bid submission + window','Lead inbox (per-stage SLA)','Analytics (TAT hero)','Billing with filters','FI config (variants+rates)','Org user management','User preferences'],
+    'Converter Portal':['Ops dashboard','Lead pipeline','Connector lifecycle','FI management','Billing','Admin'],
+    'Lead Lifecycle':['Document collection','Multi-channel escalation','Bid window','Disbursement tracking','Commission payout'],
+  }},
+  {id:2, name:'Phase 2', theme:'Enrichment', lanes:{
+    'Connector App':['FI offer display + KFS','AI credit summary','Document upload','Quality score band','Advanced analytics'],
+    'Lead Market':['FI eligibility self-edit','Weighted bidding dashboard','Push + email notifications'],
+  }},
+  {id:3, name:'Phase 3', theme:'Scale', lanes:{
+    'Connector App':['Team mode','Territory analytics','Connector SaaS tiers'],
+  }},
+];
+
+const DECISIONS = [
+  {t:'RBI-registered LSP', b:'CreditBridge operates as a Lending Service Provider under the Digital Lending Directions, 2025 — it enriches and routes, it does not lend or make the credit decision.'},
+  {t:'Three-sided marketplace', b:'Connectors → CreditBridge (qualify · enrich · route) → Financial Institutions, on a success-fee basis.'},
+  {t:'90-second qualification', b:'Every submitted lead is qualified or disqualified within 90 seconds via bureau soft pull, PAN, OKYC, income/FOIR and geography checks.'},
+  {t:'Quality score as a band', b:'Connectors see a High/Medium/Low band, never a numeric score — to prevent gaming.', tag:'OQ-2 · pending sign-off'},
+  {t:'FI Manager is the org admin', b:'The FI Manager submits and approves config change requests entirely within Lead Market (maker/checker). The Converter Portal change-request review queue has been removed.', tag:'May 2026 review'},
+  {t:'Effective-from dating', b:'Approved FI configuration changes carry an effective-from date and go live on schedule, not immediately.'},
+  {t:'SLA enforced at every stage', b:'SLA is tracked at each status stage, not only the first update — each stage carries its own target and score impact.', tag:'OQ-3 · per-stage values TBD'},
+  {t:'Connector payout decoupled from FI billing', b:'Connectors are paid per-lead on disbursement confirmation. CreditBridge fronts (pre-funds) the payout, independent of the FI\'s billing cycle.', tag:'OQ-13 · float ceiling TBD'},
+  {t:'Cascade destination secrecy', b:'A cascaded-from FI sees only "opportunity passed". The receiving FI\'s identity and waterfall position are never disclosed.'},
+  {t:'Document vault lifetime', b:'All collected documents are viewable/downloadable in-portal for as long as the lead sits in the FI\'s accepted inbox; 24-hour signed links re-issued on demand, expiring on reject/cascade.'},
+  {t:'Per-FI source-IP allowlist', b:'A hard gate at login and request enforces each FI\'s allowed source IPs.'},
+  {t:'TAT benchmarking as hero', b:'TAT vs platform average is a prominent scorecard at the top of FI analytics — a deliberate emphasis decision, not an inline figure.'},
+  {t:'Competitive earnings anonymised', b:'Connectors see an anonymised peer benchmark ("top X% in your city/product") only. No connector is ever named.', tag:'named leaderboard = OQ-14'},
+  {t:'Bid window = 2 working hours', b:'Bid windows run for two working hours, scoped to working-hours calendar.', tag:'OQ-5/OQ-6 · calendar + duration to confirm'},
+  {t:'KFS before PII release', b:'The KFS summary (APR, fee, tenure, prepayment) must be displayed and confirmed before acceptance triggers PII release — CreditBridge\'s record of KFS delivery under RBI Directions, 2025.'},
+  {t:'Pre-accept PII masking', b:'Name, Aadhaar and mobile are confirmed masked pre-acceptance. Email, employer and exact income masking still to be confirmed.'},
+  {t:'Configurable FI billing cadence', b:'Invoicing cadence (daily/weekly/fortnightly/monthly) and terms (NET 15/30/45) are tunable per FI.', tag:'OQ-9 · GST IRN implications'},
+];
+
+const OQ = [
+  {id:'OQ-1', st:'open', t:'DPDP consent withdrawal when lead already at an FI', s:'Connector App · P1', b:'Data already shared with an FI cannot be recalled; the FI has its own DPDP retention duties. Correct withdrawal procedure unclear — needs legal opinion vs DPDP Act 2023, Clause 6.'},
+  {id:'OQ-2', st:'directed', t:'Connector quality score: numeric vs band', s:'Connector App · P2', b:'Decision taken: band (High/Medium/Low) from Phase 2. Flagged for Product + Ops sign-off on the anti-gaming rationale before build.'},
+  {id:'OQ-3', st:'review', t:'Cascade trigger + per-stage SLA behaviour', s:'Lead Market · Lifecycle', b:'48h hard-sanction vs flat 72h cascade was overturned. SLA now per-stage with provisional defaults (Soft 48h, Hard 72h, Disbursed 24h). Post-sanction breach: cascade or escalate-only? Needs business + ops.'},
+  {id:'OQ-4', st:'directed', t:'CreditBridge approval gate for FI config changes', s:'Lead Market · Converter', b:'Direction set: FI admin approves within Lead Market; Converter review queue removed; CreditBridge retains override. Live part: the precise boundary of self-approvable vs CreditBridge-gated changes.'},
+  {id:'OQ-5', st:'open', t:'Bid working hours: national holiday calendar', s:'Lead Market', b:'Fixed national public-holiday list vs ops-configurable calendar — affects bid scheduling during regional/gazetted holidays.'},
+  {id:'OQ-6', st:'open', t:'Bid window duration', s:'Lead Market · Lifecycle', b:'Currently 2 working hours. Needs confirmation it stays unchanged before the bid module is built.'},
+  {id:'OQ-7', st:'open', t:'LOS push to FI internal systems', s:'Lead Market · Lifecycle', b:'Direct push to FI loan-origination systems. Cannot scope until FI systems named, data contract defined, responsibility allocated. Out of scope for P0–P2.'},
+  {id:'OQ-8', st:'open', t:'Notification Centre phase assignment', s:'Lead Market', b:'In-portal notifications are Phase 1. Case to pull core types (bid window, SLA warning) to Phase 0 given time-sensitivity. Decision needed before P0 scope is locked.'},
+  {id:'OQ-9', st:'open', t:'Daily invoice cadence + GST IRN', s:'Lead Market · Converter', b:'Daily batching means one GST IRN per day per FI. Amendment handling on reversed disbursement must be confirmed with compliance + finance.'},
+  {id:'OQ-10', st:'open', t:'CreditBridge override if FI maker/checker adopted', s:'Converter Portal', b:'Contingent on OQ-4. Whether CreditBridge keeps a unilateral override for geography/compliance violations — without it, an RBI-breaching pincode add cannot be corrected.'},
+  {id:'OQ-11', st:'open', t:'Default sort order for the Lead Feed', s:'Lead Market', b:'Multiple sort keys added. Default undecided — freshest-first (engagement) vs highest-quality-first (conversion). Needs business decision.'},
+  {id:'OQ-12', st:'open', t:'Iteration count disclosure to receiving FI', s:'Lead Market · Lifecycle', b:'"Seen by N FIs" conflicts with the no-prior-pass-disclosure decision. Business wants it visible. Needs reconciliation; if approved, confirm exact vs banded.'},
+  {id:'OQ-13', st:'open', t:'Connector payout pre-funding', s:'Lifecycle · Converter', b:'Per-lead payout before FI settles consumes working capital + carries FI-default risk. Float ceiling, funding source, eligibility gating and recovery need finance/treasury sign-off.'},
+  {id:'OQ-14', st:'open', t:'Competitive Earnings: named leaderboard', s:'Connector App', b:'Anonymised benchmark confirmed. A named/opt-in leaderboard raises privacy + fairness concerns and interacts with lead-visibility controls. Open for business.'},
+  {id:'OQ-15', st:'open', t:'Lead Visibility Controls: hide leads from FIs', s:'Connector App · Lifecycle', b:'Lets connectors steer leads from competitors; may reduce conversion. Open: whether to allow at all, any cap on hidden FIs, and ops visibility/override.'},
+];
+
+const ACTORS = [
+  {n:'Connector', sf:'Connector App', em:'🧑‍💼', c:'#00C896', d:'Field agent (DSA) who originates leads from their local community. Submits borrowers, tracks pipeline, manages document collection, receives commission.'},
+  {n:'Onboarder', sf:'Connector App (admin)', em:'🤝', c:'#4D9FFF', d:'Internal staff who recruits and activates Connectors. Reviews applications and monitors activation status.'},
+  {n:'Converter', sf:'Converter Portal', em:'⚙️', c:'#B06CFF', d:'Internal ops staff managing the pipeline from qualification to disbursement — escalations, SLA breaches, FI relationships, compliance.'},
+  {n:'FI Manager', sf:'Lead Market', em:'🏦', c:'#FF9F45', d:'Senior FI rep and admin of their own org. Accepts/passes leads, manages eligibility, billing, provisions org users, approves intra-org change requests. The only user CreditBridge onboards.'},
+  {n:'FI RM', sf:'Lead Market', em:'📋', c:'#4D9FFF', d:'Relationship-manager sub-role provisioned by the FI Manager. Views feed and manages day-to-day lead activity. No billing access.'},
+  {n:'Admin', sf:'Converter Portal', em:'🛡️', c:'#FF6B6B', d:'Platform administrator. Manages accounts across all roles, configures platform-wide settings, accesses the full audit log.'},
+];
+
+/* ============================ RENDER ============================ */
+const PCLASS = p => 'p'+p;
+
+// stats — animated counters
+const STATS = [
+  {to:FEATURES.length, suffix:'', label:'Product modules'},
+  {to:4, suffix:'', label:'Phases · Foundation → Scale'},
+  {to:OQ.length, suffix:'', label:'Open questions tracked'},
+  {to:90, suffix:'s', label:'Qualification SLA'},
+];
+const statsEl = document.getElementById('stats');
+STATS.forEach(s => {
+  const d = document.createElement('div'); d.className='stat';
+  d.innerHTML = `<div class="stat-num"><span class="cnt" data-to="${s.to}">0</span><span class="unit">${s.suffix}</span></div><div class="stat-label">${s.label}</div>`;
+  statsEl.appendChild(d);
+});
+function animateCounters(){
+  document.querySelectorAll('.cnt').forEach(el=>{
+    const to=+el.dataset.to; const dur=1100; const t0=performance.now();
+    (function step(t){ const k=Math.min(1,(t-t0)/dur); el.textContent=Math.round(to*(1-Math.pow(1-k,3))); if(k<1)requestAnimationFrame(step); })(t0);
+  });
+}
+
+// features + stories shared filter state
+let state = { phase:'all', surface:'all', q:'' };
+const featGrid = document.getElementById('featGrid');
+const storyList = document.getElementById('storyList');
+const resultCount = document.getElementById('resultCount');
+
+function matches(f){
+  if(state.phase!=='all' && f.p!==+state.phase) return false;
+  if(state.surface!=='all' && f.s!==state.surface) return false;
+  if(state.q){
+    const hay=(f.n+' '+f.s+' '+f.story+' '+f.actor+' '+f.flow).toLowerCase();
+    if(!hay.includes(state.q)) return false;
+  }
+  return true;
+}
+
+function renderFeatures(){
+  const list = FEATURES.filter(matches);
+  featGrid.innerHTML='';
+  if(!list.length){ featGrid.innerHTML='<div class="empty-state">No modules match these filters. Try clearing the search or selecting All.</div>'; }
+  list.forEach(f=>{
+    const c=document.createElement('div'); c.className='feat-card '+PCLASS(f.p);
+    c.innerHTML=`
+      <div class="feat-top"><span class="feat-surface">${f.s}</span><span class="phase-pill ${PCLASS(f.p)}">Phase ${f.p}</span></div>
+      <div class="feat-name">${f.n}</div>
+      <div class="feat-story">${f.story}</div>
+      <div class="feat-flow"><b style="color:var(--muted)">Flow · </b>${f.flow}</div>`;
+    c.addEventListener('click',()=>c.classList.toggle('expanded'));
+    featGrid.appendChild(c);
+  });
+  resultCount.textContent = `${list.length} of ${FEATURES.length} modules`;
+}
+
+function renderStories(){
+  const list = FEATURES.filter(matches);
+  storyList.innerHTML='';
+  if(!list.length){ storyList.innerHTML='<div class="empty-state">No user stories match these filters.</div>'; return; }
+  list.forEach(f=>{
+    const r=document.createElement('div'); r.className='story';
+    r.innerHTML=`<span class="story-actor">${f.actor}</span>
+      <span class="story-text">As a <b>${f.actor}</b>, I want to ${f.story}</span>
+      <span class="phase-pill ${PCLASS(f.p)}">P${f.p}</span>`;
+    storyList.appendChild(r);
+  });
+}
+
+function renderFiltered(){ renderFeatures(); renderStories(); }
+
+// control wiring
+document.getElementById('search').addEventListener('input', e=>{ state.q=e.target.value.trim().toLowerCase(); renderFiltered(); });
+document.querySelectorAll('#phaseFilters .chip').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#phaseFilters .chip').forEach(x=>x.className='chip');
+  const ph=b.dataset.phase; b.className = ph==='all' ? 'chip active' : 'chip active p'+ph;
+  state.phase=ph; renderFiltered();
+}));
+document.querySelectorAll('#surfaceFilters .chip').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#surfaceFilters .chip').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); state.surface=b.dataset.surface; renderFiltered();
+}));
+
+// timeline
+const tl=document.getElementById('timeline');
+PHASES.forEach(ph=>{
+  const count = FEATURES.filter(f=>f.p===ph.id).length;
+  const lanes = Object.entries(ph.lanes).map(([name,items])=>`
+    <div class="tl-lane"><div class="tl-lane-name">${name}</div><ul>${items.map(i=>`<li>${i}</li>`).join('')}</ul></div>`).join('');
+  const d=document.createElement('div'); d.className='tl-phase '+PCLASS(ph.id);
+  d.innerHTML=`
+    <div class="tl-marker">${ph.id}</div>
+    <div class="tl-card">
+      <div class="tl-head"><span class="tl-name">${ph.name}</span><span class="tl-theme">${ph.theme}</span><span class="tl-count">${count} module${count!==1?'s':''}</span></div>
+      <div class="tl-lanes">${lanes}</div>
+    </div>`;
+  tl.appendChild(d);
+});
+
+// decisions
+const decList=document.getElementById('decList');
+DECISIONS.forEach(d=>{
+  const el=document.createElement('div'); el.className='dec';
+  el.innerHTML=`<div class="dec-check">✓</div><div><div class="dec-title">${d.t}</div><div class="dec-body">${d.b}</div>${d.tag?`<span class="dec-tag">⚑ ${d.tag}</span>`:''}</div>`;
+  decList.appendChild(el);
+});
+
+// open questions
+const oqGrid=document.getElementById('oqGrid');
+const STLABEL={open:'Open',review:'Under Review',directed:'Direction Set'};
+OQ.forEach(q=>{
+  const el=document.createElement('div'); el.className='oq '+q.st;
+  el.innerHTML=`
+    <div class="oq-top"><span class="oq-id">${q.id}</span><span class="oq-status ${q.st}">${STLABEL[q.st]}</span></div>
+    <div class="oq-title">${q.t}</div>
+    <div class="oq-body">${q.b}</div>
+    <div class="oq-surface">▸ ${q.s}</div>`;
+  oqGrid.appendChild(el);
+});
+
+// actors
+const ag=document.getElementById('actorGrid');
+ACTORS.forEach(a=>{
+  const el=document.createElement('div'); el.className='actor';
+  el.innerHTML=`<div class="actor-avatar" style="background:${a.c}22;color:${a.c}">${a.em}</div>
+    <div class="actor-name">${a.n}</div><div class="actor-surface">${a.sf}</div><div class="actor-desc">${a.d}</div>`;
+  ag.appendChild(el);
+});
+
+// init
+renderFiltered();
+
+// scroll reveal + counter trigger
+const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }}),{threshold:0.12});
+document.querySelectorAll('section').forEach(s=>{ s.classList.add('reveal'); io.observe(s); });
+const heroIO=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ animateCounters(); heroIO.disconnect(); }}),{threshold:0.3});
+heroIO.observe(statsEl);
+</script>
+</body>
+</html>
