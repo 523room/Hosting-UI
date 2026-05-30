@@ -116,7 +116,7 @@
         { title: "Operations", items: [
           { id: "dashboard",      label: "Dashboard",         ico: "⬡" },
           { id: "connectors",     label: "Connectors",        ico: "◈" },
-          { id: "fi_management",  label: "FI Management",     ico: "◫", badge: "2" },
+          { id: "fi_management",  label: "FI Management",     ico: "◫" },
           { id: "pipeline",       label: "Lead Pipeline",     ico: "⬕" },
           { id: "sla",            label: "SLA Tracker",       ico: "◷" },
         ]},
@@ -129,8 +129,8 @@
         ]},
       ];
       return (
-        <div style={{ width: 200, background: C.sidebar, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", flexShrink: 0, height: "100%" }}>
-          <div style={{ padding: "14px 14px 12px", borderBottom: `1px solid ${C.border}` }}>
+        <div className="cv-sidebar" style={{ width: 200, background: C.sidebar, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", flexShrink: 0, height: "100%" }}>
+          <div className="cv-side-top" style={{ padding: "14px 14px 12px", borderBottom: `1px solid ${C.border}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
               <div style={{ width: 30, height: 30, borderRadius: 6, background: C.accent, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, color: "#080B10", fontFamily: C.mono }}>CB</div>
               <div>
@@ -139,7 +139,7 @@
               </div>
             </div>
           </div>
-          <div style={{ flex: 1, overflowY: "auto", padding: "8px 6px" }}>
+          <div className="cv-nav" style={{ flex: 1, overflowY: "auto", padding: "8px 6px" }}>
             {groups.map(g => (
               <div key={g.title} style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 8, fontWeight: 700, color: C.textTer, textTransform: "uppercase", letterSpacing: "0.9px", padding: "6px 10px", fontFamily: C.sans }}>{g.title}</div>
@@ -153,7 +153,7 @@
               </div>
             ))}
           </div>
-          <div style={{ padding: "10px 12px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="cv-side-foot" style={{ padding: "10px 12px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 28, height: 28, borderRadius: 14, background: C.purpleDim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: C.purple, fontFamily: C.mono }}>SK</div>
             <div><div style={{ fontSize: 12, fontWeight: 600, color: C.text, fontFamily: C.sans }}>Sneha K.</div><div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans }}>Converter</div></div>
           </div>
@@ -163,8 +163,8 @@
 
     // ─── Topbar ─────────────────────────────────────────────────────────────
     const Topbar = ({ title, sub, actions }) => (
-      <div style={{ height: 52, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", padding: "0 20px", gap: 12, flexShrink: 0 }}>
-        <div style={{ flex: 1 }}>
+      <div className="cv-topbar" style={{ height: 52, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", padding: "0 20px", gap: 12, flexShrink: 0 }}>
+        <div style={{ flex: 1, minWidth: 140 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: C.text, fontFamily: C.sans }}>{title}</div>
           {sub && <div style={{ fontSize: 10, color: C.textTer, fontFamily: C.sans }}>{sub}</div>}
         </div>
@@ -192,7 +192,7 @@
       const tagColor = { sanctioned: C.accent, kyc: C.blue, sla: C.red, billing: C.purple, routing: C.amber };
       return (
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 10, marginBottom: 20 }}>
+          <div className="cv-grid" style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 10, marginBottom: 20 }}>
             {kpis.map(({ label, value, sub, color }) => (
               <Card key={label} style={{ padding: "12px 14px" }}>
                 <div style={{ fontSize: 9, color: C.textTer, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 6, fontFamily: C.sans }}>{label}</div>
@@ -378,7 +378,7 @@
               <Btn primary>+ Onboard Connector</Btn>
             </div>
             <Card style={{ padding: 0, overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div className="cv-tablewrap"><table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead style={{ background: C.surface }}><tr>
                   <TH>Connector</TH><TH>Location</TH>
                   <TH>Leads</TH><TH>Conv.</TH><TH>Quality Score</TH>
@@ -403,7 +403,7 @@
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </Card>
           </div>
         );
@@ -449,7 +449,7 @@
             {/* ── Overview ──────────────────────────────────────────────── */}
             {activeTab==="overview" && (
               <div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:10, marginBottom:18 }}>
+                <div className="cv-grid" style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:10, marginBottom:18 }}>
                   {[
                     { label:"Total Leads",     value:c.leads,          color:C.text    },
                     { label:"Disbursed",       value:c.disbursed,      color:C.accent  },
@@ -533,7 +533,7 @@
                   <Card><div style={{ padding:20, textAlign:"center", color:C.textSec, fontSize:12, fontFamily:C.sans }}>No leads submitted yet.</div></Card>
                 ) : (
                   <Card style={{ padding:0, overflow:"hidden" }}>
-                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                    <div className="cv-tablewrap"><table style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead style={{ background:C.surface }}><tr>
                         <TH>Lead ID</TH><TH>Borrower</TH><TH>Product</TH><TH>Amount</TH><TH>Stage</TH><TH>Submitted</TH>
                       </tr></thead>
@@ -552,7 +552,7 @@
                           );
                         })}
                       </tbody>
-                    </table>
+                    </table></div>
                   </Card>
                 )}
               </div>
@@ -610,7 +610,7 @@
                   <Card><div style={{ padding:20, textAlign:"center", color:C.textSec, fontSize:12, fontFamily:C.sans }}>No payouts processed yet.</div></Card>
                 ) : (
                   <Card style={{ padding:0, overflow:"hidden" }}>
-                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                    <div className="cv-tablewrap"><table style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead style={{ background:C.surface }}><tr>
                         <TH>Date</TH><TH>Lead ID</TH><TH>Product</TH><TH>Gross Commission</TH><TH>TDS (194H)</TH><TH>Net Payout</TH><TH>Status</TH>
                       </tr></thead>
@@ -627,7 +627,7 @@
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </table></div>
                   </Card>
                 )}
               </div>
@@ -663,7 +663,7 @@
           {/* Suspend confirm modal */}
           {showSuspendConfirm && (
             <div style={{ position:"fixed", inset:0, background:"rgba(8,11,16,0.85)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
-              <div style={{ background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, width:400, padding:24 }}>
+              <div style={{ background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, width:400, maxWidth:"92vw", maxHeight:"90vh", overflowY:"auto", padding:24 }}>
                 <div style={{ fontSize:14, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:8 }}>Suspend Connector?</div>
                 <div style={{ fontSize:12, color:C.textSec, fontFamily:C.sans, marginBottom:20, lineHeight:1.5 }}>
                   Suspending <strong style={{ color:C.text }}>{c.name}</strong> will immediately revoke their access to the Connector App. Active leads will continue processing unaffected.
@@ -692,7 +692,7 @@
       ];
       const selectedLead = selected ? leads.find(l=>l.id===selected) : null;
       return (
-        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        <div className="cv-pipe" style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
             <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
               <input placeholder="Search leads..." style={{ flex: 1, padding: "7px 12px", borderRadius: 5, border: `1px solid ${C.inputBorder}`, background: C.input, color: C.text, fontSize: 12, fontFamily: C.sans, outline: "none" }}/>
@@ -700,7 +700,7 @@
               <Btn primary>+ New Lead</Btn>
             </div>
             <Card style={{ padding: 0, overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div className="cv-tablewrap"><table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead style={{ background: C.surface }}><tr>
                   <TH>Lead ID</TH><TH>Borrower</TH><TH>Product</TH><TH>Amount</TH>
                   <TH>Stage</TH><TH>FI</TH><TH>Bureau</TH><TH>SLA</TH><TH>Age</TH>
@@ -724,12 +724,12 @@
                     );
                   })}
                 </tbody>
-              </table>
+              </table></div>
             </Card>
           </div>
 
           {selectedLead && (
-            <div style={{ width: 300, borderLeft: `1px solid ${C.border}`, background: C.sidebar, overflowY: "auto", padding: 16, flexShrink: 0 }}>
+            <div className="cv-detail" style={{ width: 300, borderLeft: `1px solid ${C.border}`, background: C.sidebar, overflowY: "auto", padding: 16, flexShrink: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.sans }}>Lead Detail</div>
                 <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: C.textSec, cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
@@ -778,7 +778,7 @@
       ];
       return (
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
+          <div className="cv-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
             {[
               { label: "Within SLA",     value: "343", color: C.accent },
               { label: "At Risk (<20%)", value: "12",  color: C.amber  },
@@ -795,7 +795,7 @@
             <span style={{ width: 6, height: 6, borderRadius: 3, background: C.red, display: "inline-block" }}/> SLA Breaches — Requires Escalation
           </div>
           <Card style={{ padding: 0, overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div className="cv-tablewrap"><table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead style={{ background: C.surface }}><tr>
                 <TH>Lead</TH><TH>Borrower</TH><TH>FI</TH><TH>Stage</TH><TH>Hours Elapsed</TH><TH>Over By</TH><TH>Action</TH>
               </tr></thead>
@@ -812,7 +812,7 @@
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </Card>
         </div>
       );
@@ -829,7 +829,7 @@
       const statusColor = { paid: C.accent, pending: C.amber };
       return (
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
+          <div className="cv-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
             {[
               { l:"Revenue (Mar)",     v:"₹6.23L",  c:C.accent },
               { l:"GST Collected",     v:"₹1.12L",  c:C.textSec },
@@ -846,7 +846,7 @@
             <Btn primary>+ Generate Invoice</Btn>
           </div>
           <Card style={{ padding: 0, overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div className="cv-tablewrap"><table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead style={{ background: C.surface }}><tr>
                 <TH>Invoice</TH><TH>FI</TH><TH>Period</TH><TH>Disbursed</TH>
                 <TH>Gross</TH><TH>GST (18%)</TH><TH>Net Receivable</TH><TH>Status</TH><TH>Actions</TH>
@@ -866,7 +866,7 @@
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </Card>
         </div>
       );
@@ -884,7 +884,7 @@
       const riskColor = { low: C.accent, med: C.amber, high: C.red };
       return (
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 18 }}>
+          <div className="cv-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 18 }}>
             {[
               { l:"DPDP Consents (Apr)",     v:"1,248",  c:C.accent },
               { l:"Consent Withdrawals",     v:"3",       c:C.amber  },
@@ -937,7 +937,7 @@
 
           <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 10 }}>Immutable Audit Log</div>
           <Card style={{ padding: 0, overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div className="cv-tablewrap"><table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead style={{ background: C.surface }}><tr>
                 <TH>Timestamp</TH><TH>Actor</TH><TH>Action</TH><TH>Reference</TH><TH>Risk</TH>
               </tr></thead>
@@ -952,7 +952,7 @@
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </Card>
         </div>
       );
@@ -1059,13 +1059,6 @@
       ],
     };
 
-    const INITIAL_CRS = [
-      { id:"CR-041", fi:"FI-001", type:"Add Pincodes",       details:"Add 400072, 400073 to Personal Loan",  by:"Arjun Mehta",  at:"2026-04-14 10:30", status:"pending",  reason:"" },
-      { id:"CR-040", fi:"FI-002", type:"Update Score Range",  details:"Update Home Loan min score 680 → 660", by:"Priya Sharma", at:"2026-04-12 14:15", status:"pending",  reason:"" },
-      { id:"CR-039", fi:"FI-003", type:"Add Product",         details:"Add Gold Loan to product lineup",      by:"Vikram Singh", at:"2026-04-10 09:00", status:"approved", reason:"" },
-      { id:"CR-038", fi:"FI-001", type:"Remove Pincodes",     details:"Remove 380001 from Personal Loan",     by:"Arjun Mehta",  at:"2026-04-08 16:45", status:"rejected", reason:"Pincode still in active waterfall — defer to May cycle" },
-    ];
-
     // Per-user lead detail (P3) — leads handled by each FI org user
     const USER_LEADS = {
       "U-001": [ {id:"LM-8810", product:"Personal Loan", status:"Disbursed", sla:"On time"}, {id:"LM-8803", product:"Home Loan", status:"Hard Sanctioned", sla:"On time"}, {id:"LM-8771", product:"Business Loan", status:"Disbursed", sla:"On time"} ],
@@ -1092,8 +1085,6 @@
       const [expandedPincodes, setExpandedPincodes] = useState(null);
       const [showEditProduct, setShowEditProduct]   = useState(null);
       const [editProductData, setEditProductData]   = useState({});
-      const [crFilter, setCrFilter]             = useState("all");
-      const [crStates, setCrStates]             = useState({});
       const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
       const [showInviteModal, setShowInviteModal]     = useState(false);
       const [inviteData, setInviteData]               = useState({ name:"", email:"", role:"fi_manager" });
@@ -1147,7 +1138,7 @@
             </div>
 
             <Card style={{ padding:0, overflow:"hidden" }}>
-              <table style={{ width:"100%", borderCollapse:"collapse" }}>
+              <div className="cv-tablewrap"><table style={{ width:"100%", borderCollapse:"collapse" }}>
                 <thead style={{ background:C.surface }}><tr>
                   <TH>FI Name</TH><TH>Type</TH><TH>Status</TH><TH>Products</TH>
                   <TH>Active Leads</TH><TH>SLA Compliance</TH><TH>Bid Priority</TH><TH>Last Activity</TH><TH>Actions</TH>
@@ -1172,12 +1163,12 @@
                     );
                   })}
                 </tbody>
-              </table>
+              </table></div>
             </Card>
 
             {showOnboard && (
               <div style={{ position:"fixed", inset:0, background:"rgba(8,11,16,0.85)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
-                <div style={{ background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, width:480, padding:24 }}>
+                <div style={{ background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, width:480, maxWidth:"92vw", maxHeight:"90vh", overflowY:"auto", padding:24 }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:18 }}>
                     <div><div style={{ fontSize:14, fontWeight:700, color:C.text, fontFamily:C.sans }}>Onboard New FI</div><div style={{ fontSize:10, color:C.textTer, fontFamily:C.sans }}>Step {onboardStep} of 2</div></div>
                     <button onClick={()=>setShowOnboard(false)} style={{ background:"none", border:"none", color:C.textSec, cursor:"pointer", fontSize:20 }}>×</button>
@@ -1212,11 +1203,7 @@
       // ── FI DETAIL PAGE ───────────────────────────────────────────────────────
       const fi = FIS.find(f=>f.id===selectedFI);
       const products = FI_PRODUCTS[selectedFI] || [];
-      const crs = INITIAL_CRS.filter(cr=>cr.fi===selectedFI).map(cr=>({...cr, status:crStates[cr.id]||cr.status}));
-      const visibleCRs = crFilter==="all"?crs:crFilter==="pending"?crs.filter(c=>c.status==="pending"):crs.filter(c=>c.status!=="pending");
       const finalScore = fi.systemScore!==null?Math.min(100,Math.max(0,fi.systemScore+fi.opsAdj)):null;
-      const crStatusColor = { pending:C.amber, approved:C.accent, rejected:C.red };
-      const pendingCRCount = crs.filter(c=>c.status==="pending").length;
 
       return (
         <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
@@ -1241,7 +1228,7 @@
 
             {activeTab==="overview" && (
               <div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:10, marginBottom:18 }}>
+                <div className="cv-grid" style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:10, marginBottom:18 }}>
                   {[
                     {label:"Active Leads",     value:fi.activeLeads,                                 color:C.text  },
                     {label:"SLA Compliance",   value:fi.sla!==null?`${fi.sla}%`:"—",                 color:fi.sla===null?C.textTer:fi.sla>=80?C.accent:fi.sla>=60?C.amber:C.red},
@@ -1315,7 +1302,7 @@
                   <Btn primary small>+ Add Product</Btn>
                 </div>
                 <Card style={{ padding:0, overflow:"hidden", marginBottom:14 }}>
-                  <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                  <div className="cv-tablewrap"><table style={{ width:"100%", borderCollapse:"collapse" }}>
                     <thead style={{ background:C.surface }}><tr>
                       <TH>Product</TH><TH>Score Range</TH><TH>Loan Amount Range</TH><TH>Commission</TH><TH>Coverage Pincodes</TH><TH>Status</TH><TH>Actions</TH>
                     </tr></thead>
@@ -1349,11 +1336,11 @@
                         </React.Fragment>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 </Card>
                 {showEditProduct&&(
                   <div style={{ position:"fixed", inset:0, background:"rgba(8,11,16,0.85)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
-                    <div style={{ background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, width:420, padding:24 }}>
+                    <div style={{ background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, width:420, maxWidth:"92vw", maxHeight:"90vh", overflowY:"auto", padding:24 }}>
                       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
                         <div style={{ fontSize:13, fontWeight:700, color:C.text, fontFamily:C.sans }}>Edit — {showEditProduct}</div>
                         <button onClick={()=>setShowEditProduct(null)} style={{ background:"none", border:"none", color:C.textSec, cursor:"pointer", fontSize:20 }}>×</button>
@@ -1371,47 +1358,15 @@
               </div>
             )}
 
-            {activeTab==="requests" && (
-              <div>
-                <div style={{ display:"flex", gap:0, borderBottom:`1px solid ${C.border}`, marginBottom:14 }}>
-                  {["all","pending","resolved"].map(f=><button key={f} onClick={()=>setCrFilter(f)} style={{ padding:"7px 14px", background:"none", border:"none", borderBottom:`2px solid ${crFilter===f?C.accent:"transparent"}`, color:crFilter===f?C.accent:C.textSec, fontSize:11, fontWeight:crFilter===f?600:400, cursor:"pointer", fontFamily:C.sans, textTransform:"capitalize" }}>{f}</button>)}
-                </div>
-                {visibleCRs.length===0?(
-                  <div style={{ padding:40, textAlign:"center", color:C.textSec, fontSize:12, fontFamily:C.sans }}>No {crFilter==="all"?"":crFilter} change requests.</div>
-                ):(
-                  <Card style={{ padding:0, overflow:"hidden" }}>
-                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
-                      <thead style={{ background:C.surface }}><tr>
-                        <TH>Request ID</TH><TH>Type</TH><TH>Details</TH><TH>Requested By</TH><TH>Requested At</TH><TH>Status</TH><TH>Actions</TH>
-                      </tr></thead>
-                      <tbody>
-                        {visibleCRs.map(cr=>(
-                          <tr key={cr.id} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                            <TD mono color={C.blue}>{cr.id}</TD>
-                            <TD bold color={C.text}>{cr.type}</TD>
-                            <TD style={{ maxWidth:220 }}><span style={{ fontSize:11, color:C.textSec, fontFamily:C.sans, display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cr.details}</span></TD>
-                            <TD>{cr.by}</TD>
-                            <TD mono color={C.textTer}>{cr.at}</TD>
-                            <TD><Badge label={cr.status} color={crStatusColor[cr.status]} dot/>{cr.status==="rejected"&&cr.reason&&<div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans, marginTop:2, maxWidth:160 }}>{cr.reason}</div>}</TD>
-                            <TD style={{ display:"flex", gap:5 }}>{cr.status==="pending"&&<><Btn small primary onClick={()=>setCrStates(s=>({...s,[cr.id]:"approved"}))}>Approve</Btn><Btn small danger onClick={()=>setCrStates(s=>({...s,[cr.id]:"rejected"}))}>Reject</Btn></>}</TD>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </Card>
-                )}
-              </div>
-            )}
-
             {activeTab==="billing" && (
               <div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:18 }}>
+                <div className="cv-grid" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:18 }}>
                   {[{l:"Revenue (Mar)",v:"₹3,24,000",c:C.accent},{l:"GST Collected",v:"₹58,320",c:C.textSec},{l:"Pending",v:fi.status==="active"?"₹0":"—",c:C.amber},{l:"Total Paid (FY)",v:"₹9,12,400",c:C.text}].map(({l,v,c})=>(
                     <Card key={l} style={{ padding:"12px 14px" }}><div style={{ fontSize:9, color:C.textTer, fontFamily:C.sans, marginBottom:5, textTransform:"uppercase", letterSpacing:"0.5px" }}>{l}</div><div style={{ fontSize:22, fontWeight:700, color:c, fontFamily:C.mono }}>{v}</div></Card>
                   ))}
                 </div>
                 <Card style={{ padding:0, overflow:"hidden" }}>
-                  <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                  <div className="cv-tablewrap"><table style={{ width:"100%", borderCollapse:"collapse" }}>
                     <thead style={{ background:C.surface }}><tr>
                       <TH>Invoice</TH><TH>Period</TH><TH>Disbursed</TH><TH>Gross</TH><TH>GST (18%)</TH><TH>Net Receivable</TH><TH>Status</TH><TH></TH>
                     </tr></thead>
@@ -1430,7 +1385,7 @@
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 </Card>
               </div>
             )}
@@ -1486,7 +1441,7 @@
                     </div>
                   ) : (
                     <Card style={{ padding:0, overflow:"hidden" }}>
-                      <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                      <div className="cv-tablewrap"><table style={{ width:"100%", borderCollapse:"collapse" }}>
                         <thead style={{ background:C.surface }}><tr>
                           <TH>Name</TH><TH>Email</TH><TH>Role</TH><TH>Conversion / SLA</TH><TH>Status</TH><TH>Last Login</TH><TH>Actions</TH>
                         </tr></thead>
@@ -1554,7 +1509,7 @@
                             </React.Fragment>
                           );})}
                         </tbody>
-                      </table>
+                      </table></div>
                     </Card>
                   )}
 
@@ -1574,7 +1529,7 @@
                   {/* Invite modal */}
                   {showInviteModal && (
                     <div style={{ position:"fixed", inset:0, background:"rgba(8,11,16,0.88)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
-                      <div style={{ background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, width:420, padding:24 }}>
+                      <div style={{ background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, width:420, maxWidth:"92vw", maxHeight:"90vh", overflowY:"auto", padding:24 }}>
                         {inviteSent ? (
                           <div style={{ textAlign:"center", padding:"20px 0" }}>
                             <div style={{ fontSize:28, marginBottom:10 }}>✓</div>
@@ -1653,7 +1608,7 @@
 
           {showSuspendConfirm&&(
             <div style={{ position:"fixed", inset:0, background:"rgba(8,11,16,0.85)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
-              <div style={{ background:C.card, border:`1px solid ${C.red}30`, borderRadius:10, width:400, padding:24 }}>
+              <div style={{ background:C.card, border:`1px solid ${C.red}30`, borderRadius:10, width:400, maxWidth:"92vw", maxHeight:"90vh", overflowY:"auto", padding:24 }}>
                 <div style={{ fontSize:14, fontWeight:700, color:C.redText, fontFamily:C.sans, marginBottom:10 }}>Suspend FI</div>
                 <div style={{ fontSize:12, color:C.textSec, fontFamily:C.sans, marginBottom:16, lineHeight:1.6 }}>Suspending <strong style={{ color:C.text }}>{fi.name}</strong> will immediately remove them from the routing engine. All pending leads will cascade to the next eligible FI.</div>
                 <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}><Btn onClick={()=>setShowSuspendConfirm(false)}>Cancel</Btn><Btn danger onClick={()=>setShowSuspendConfirm(false)}>Confirm Suspension</Btn></div>
@@ -1692,7 +1647,7 @@
       };
 
       return (
-        <div style={{ display:"flex", height:"100vh", background:C.bg, fontFamily:C.sans, alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
+        <div style={{ display:"flex", minHeight:"100vh", background:C.bg, fontFamily:C.sans, alignItems:"center", justifyContent:"center", overflow:"auto", padding:"24px 12px" }}>
           <style>{`* { box-sizing:border-box; margin:0; padding:0; }
             ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:${C.border}; border-radius:2px; }
             button { cursor:pointer; } button:focus,input:focus,select:focus { outline:none; }
@@ -1713,7 +1668,7 @@
           </div>
 
           {/* Login card */}
-          <div style={{ position:"relative", zIndex:1, width:440, background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, animation:"fadeUp 0.4s ease" }}>
+          <div style={{ position:"relative", zIndex:1, width:440, maxWidth:"92vw", background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, animation:"fadeUp 0.4s ease" }}>
             {/* Card header */}
             <div style={{ padding:"18px 22px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", gap:10 }}>
               <div style={{ width:30, height:30, borderRadius:6, background:C.accent, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:12, color:C.bg, fontFamily:C.mono }}>CB</div>
@@ -1823,8 +1778,25 @@
       if (!loggedIn) return <LoginPage onLogin={() => setLoggedIn(true)} />;
 
       return (
-        <div style={{ display:"flex", height:"100vh", background:C.bg, fontFamily:C.sans, overflow:"hidden" }}>
-          <style>{`* { box-sizing:border-box; margin:0; padding:0; } ::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:${C.border}; border-radius:2px; } input { font-family:${C.sans}; } button { font-family:${C.sans}; }`}</style>
+        <div className="cv-shell" style={{ display:"flex", height:"100vh", background:C.bg, fontFamily:C.sans, overflow:"hidden" }}>
+          <style>{`* { box-sizing:border-box; margin:0; padding:0; } ::-webkit-scrollbar { width:4px; height:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:${C.border}; border-radius:2px; } input { font-family:${C.sans}; } button { font-family:${C.sans}; }
+            @media (max-width:860px){
+              .cv-shell{ flex-direction:column !important; }
+              .cv-sidebar{ width:100% !important; height:auto !important; flex-direction:row !important; align-items:center; border-right:none !important; border-bottom:1px solid ${C.border} !important; overflow-x:auto; overflow-y:hidden; flex-shrink:0; }
+              .cv-side-top{ display:none !important; }
+              .cv-side-foot{ display:none !important; }
+              .cv-nav{ display:flex !important; flex-direction:row !important; overflow-y:hidden !important; padding:6px !important; gap:2px; }
+              .cv-nav > div{ display:flex !important; margin-bottom:0 !important; align-items:center; }
+              .cv-nav > div > div:first-child{ display:none !important; }
+              .cv-nav button{ width:auto !important; white-space:nowrap; }
+              .cv-topbar{ height:auto !important; flex-wrap:wrap; gap:6px 10px; padding:10px 16px !important; }
+              .cv-pipe{ flex-direction:column !important; overflow:auto !important; }
+              .cv-detail{ width:100% !important; border-left:none !important; border-top:1px solid ${C.border} !important; }
+              .cv-grid{ grid-template-columns:1fr 1fr !important; }
+              .cv-tablewrap{ overflow-x:auto !important; -webkit-overflow-scrolling:touch; }
+              .cv-tablewrap table{ min-width:680px; }
+            }
+            @media (max-width:480px){ .cv-grid{ grid-template-columns:1fr !important; } }`}</style>
           <Sidebar active={active} onNav={setActive}/>
           <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
             <Topbar title={title} sub={sub} actions={<>

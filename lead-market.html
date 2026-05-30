@@ -132,8 +132,8 @@
       ];
       const nav = allNav.filter(n => n.roles.includes(role));
       return (
-        <div style={{ width: 220, background: C.sidebar, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", flexShrink: 0 }}>
-          <div style={{ padding: "18px 16px 14px", borderBottom: `1px solid ${C.border}` }}>
+        <div className="lm-sidebar" style={{ width: 220, background: C.sidebar, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", flexShrink: 0 }}>
+          <div className="lm-side-top" style={{ padding: "18px 16px 14px", borderBottom: `1px solid ${C.border}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accent, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, color: "#09101A", fontFamily: C.mono }}>CB</div>
               <div><div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.sans }}>Lead Market</div><div style={{ fontSize: 9, color: C.textTer, letterSpacing: "0.5px", fontFamily: C.mono }}>FI PORTAL</div></div>
@@ -146,7 +146,7 @@
               <div style={{ fontSize: 10, color: C.textSec, fontFamily: C.sans, marginTop:2 }}>{role} · Active</div>
             </div>
           </div>
-          <div style={{ flex: 1, padding: "10px 8px" }}>
+          <div className="lm-nav" style={{ flex: 1, padding: "10px 8px" }}>
             {nav.map(({ id, label, badge }) => (
               <button key={id} onClick={() => onNav(id)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderRadius: 7, border: "none", background: active === id ? C.accentDim : "transparent", color: active === id ? C.accent : C.textSec, fontSize: 13, fontWeight: active === id ? 600 : 400, cursor: "pointer", width: "100%", textAlign: "left", fontFamily: C.sans, marginBottom: 2 }}>
                 {label}
@@ -154,7 +154,7 @@
               </button>
             ))}
           </div>
-          <div style={{ padding: "10px 14px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="lm-side-foot" style={{ padding: "10px 14px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 30, height: 30, borderRadius: 15, background: C.blueDim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: C.blue, fontFamily: C.mono }}>MK</div>
             <div><div style={{ fontSize: 12, fontWeight: 600, color: C.text, fontFamily: C.sans }}>Manisha Kapoor</div><div style={{ fontSize: 10, color: C.textTer, fontFamily: C.sans }}>Credit Manager</div></div>
           </div>
@@ -164,8 +164,8 @@
 
     // ─── Topbar ─────────────────────────────────────────────────────────────
     const Topbar = ({ title, sub, actions }) => (
-      <div style={{ height: 54, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", padding: "0 22px", gap: 12, flexShrink: 0 }}>
-        <div style={{ flex: 1 }}>
+      <div className="lm-topbar" style={{ height: 54, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", padding: "0 22px", gap: 12, flexShrink: 0 }}>
+        <div style={{ flex: 1, minWidth: 140 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: C.sans }}>{title}</div>
           {sub && <div style={{ fontSize: 10, color: C.textTer, fontFamily: C.sans }}>{sub}</div>}
         </div>
@@ -228,8 +228,8 @@
       };
 
       return (
-        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+        <div className="lm-feed" style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          <div className="lm-feed-list" style={{ flex: 1, overflowY: "auto", padding: 20 }}>
             {/* Filter bar */}
             <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
               <select value={filters.product} onChange={e => setFilters(f=>({...f,product:e.target.value}))} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${C.inputBorder}`, background: C.input, color: C.text, fontSize: 12, fontFamily: C.sans, outline: "none" }}>
@@ -274,7 +274,7 @@
               const pc = PRODUCT_COLOR[l.product] || PRODUCT_COLOR["Personal Loan"];
               return (
                 <Card key={l.id} glow={isAccepted} onClick={() => setDetail(l.id)} style={{ marginBottom: 10, cursor: "pointer" }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                  <div className="lm-card" style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flexShrink: 0 }}>
                       <ScorePill band={l.scoreBand}/>
                       <Badge label={l.product.split(" ")[0]} color={pc.c} bg={pc.bg} s={9}/>
@@ -287,7 +287,7 @@
                         {/* Iteration count — pending business confirmation (PRD NOQ-2 / OQ-12) */}
                         {l.iterations > 0 && <Badge label={`Seen by ${l.iterations} FI${l.iterations>1?"s":""}`} color={C.textSec} s={9}/>}
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "4px 14px", marginBottom:8 }}>
+                      <div className="lm-card-fields" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "4px 14px", marginBottom:8 }}>
                         {[
                           { l:"Loan Band",     v: l.amount                            },
                           { l:"Income Band",   v: l.income                            },
@@ -306,7 +306,7 @@
                         ))}
                       </div>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0, minWidth: 120 }}>
+                    <div className="lm-card-actions" style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0, minWidth: 120 }}>
                       <CompleteBar pct={l.completeness}/>
                       <div style={{ marginTop:4 }}>
                         {isAccepted
@@ -361,7 +361,7 @@
             if (!l) return null;
             const isAcc = accepted[l.id];
             return (
-              <div style={{ width: 320, borderLeft: `1px solid ${C.border}`, background: C.sidebar, overflowY: "auto", padding: 18, flexShrink: 0 }}>
+              <div className="lm-detail" style={{ width: 320, borderLeft: `1px solid ${C.border}`, background: C.sidebar, overflowY: "auto", padding: 18, flexShrink: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.sans }}>Lead Detail</div>
                   <button onClick={() => setDetail(null)} style={{ background: "none", border: "none", color: C.textSec, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>
@@ -511,7 +511,7 @@
             </div>
           </Card>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
+          <div className="lm-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
             {[
               { l:"Leads Accepted (Apr)",   v:"28",    c:C.accent },
               { l:"Disbursed (Apr)",        v:"22",    c:C.accent },
@@ -525,7 +525,7 @@
             ))}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+          <div className="lm-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <Card>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 14 }}>Accepted vs Disbursed</div>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 110 }}>
@@ -570,7 +570,7 @@
 
           <Card>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 12 }}>TAT Benchmarking vs Platform Average</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+            <div className="lm-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
               {[
                 { stage:"Accept → Underwriting", you:"0.8d", avg:"1.2d", better:true  },
                 { stage:"Underwriting → Sanction",you:"2.1d", avg:"3.4d", better:true  },
@@ -642,7 +642,7 @@
       });
       return (
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
+          <div className="lm-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
             {[
               { l:"Disbursed AUM (May)", v:"₹28.6 Cr", c:C.accent },
               { l:"Commission Due",      v:"₹30,900",   c:C.amber  },
@@ -701,7 +701,7 @@
                 {/* Expanded loan breakdown */}
                 {expanded[inv.inv] && (
                   <div style={{ borderTop:`1px solid ${C.border}` }}>
-                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                    <div className="lm-tablewrap"><table style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead style={{ background:C.surface }}>
                         <tr>
                           {["Lead ID","Product","Disbursed Amt","Fee Rate","Commission","GST (18%)"].map(h=>(
@@ -721,7 +721,7 @@
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </table></div>
                   </div>
                 )}
               </Card>
@@ -794,7 +794,7 @@
             <div style={{ fontSize:13, fontWeight:700, color:C.text, fontFamily:C.sans }}>Current Settings</div>
             <Btn outline onClick={() => openModal()}>Request Change</Btn>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:12, marginBottom:24 }}>
+          <div className="lm-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:12, marginBottom:24 }}>
             {MY_PRODUCTS.map(p => {
               const pc = PRODUCT_COLOR[p.product] || { c:C.blue, bg:C.blueDim };
               return (
@@ -855,7 +855,7 @@
           {/* My Requests */}
           <div style={{ fontSize:13, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:12 }}>My Requests</div>
           <Card style={{ padding:0 }}>
-            <table style={{ width:"100%", borderCollapse:"collapse" }}>
+            <div className="lm-tablewrap"><table style={{ width:"100%", borderCollapse:"collapse" }}>
               <thead>
                 <tr>
                   {["Request ID","Type","Details","Submitted","Effective From","Status",""].map(h => (
@@ -890,13 +890,13 @@
                   </React.Fragment>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </Card>
 
           {/* 3-Step Request Change Modal */}
           {showModal && (
             <div style={{ position:"fixed", inset:0, background:"rgba(9,16,26,0.88)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
-              <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, width:500, padding:24 }}>
+              <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, width:500, maxWidth:"92vw", maxHeight:"90vh", overflowY:"auto", padding:24 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
                   <div>
                     <div style={{ fontSize:14, fontWeight:700, color:C.text, fontFamily:C.sans }}>Request Change</div>
@@ -1140,7 +1140,7 @@
           {/* Request Docs modal */}
           {docsModal && (
             <div style={{ position:"fixed", inset:0, background:"rgba(9,16,26,0.88)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
-              <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, width:420, padding:24 }}>
+              <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, width:420, maxWidth:"92vw", maxHeight:"90vh", overflowY:"auto", padding:24 }}>
                 <div style={{ fontSize:14, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:8 }}>Request Additional Documents</div>
                 <div style={{ fontSize:12, color:C.textSec, fontFamily:C.sans, marginBottom:16 }}>The lead applicant will be notified via Connector to submit missing documents.</div>
                 <div style={{ padding:"10px 12px", borderRadius:7, background:C.amberDim, border:`1px solid ${C.amber}30`, fontSize:11, color:C.amber, fontFamily:C.sans, marginBottom:20 }}>
@@ -1167,7 +1167,7 @@
             return (
               <Card key={l.id} style={{ marginBottom:12 }}>
                 {/* Header row */}
-                <div style={{ display:"flex", alignItems:"flex-start", gap:14, marginBottom:12 }}>
+                <div className="lm-card" style={{ display:"flex", alignItems:"flex-start", gap:14, marginBottom:12 }}>
                   <div style={{ display:"flex", flexDirection:"column", gap:6, flexShrink:0 }}>
                     <ScorePill band={l.scoreBand}/>
                     <Badge label={l.product.split(" ")[0]} color={pc.c} bg={pc.bg} s={9}/>
@@ -1178,7 +1178,7 @@
                       <Badge label={`Accepted ${l.acceptedHrsAgo}h ago`} color={C.accent} s={9}/>
                       {curStatus && <Badge label={curStatus} color={curStatus==="Disbursed"?C.accent:curStatus==="Declined"?C.red:C.amber} s={9}/>}
                     </div>
-                    <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"4px 14px" }}>
+                    <div className="lm-card-fields" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"4px 14px" }}>
                       {[
                         { k:"Full Name",  v:l.name       },
                         { k:"Phone",      v:l.phone      },
@@ -1195,7 +1195,7 @@
                     </div>
                   </div>
                   {/* Per-stage SLA countdown with score-impact preview */}
-                  <div style={{ flexShrink:0, minWidth:168 }}>
+                  <div className="lm-card-actions" style={{ flexShrink:0, minWidth:168 }}>
                     <div style={{ padding:"8px 10px", borderRadius:7, background:slaColor+"12", border:`1px solid ${slaColor}40` }}>
                       <div style={{ fontSize:9, fontWeight:700, color:slaColor, fontFamily:C.sans, marginBottom:2, textTransform:"uppercase", letterSpacing:"0.3px" }}>SLA · {l.slaStage}</div>
                       <div style={{ fontSize:8, color:C.textTer, fontFamily:C.sans, marginBottom:5 }}>Stage target: {l.slaTotalHrs}h</div>
@@ -1313,7 +1313,7 @@
             <Btn outline onClick={()=>setUsers(u=>[...u,{ name:"New User", email:"new.user@hdfcbank.com", role:"fi_rm", status:"Invited", note:"Invite pending" }])}>+ Invite User</Btn>
           </div>
           <Card style={{ padding:0, marginBottom:26 }}>
-            <table style={{ width:"100%", borderCollapse:"collapse" }}>
+            <div className="lm-tablewrap"><table style={{ width:"100%", borderCollapse:"collapse" }}>
               <thead><tr>
                 {["User","Email","Role","Conversion / SLA","Status",""].map(h=>(
                   <th key={h} style={{ padding:"8px 14px", fontSize:9, fontWeight:600, color:C.textTer, textAlign:"left", textTransform:"uppercase", letterSpacing:"0.6px", borderBottom:`1px solid ${C.border}`, fontFamily:C.sans }}>{h}</th>
@@ -1368,7 +1368,7 @@
                   </React.Fragment>
                 );})}
               </tbody>
-            </table>
+            </table></div>
           </Card>
 
           {/* Source IP allowlist — item 16 */}
@@ -1433,18 +1433,22 @@
 
 
       return (
-        <div style={{ display:"flex", height:"100vh", background:C.bg, fontFamily:C.sans, overflow:"hidden" }}>
+        <div className="lm-login" style={{ display:"flex", height:"100vh", background:C.bg, fontFamily:C.sans, overflow:"hidden" }}>
           <style>{`* { box-sizing:border-box; margin:0; padding:0; }
             ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:${C.border}; border-radius:2px; }
             button { cursor:pointer; } button:focus,input:focus,select:focus,textarea:focus { outline:none; }
             input,select { font-family:${C.sans}; color:${C.text} !important; } select option { background:${C.input}; }
             @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
             @keyframes fadeSlide { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+            @media (max-width:760px){
+              .lm-login{ height:auto !important; min-height:100vh; overflow:auto !important; }
+              .lm-login-left{ display:none !important; }
+            }
           `}</style>
 
           {/* ── Left branded panel ──────────────────────────────────────── */}
           {/* Subtle grid texture + accent glow create depth without clutter */}
-          <div style={{ width:"42%", background:C.sidebar, borderRight:`1px solid ${C.border}`, display:"flex", flexDirection:"column", padding:"40px 40px 32px", position:"relative", overflow:"hidden" }}>
+          <div className="lm-login-left" style={{ width:"42%", background:C.sidebar, borderRight:`1px solid ${C.border}`, display:"flex", flexDirection:"column", padding:"40px 40px 32px", position:"relative", overflow:"hidden" }}>
             {/* Grid texture */}
             <div style={{ position:"absolute", inset:0, backgroundImage:`linear-gradient(${C.border} 1px, transparent 1px), linear-gradient(90deg, ${C.border} 1px, transparent 1px)`, backgroundSize:"28px 28px", opacity:0.45 }}/>
             {/* Soft accent glow anchors brand color at bottom */}
@@ -1583,8 +1587,29 @@
       const { title, sub, component: View } = views[active] || views.feed;
 
       return (
-        <div style={{ display:"flex", height:"100vh", background:C.bg, fontFamily:C.sans, overflow:"hidden" }}>
-          <style>{`* { box-sizing:border-box; margin:0; padding:0; } ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:${C.border}; border-radius:2px; } select,input,textarea { color:${C.text} !important; } select option { background:${C.input}; } button { cursor:pointer; } button:focus,input:focus,select:focus,textarea:focus { outline:none; }`}</style>
+        <div className="lm-shell" style={{ display:"flex", height:"100vh", background:C.bg, fontFamily:C.sans, overflow:"hidden" }}>
+          <style>{`* { box-sizing:border-box; margin:0; padding:0; } ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:${C.border}; border-radius:2px; } select,input,textarea { color:${C.text} !important; } select option { background:${C.input}; } button { cursor:pointer; } button:focus,input:focus,select:focus,textarea:focus { outline:none; }
+            @media (max-width:860px){
+              .lm-shell{ flex-direction:column !important; }
+              .lm-sidebar{ width:100% !important; height:auto !important; flex-direction:row !important; align-items:center; border-right:none !important; border-bottom:1px solid ${C.border} !important; overflow-x:auto; overflow-y:hidden; flex-shrink:0; }
+              .lm-side-top{ display:none !important; }
+              .lm-side-foot{ display:none !important; }
+              .lm-nav{ display:flex !important; flex-direction:row !important; padding:6px !important; gap:2px; }
+              .lm-nav button{ width:auto !important; white-space:nowrap; }
+              .lm-topbar{ height:auto !important; flex-wrap:wrap; gap:6px 10px; padding:10px 16px !important; }
+              .lm-feed{ flex-direction:column !important; overflow:auto !important; }
+              .lm-feed-list{ overflow:visible !important; }
+              .lm-detail{ width:100% !important; border-left:none !important; border-top:1px solid ${C.border} !important; }
+              .lm-grid{ grid-template-columns:1fr 1fr !important; }
+              .lm-tablewrap{ overflow-x:auto !important; -webkit-overflow-scrolling:touch; }
+              .lm-tablewrap table{ min-width:640px; }
+              .lm-card{ flex-direction:column !important; gap:12px !important; }
+              .lm-card-actions{ min-width:0 !important; width:100% !important; }
+              .lm-card-fields{ grid-template-columns:1fr 1fr !important; }
+            }
+            @media (max-width:480px){
+              .lm-grid{ grid-template-columns:1fr !important; }
+            }`}</style>
           <Sidebar active={active} onNav={setActive} fi="HDFC Bank Ltd." role={role} slaScore={slaScore}/>
           <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
             <Topbar title={title} sub={sub} actions={<>
