@@ -576,6 +576,41 @@
               </div>
             </div>
 
+            {/* Competitive Earnings — anonymised peer benchmark (M15, Phase 2) */}
+            <div style={{ background:C.bgCard, borderRadius:18, padding:"16px", border:`1px solid ${C.accentMid}`, marginBottom:20 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                <I.TrendUp c={C.accent} s={16}/>
+                <div style={{ fontSize:14, fontWeight:700, color:C.text }}>How you compare</div>
+                <span style={{ fontSize:10, padding:"2px 7px", borderRadius:6, background:C.accentDim, color:C.accent, marginLeft:"auto" }}>Mumbai · Personal Loan</span>
+              </div>
+              <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:10 }}>
+                <span style={{ fontSize:26, fontWeight:800, color:C.accent, letterSpacing:"-0.5px" }}>Top 18%</span>
+                <span style={{ fontSize:12, color:C.textSec }}>of connectors in your city</span>
+              </div>
+              {/* Percentile bar */}
+              <div style={{ height:8, borderRadius:4, background:C.bgInput, position:"relative", marginBottom:6 }}>
+                <div style={{ width:"82%", height:"100%", borderRadius:4, background:`linear-gradient(90deg, ${C.blue}, ${C.accent})` }}/>
+                <div style={{ position:"absolute", left:"82%", top:-3, width:14, height:14, borderRadius:7, background:"#fff", border:`2px solid ${C.accent}`, transform:"translateX(-50%)" }}/>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:12 }}>
+                <span style={{ fontSize:10, color:C.textTer }}>Bottom</span>
+                <span style={{ fontSize:10, color:C.textTer }}>You</span>
+                <span style={{ fontSize:10, color:C.textTer }}>Top</span>
+              </div>
+              <div style={{ display:"flex", gap:10 }}>
+                {[
+                  { l:"Your earnings / lead", v:"₹3,640", c:C.accent },
+                  { l:"City median / lead",   v:"₹2,810", c:C.textSec },
+                ].map(({ l, v, c })=>(
+                  <div key={l} style={{ flex:1, background:C.bgSurface, borderRadius:10, padding:"10px 12px", border:`1px solid ${C.border}` }}>
+                    <div style={{ fontSize:9, color:C.textTer, textTransform:"uppercase", letterSpacing:"0.3px" }}>{l}</div>
+                    <div style={{ fontSize:16, fontWeight:700, color:c, marginTop:3 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize:10, color:C.textTer, marginTop:10, lineHeight:1.5 }}>Anonymised peer benchmark. Other connectors are never named.</div>
+            </div>
+
             <div style={{ fontSize:14, fontWeight:700, color:C.text, marginBottom:12 }}>Monthly Breakdown</div>
             {months.map((m,i)=>(
               <div key={i} style={{ background:C.bgCard, borderRadius:14, padding:"14px 16px", marginBottom:10, border:`1px solid ${C.border}` }}>
@@ -606,6 +641,9 @@
     const SettingsScreen = ({ onBack, onLogout }) => {
       const [lang, setLang] = useState("EN");
       const [notifs, setNotifs] = useState(true);
+      const FI_LIST = ["HDFC Bank","ICICI Bank","Axis Bank","Bajaj Finserv","Kotak Mahindra","Muthoot Finance"];
+      const [hiddenFIs, setHiddenFIs] = useState(["Bajaj Finserv"]);
+      const toggleFI = fi => setHiddenFIs(p => p.includes(fi) ? p.filter(x=>x!==fi) : [...p, fi]);
       return (
         <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
           <Header title="Profile & Settings" onBack={onBack}/>
@@ -644,6 +682,25 @@
                 <div><div style={{ fontSize:14, fontWeight:600, color:C.text }}>eKYC Verification</div><div style={{ fontSize:12, color:C.amber }}>Aadhaar OTP + PAN · Available Phase 2</div></div>
                 <Chip label="Pending" color={C.amber} bg={C.amberDim}/>
               </div>
+            </div>
+
+            {/* Lead Visibility Controls — hide my leads from specific FIs (M16, profile-level) */}
+            <div style={{ background:C.bgCard, borderRadius:14, border:`1px solid ${C.border}`, marginBottom:16, padding:"14px 16px" }}>
+              <div style={{ marginBottom:4 }}>
+                <div style={{ fontSize:14, fontWeight:600, color:C.text }}>Lead Visibility</div>
+                <div style={{ fontSize:12, color:C.textSec, lineHeight:1.5 }}>Hide your leads from specific FIs — useful if you also work for them directly. Hidden FIs won't receive your leads.</div>
+              </div>
+              <div style={{ marginTop:10 }}>
+                {FI_LIST.map(fi=>{ const hidden=hiddenFIs.includes(fi); return (
+                  <div key={fi} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:`1px solid ${C.border}` }}>
+                    <span style={{ fontSize:13, color:hidden?C.textSec:C.text }}>{fi}{hidden && <span style={{ fontSize:10, color:C.red, marginLeft:8 }}>hidden</span>}</span>
+                    <button onClick={()=>toggleFI(fi)} style={{ width:44, height:24, borderRadius:12, background:hidden?C.red:C.bgInput, border:`1px solid ${hidden?C.red:C.border}`, cursor:"pointer", position:"relative", padding:0 }}>
+                      <div style={{ width:18, height:18, borderRadius:9, background:"#fff", position:"absolute", top:2, left:hidden?22:3, transition:"left 0.2s" }}/>
+                    </button>
+                  </div>
+                );})}
+              </div>
+              <div style={{ fontSize:10, color:C.textTer, marginTop:10, lineHeight:1.5 }}>Pending business confirmation (routing-level control). Editable any time — not part of onboarding.</div>
             </div>
 
             <button onClick={onLogout} style={{ width:"100%", padding:"14px", borderRadius:14, background:C.redDim, border:`1px solid ${C.red}30`, color:C.red, fontSize:15, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Sign Out</button>

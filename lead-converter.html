@@ -683,12 +683,12 @@
     const PipelineView = () => {
       const [selected, setSelected] = useState(null);
       const leads = [
-        { id:"L-3847", name:"Rajesh Kumar",  product:"Personal Loan", amount:"₹2.5L", stage:"Sanctioned",   fi:"HDFC",    sla:92, score:748, age:"6h"  },
-        { id:"L-3844", name:"Priya Sharma",  product:"Home Loan",     amount:"₹18L",  stage:"Under Review",  fi:"ICICI",   sla:55, score:701, age:"14h" },
-        { id:"L-3841", name:"Anita Rao",     product:"Business Loan", amount:"₹5L",   stage:"Sent to FI",   fi:"Axis",    sla:28, score:689, age:"22h" },
-        { id:"L-3838", name:"Vijay Kumar",   product:"Two-Wheeler",   amount:"₹65K",  stage:"AI Enrichment",fi:"—",       sla:80, score:712, age:"3h"  },
-        { id:"L-3831", name:"Suresh Patel",  product:"Personal Loan", amount:"₹1L",   stage:"Sent to FI",   fi:"Bajaj",   sla: 8, score:634, age:"48h" },
-        { id:"L-3827", name:"Kavita Singh",  product:"Gold Loan",     amount:"₹1.2L", stage:"Ready for FI", fi:"—",       sla:65, score:723, age:"8h"  },
+        { id:"L-3847", name:"Rajesh Kumar",  mobile:"+91 98765 43210", product:"Personal Loan", amount:"₹2.5L", stage:"Sanctioned",   fi:"HDFC",    sla:92, score:748, age:"6h"  },
+        { id:"L-3844", name:"Priya Sharma",  mobile:"+91 87654 32109", product:"Home Loan",     amount:"₹18L",  stage:"Under Review",  fi:"ICICI",   sla:55, score:701, age:"14h" },
+        { id:"L-3841", name:"Anita Rao",     mobile:"+91 76543 21098", product:"Business Loan", amount:"₹5L",   stage:"Sent to FI",   fi:"Axis",    sla:28, score:689, age:"22h" },
+        { id:"L-3838", name:"Vijay Kumar",   mobile:"+91 99887 76655", product:"Two-Wheeler",   amount:"₹65K",  stage:"AI Enrichment",fi:"—",       sla:80, score:712, age:"3h"  },
+        { id:"L-3831", name:"Suresh Patel",  mobile:"+91 90123 45678", product:"Personal Loan", amount:"₹1L",   stage:"Sent to FI",   fi:"Bajaj",   sla: 8, score:634, age:"48h" },
+        { id:"L-3827", name:"Kavita Singh",  mobile:"+91 91234 56780", product:"Gold Loan",     amount:"₹1.2L", stage:"Ready for FI", fi:"—",       sla:65, score:723, age:"8h"  },
       ];
       const selectedLead = selected ? leads.find(l=>l.id===selected) : null;
       return (
@@ -737,6 +737,7 @@
               <div style={{ fontFamily: C.mono, fontSize: 11, color: C.accent, marginBottom: 12 }}>{selectedLead.id}</div>
               {[
                 ["Borrower", selectedLead.name],
+                ["Mobile",   selectedLead.mobile],
                 ["Product",  selectedLead.product],
                 ["Amount",   selectedLead.amount],
                 ["FI",       selectedLead.fi],
@@ -1065,6 +1066,17 @@
       { id:"CR-038", fi:"FI-001", type:"Remove Pincodes",     details:"Remove 380001 from Personal Loan",     by:"Arjun Mehta",  at:"2026-04-08 16:45", status:"rejected", reason:"Pincode still in active waterfall — defer to May cycle" },
     ];
 
+    // Per-user lead detail (P3) — leads handled by each FI org user
+    const USER_LEADS = {
+      "U-001": [ {id:"LM-8810", product:"Personal Loan", status:"Disbursed", sla:"On time"}, {id:"LM-8803", product:"Home Loan", status:"Hard Sanctioned", sla:"On time"}, {id:"LM-8771", product:"Business Loan", status:"Disbursed", sla:"On time"} ],
+      "U-002": [ {id:"LM-8788", product:"Personal Loan", status:"Soft Sanctioned", sla:"On time"} ],
+      "U-003": [ {id:"LM-8762", product:"Gold Loan", status:"Cascaded", sla:"Breached"}, {id:"LM-8755", product:"Personal Loan", status:"Cascaded", sla:"Breached"} ],
+      "U-004": [ {id:"LM-8740", product:"Home Loan", status:"Disbursed", sla:"On time"}, {id:"LM-8722", product:"Personal Loan", status:"Declined", sla:"On time"} ],
+      "U-005": [ {id:"LM-8701", product:"Business Loan", status:"Disbursed", sla:"On time"} ],
+      "U-007": [ {id:"LM-8690", product:"Two-Wheeler", status:"Cascaded", sla:"Breached"} ],
+      "U-008": [ {id:"LM-8675", product:"Personal Loan", status:"Soft Sanctioned", sla:"On time"} ],
+    };
+
     // ─── VIEW: FI Management ─────────────────────────────────────────────────
     const FiManagementView = () => {
       const [selectedFI, setSelectedFI]         = useState(null);
@@ -1086,6 +1098,7 @@
       const [showInviteModal, setShowInviteModal]     = useState(false);
       const [inviteData, setInviteData]               = useState({ name:"", email:"", role:"fi_manager" });
       const [inviteSent, setInviteSent]               = useState(false);
+      const [openUser, setOpenUser]                   = useState(null);
       const [fiUsers, setFiUsers]                     = useState({
         "FI-001": [
           { id:"U-001", name:"Arjun Mehta",    email:"arjun.mehta@hdfcbank.com",   role:"fi_manager",  status:"active",    lastLogin:"2026-04-14 09:32", provisioned:"2025-11-02" },
@@ -1217,7 +1230,7 @@
           </div>
 
           <div style={{ display:"flex", gap:0, borderBottom:`1px solid ${C.border}`, padding:"0 20px", flexShrink:0, background:C.sidebar }}>
-            {[{id:"overview",label:"Overview"},{id:"eligibility",label:"Eligibility & Products"},{id:"requests",label:"Change Requests",badge:pendingCRCount||null},{id:"billing",label:"Billing & Commission"},{id:"users",label:"Users"}].map(({id,label,badge})=>(
+            {[{id:"overview",label:"Overview"},{id:"eligibility",label:"Eligibility & Products"},{id:"billing",label:"Billing & Commission"},{id:"users",label:"Users"}].map(({id,label,badge})=>(
               <button key={id} onClick={()=>setActiveTab(id)} style={{ padding:"10px 14px", background:"none", border:"none", borderBottom:`2px solid ${activeTab===id?C.accent:"transparent"}`, color:activeTab===id?C.accent:C.textSec, fontSize:12, fontWeight:activeTab===id?600:400, cursor:"pointer", fontFamily:C.sans, display:"flex", alignItems:"center", gap:6 }}>
                 {label}{badge?<span style={{ fontSize:9, fontWeight:700, padding:"1px 5px", borderRadius:8, background:C.amberDim, color:C.amber, fontFamily:C.mono }}>{badge}</span>:null}
               </button>
@@ -1475,24 +1488,41 @@
                     <Card style={{ padding:0, overflow:"hidden" }}>
                       <table style={{ width:"100%", borderCollapse:"collapse" }}>
                         <thead style={{ background:C.surface }}><tr>
-                          <TH>Name</TH><TH>Email</TH><TH>Role</TH><TH>Status</TH><TH>Last Login</TH><TH>Provisioned</TH><TH>Actions</TH>
+                          <TH>Name</TH><TH>Email</TH><TH>Role</TH><TH>Conversion / SLA</TH><TH>Status</TH><TH>Last Login</TH><TH>Actions</TH>
                         </tr></thead>
                         <tbody>
-                          {users.map(u => (
-                            <tr key={u.id}
+                          {users.map(u => {
+                            const uLeads = USER_LEADS[u.id] || [];
+                            const conv = uLeads.filter(l=>/Sanction|Disbursed/.test(l.status)).length;
+                            const breached = uLeads.filter(l=>l.sla==="Breached").length;
+                            const convPct = uLeads.length ? Math.round(conv/uLeads.length*100) : 0;
+                            const open = openUser===u.id;
+                            const leadColor = s => /Cascaded|Declined/.test(s) ? C.red : /Sanction|Disbursed/.test(s) ? C.accent : C.amber;
+                            return (
+                            <React.Fragment key={u.id}>
+                            <tr onClick={()=>uLeads.length && setOpenUser(open?null:u.id)}
+                              style={{ cursor:uLeads.length?"pointer":"default" }}
                               onMouseEnter={e=>e.currentTarget.style.background=C.surface}
                               onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                               <TD bold color={C.text}>
-                                {u.name}
+                                {uLeads.length?(open?"▾ ":"▸ "):""}{u.name}
                                 <div style={{ fontSize:9, color:C.textTer, fontFamily:C.mono }}>{u.id}</div>
                               </TD>
                               <TD mono color={C.textSec}>{u.email}</TD>
                               <TD><Badge label={roleLabel[u.role]} color={roleColor[u.role]} dot/></TD>
+                              <TD>
+                                {uLeads.length
+                                  ? <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                                      <span style={{ fontFamily:C.mono, fontWeight:700, fontSize:12, color:convPct>=70?C.accent:convPct>=50?C.amber:C.red }}>{convPct}%</span>
+                                      <span style={{ fontSize:10, color:C.textTer, fontFamily:C.sans }}>{conv}/{uLeads.length}</span>
+                                      {breached>0 && <Badge label={`${breached} SLA breach`} color={C.red} s={9}/>}
+                                    </div>
+                                  : <span style={{ fontSize:11, color:C.textTer, fontFamily:C.sans }}>—</span>}
+                              </TD>
                               <TD><Badge label={u.status} color={statusColor[u.status]} dot/></TD>
                               <TD mono color={u.lastLogin==="Never"?C.textTer:C.textSec}>{u.lastLogin}</TD>
-                              <TD mono color={C.textTer}>{u.provisioned}</TD>
                               <TD>
-                                <div style={{ display:"flex", gap:5 }}>
+                                <div style={{ display:"flex", gap:5 }} onClick={e=>e.stopPropagation()}>
                                   {u.status !== "pending" && (
                                     <Btn small danger={u.status==="active"} style={u.status==="suspended"?{color:C.accent,borderColor:C.accentMid}:{}}
                                       onClick={()=>toggleStatus(u.id)}>
@@ -1506,7 +1536,23 @@
                                 </div>
                               </TD>
                             </tr>
-                          ))}
+                            {open && (
+                              <tr><td colSpan={7} style={{ padding:"0 14px 12px 14px", background:C.surface }}>
+                                <div style={{ padding:"10px 12px", borderRadius:7, background:C.card, border:`1px solid ${C.border}` }}>
+                                  <div style={{ fontSize:9, fontWeight:700, color:C.textTer, fontFamily:C.sans, textTransform:"uppercase", letterSpacing:"0.4px", marginBottom:8 }}>Leads handled by {u.name}</div>
+                                  {uLeads.map(ld=>(
+                                    <div key={ld.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"6px 0", borderTop:`1px solid ${C.border}` }}>
+                                      <span style={{ fontSize:11, color:C.accent, fontFamily:C.mono, minWidth:70 }}>{ld.id}</span>
+                                      <span style={{ fontSize:11, color:C.text, fontFamily:C.sans, flex:1 }}>{ld.product}</span>
+                                      <Badge label={ld.status} color={leadColor(ld.status)} s={9}/>
+                                      <span style={{ fontSize:10, fontWeight:600, color:ld.sla==="Breached"?C.red:C.accent, fontFamily:C.sans, minWidth:60, textAlign:"right" }}>{ld.sla}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </td></tr>
+                            )}
+                            </React.Fragment>
+                          );})}
                         </tbody>
                       </table>
                     </Card>
@@ -1514,12 +1560,15 @@
 
                   {/* Role legend */}
                   <div style={{ marginTop:14, display:"flex", gap:16 }}>
-                    {[["Manager","fi_manager","Full portal access — lead feed, bids, analytics, billing"],["Viewer","fi_viewer","Read-only — lead feed and analytics only, no bid submission"]].map(([label,id,desc])=>(
+                    {[["Manager","fi_manager","Org admin — provisions sub-users, approves config changes, full access"],["Viewer","fi_viewer","Read-only — lead feed and analytics only, no bid submission"]].map(([label,id,desc])=>(
                       <div key={id} style={{ display:"flex", gap:8, alignItems:"flex-start" }}>
                         <Badge label={label} color={roleColor[id]} dot/>
                         <span style={{ fontSize:10, color:C.textTer, fontFamily:C.sans, lineHeight:1.5 }}>{desc}</span>
                       </div>
                     ))}
+                  </div>
+                  <div style={{ marginTop:10, padding:"8px 12px", borderRadius:6, background:C.surface, border:`1px solid ${C.border}`, fontSize:10, color:C.textTer, fontFamily:C.sans, lineHeight:1.5 }}>
+                    CreditBridge onboards only the FI Manager. Sub-users are provisioned by the FI Manager in Lead Market — this ops view is for visibility and per-user lead accountability (click a user to see their leads). Config change requests are handled in Lead Market, not here.
                   </div>
 
                   {/* Invite modal */}
@@ -1764,7 +1813,7 @@
         sla:        { title:"SLA Tracker",           sub:"Breach detection · Escalation", component: SlaView },
         compliance: { title:"Compliance Dashboard",  sub:"DPDP Act · RBI/2022-23/111 · Audit log", component: ComplianceView },
         analytics:  { title:"Analytics",            sub:"Conversion funnel · Revenue", component: AnalyticsView },
-        fi_management: { title:"FI Management", sub:"Onboarding · Eligibility · Change Requests · Bid Priority", component: FiManagementView },
+        fi_management: { title:"FI Management", sub:"Onboarding · Eligibility · Users & Lead Detail · Bid Priority", component: FiManagementView },
         config:     { title:"Platform Configuration",sub:"RBAC · FI config · System", component: () => <div style={{padding:40,color:C.textSec,fontFamily:C.sans}}>Configuration — Admin access required</div> },
       };
 
