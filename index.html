@@ -3,146 +3,254 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UI Designs — CreditBridge</title>
+  <title>CreditBridge — Design Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" />
   <style>
+    :root {
+      --bg: #0D1117;
+      --bg-2: #0A0E14;
+      --card: #151B27;
+      --card-2: #1A2233;
+      --border: #1E2640;
+      --border-2: #2A3350;
+      --text: #EEF0F8;
+      --muted: #8892A8;
+      --faint: #4D556A;
+      --accent: #00C896;
+      --accent-glow: rgba(0,200,150,0.25);
+      --accent-dim: rgba(0,200,150,0.12);
+      --p1: #4D9FFF;
+      --p2: #B06CFF;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #0D1117;
-      color: #EEF0F8;
+      background: var(--bg);
+      color: var(--text);
       font-family: 'Outfit', sans-serif;
       min-height: 100vh;
+      padding: 80px 24px 64px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 48px 24px;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
+    ::selection { background: var(--accent-glow); color: #fff; }
 
-    .logo {
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #00C896;
-      margin-bottom: 12px;
-    }
+    /* ambient orbs */
+    .bg-orbs { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(95px); opacity: 0.18; }
+    .orb-1 { width: 520px; height: 520px; background: var(--accent); top: -180px; right: -120px; animation: float1 18s ease-in-out infinite; }
+    .orb-2 { width: 420px; height: 420px; background: var(--p1); bottom: -160px; left: -120px; animation: float2 22s ease-in-out infinite; }
+    .orb-3 { width: 300px; height: 300px; background: var(--p2); top: 45%; left: 60%; opacity: 0.1; animation: float1 26s ease-in-out infinite; }
+    @keyframes float1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-40px,40px)} }
+    @keyframes float2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(50px,-30px)} }
 
-    h1 {
-      font-size: 32px;
-      font-weight: 700;
-      color: #EEF0F8;
-      margin-bottom: 8px;
-      text-align: center;
-    }
+    .wrap { position: relative; z-index: 1; width: 100%; max-width: 980px; display: flex; flex-direction: column; align-items: center; }
 
-    .subtitle {
-      font-size: 15px;
-      color: #8892A8;
-      margin-bottom: 56px;
-      text-align: center;
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 600; color: var(--accent);
+      background: var(--accent-dim); border: 1px solid var(--accent-glow);
+      padding: 6px 14px; border-radius: 100px; margin-bottom: 22px;
     }
+    .badge .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 var(--accent-glow)} 70%{box-shadow:0 0 0 9px transparent} 100%{box-shadow:0 0 0 0 transparent} }
+
+    .logo { font-size: 13px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+    .logo .dot { color: var(--text); }
+
+    h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 800; letter-spacing: -0.025em; text-align: center; line-height: 1.08; margin-bottom: 14px; }
+    h1 .grad { background: linear-gradient(120deg, var(--accent), var(--p1)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .subtitle { font-size: 15.5px; color: var(--muted); margin-bottom: 52px; text-align: center; max-width: 540px; line-height: 1.6; }
+
+    /* featured hero card */
+    a.hero-card {
+      display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 24px;
+      width: 100%; text-decoration: none; margin-bottom: 20px;
+      background: linear-gradient(135deg, rgba(0,200,150,0.10), rgba(77,159,255,0.06)), var(--card);
+      border: 1px solid var(--accent-glow); border-radius: 18px;
+      padding: 30px 32px; transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+    a.hero-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 24px 50px -28px var(--accent-glow); }
+    .hero-card .htext { display: flex; flex-direction: column; gap: 8px; }
+    .hero-card .card-title { font-size: 24px; }
+    .hero-card .card-desc { max-width: 560px; }
+    .hero-card .cta {
+      flex-shrink: 0; font-size: 14px; font-weight: 600; color: var(--bg);
+      background: var(--accent); padding: 12px 22px; border-radius: 10px;
+      display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; transition: gap 0.2s;
+    }
+    a.hero-card:hover .cta { gap: 12px; }
 
     .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-      width: 100%;
-      max-width: 960px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px; width: 100%;
     }
 
     a.card {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      background: #151B27;
-      border: 1px solid #1E2640;
-      border-radius: 16px;
-      padding: 28px 28px 24px;
-      text-decoration: none;
-      transition: border-color 0.2s, transform 0.2s;
+      display: flex; flex-direction: column; gap: 10px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 26px 26px 22px; text-decoration: none;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+      position: relative; overflow: hidden;
     }
+    a.card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background: var(--accent); opacity:0; transition: opacity 0.2s; }
+    a.card:hover { border-color: var(--border-2); transform: translateY(-3px); box-shadow: 0 20px 44px -28px rgba(0,0,0,0.8); }
+    a.card:hover::before { opacity: 1; }
 
-    a.card:hover {
-      border-color: #00C896;
-      transform: translateY(-2px);
+    .card-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+    .card-title { font-size: 20px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+    .card-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+    .card-arrow { margin-top: 8px; font-size: 20px; color: var(--faint); transition: color 0.2s; }
+    a.card:hover .card-arrow { color: var(--accent); }
+
+    /* section grouping */
+    .section { width: 100%; margin-top: 44px; }
+    .section-head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+    .section-label { font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+    .section-rule { flex: 1; height: 1px; background: var(--border); }
+    .section-count { font-size: 11px; color: var(--faint); white-space: nowrap; }
+
+    /* coming-soon card */
+    .card.soon {
+      display: flex; flex-direction: column; gap: 10px;
+      cursor: default; border-style: dashed; opacity: 0.78;
+      background: linear-gradient(var(--card), var(--bg-2));
     }
-
-    .card-tag {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: #00C896;
+    .card.soon:hover { transform: none; box-shadow: none; border-color: var(--border); }
+    .card.soon:hover::before { opacity: 0; }
+    .soon-pill {
+      align-self: flex-start; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--p2); background: rgba(176,108,255,0.12); border: 1px solid rgba(176,108,255,0.25);
+      padding: 4px 10px; border-radius: 100px;
     }
+    .card.soon .card-tag { color: var(--muted); }
 
-    .card-title {
-      font-size: 20px;
-      font-weight: 600;
-      color: #EEF0F8;
-    }
+    footer { margin-top: 64px; font-size: 13px; color: var(--faint); text-align: center; }
+    footer .fdiv { width: 56px; height: 1px; background: var(--border); margin: 0 auto 22px; }
 
-    .card-desc {
-      font-size: 14px;
-      color: #8892A8;
-      line-height: 1.6;
-    }
-
-    .card-arrow {
-      margin-top: 8px;
-      font-size: 20px;
-      color: #4D556A;
-      transition: color 0.2s;
-    }
-
-    a.card:hover .card-arrow {
-      color: #00C896;
-    }
-
-    footer {
-      margin-top: 64px;
-      font-size: 13px;
-      color: #4D556A;
+    @media (max-width: 640px) {
+      body { padding: 56px 18px 48px; }
+      a.hero-card { grid-template-columns: 1fr; gap: 18px; }
+      a.hero-card .cta { justify-self: start; }
     }
   </style>
 </head>
 <body>
-  <div class="logo">CreditBridge</div>
-  <h1>UI Design Prototypes</h1>
-  <p class="subtitle">Reference screens — internal use only</p>
+  <div class="bg-orbs"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
 
-  <div class="grid">
-    <a class="card" href="product-design.html">
-      <span class="card-tag">Product · Interactive</span>
-      <span class="card-title">Product Design</span>
-      <p class="card-desc">Discussion panel — features, phase timeline, user stories, decisions, open questions, and links to every prototype.</p>
-      <span class="card-arrow">→</span>
+  <div class="wrap">
+    <span class="badge"><span class="pulse"></span>Internal · Product &amp; Design Review</span>
+    <div class="logo">Credit<span class="dot">Bridge</span></div>
+    <h1>Design Hub —<br>product &amp; <span class="grad">prototypes.</span></h1>
+    <p class="subtitle">One place for the team to walk the product story and click through every surface — product, prototypes, and soon the technical designs and database previews behind them.</p>
+
+    <a class="hero-card" href="product-design.html">
+      <div class="htext">
+        <span class="card-tag">Product · Interactive</span>
+        <span class="card-title">Product Design Panel</span>
+        <p class="card-desc">The discussion canvas — features, phase timeline, user stories, decisions, open questions, actors, and links to every prototype. Built for fluid team conversation.</p>
+      </div>
+      <span class="cta">Open panel →</span>
     </a>
 
-    <a class="card" href="connector-app.html">
-      <span class="card-tag">Mobile · Flutter</span>
-      <span class="card-title">Connector App</span>
-      <p class="card-desc">Field DSA mobile app — lead submission, tracking, DPDP consent, and commission dashboard.</p>
-      <span class="card-arrow">→</span>
-    </a>
+    <div class="section">
+      <div class="section-head">
+        <span class="section-label">UI Prototypes</span>
+        <span class="section-rule"></span>
+        <span class="section-count">3 surfaces · live</span>
+      </div>
+      <div class="grid">
+        <a class="card" href="connector-app.html">
+          <span class="card-tag">Mobile · Flutter</span>
+          <span class="card-title">Connector App</span>
+          <p class="card-desc">Field DSA mobile app — lead submission, tracking, DPDP consent, and commission dashboard.</p>
+          <span class="card-arrow">→</span>
+        </a>
 
-    <a class="card" href="lead-market.html">
-      <span class="card-tag">Web · Flutter</span>
-      <span class="card-title">Lead Market</span>
-      <p class="card-desc">FI buyer portal — lead discovery, filtering, bid/accept flows, and analytics.</p>
-      <span class="card-arrow">→</span>
-    </a>
+        <a class="card" href="lead-market.html">
+          <span class="card-tag">Web · Flutter</span>
+          <span class="card-title">Lead Market</span>
+          <p class="card-desc">FI buyer portal — lead discovery, filtering, bid/accept flows, and analytics.</p>
+          <span class="card-arrow">→</span>
+        </a>
 
-    <a class="card" href="lead-converter.html">
-      <span class="card-tag">Web · Flutter</span>
-      <span class="card-title">Lead Converter Portal</span>
-      <p class="card-desc">Internal converter dashboard — lead processing, status management, and conversion tracking.</p>
-      <span class="card-arrow">→</span>
-    </a>
+        <a class="card" href="lead-converter.html">
+          <span class="card-tag">Web · Flutter</span>
+          <span class="card-title">Lead Converter Portal</span>
+          <p class="card-desc">Internal converter dashboard — lead processing, status management, and conversion tracking.</p>
+          <span class="card-arrow">→</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <span class="section-label">Technical Designs</span>
+        <span class="section-rule"></span>
+        <span class="section-count">coming soon</span>
+      </div>
+      <div class="grid">
+        <div class="card soon">
+          <span class="card-tag">Architecture</span>
+          <span class="card-title">System Design</span>
+          <p class="card-desc">Service boundaries, data flow, routing engine, and integration map across the four surfaces.</p>
+          <span class="soon-pill">Soon</span>
+        </div>
+
+        <div class="card soon">
+          <span class="card-tag">Backend · Go</span>
+          <span class="card-title">Lead Platform FSD</span>
+          <p class="card-desc">Functional software design — ingestion, bureau checks, waterfall routing, billing, and payout orchestration.</p>
+          <span class="soon-pill">Soon</span>
+        </div>
+
+        <div class="card soon">
+          <span class="card-tag">API</span>
+          <span class="card-title">API Contracts</span>
+          <p class="card-desc">Endpoint reference, request/response envelopes, auth flows, and webhook payloads.</p>
+          <span class="soon-pill">Soon</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <span class="section-label">Database Previews</span>
+        <span class="section-rule"></span>
+        <span class="section-count">coming soon</span>
+      </div>
+      <div class="grid">
+        <div class="card soon">
+          <span class="card-tag">PostgreSQL</span>
+          <span class="card-title">Schema Explorer</span>
+          <p class="card-desc">Interactive ER diagram — tables, relationships, indexes, and constraints for the lead lifecycle.</p>
+          <span class="soon-pill">Soon</span>
+        </div>
+
+        <div class="card soon">
+          <span class="card-tag">Data Catalog</span>
+          <span class="card-title">Entity Reference</span>
+          <p class="card-desc">Collected, generated, and regulatory data — field-level definitions, retention, and PII classification.</p>
+          <span class="soon-pill">Soon</span>
+        </div>
+
+        <div class="card soon">
+          <span class="card-tag">Migrations</span>
+          <span class="card-title">Migration Timeline</span>
+          <p class="card-desc">Versioned schema changes with up/down previews and zero-downtime rollout notes.</p>
+          <span class="soon-pill">Soon</span>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <footer>CreditBridge · Internal Design Review</footer>
+  <footer>
+    <div class="fdiv"></div>
+    CreditBridge · Internal Design Review
+  </footer>
 </body>
 </html>
