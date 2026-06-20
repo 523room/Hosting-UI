@@ -713,33 +713,40 @@
     const OnboardingScreen = ({ onComplete }) => {
       const [step, setStep] = useState(0);
       const [f, setF] = useState({
-        fullName:"", email:"", dob:"", pincode:"", city:"", state:"",
-        experience:"", affiliation:"", monthlyLeads:"",
-        loanProducts:[], regions:[],
-        accHolderName:"", accNumber:"", ifsc:"", upi:"",
-        pan:"", aadhaarLast4:"",
-        aadhaarDoc:null, panDoc:null, addressDoc:null, cheque:null,
+        // Aadhaar OKYC (OTP-based) — fetched fields are read-only
+        aadhaarNo:"", aadhaarOtp:"", aadhaarOtpSent:false, kycDone:false,
+        fullName:"", dob:"", gender:"", aadhaarAddr:"",
+        // Contact + communication address
+        email:"", affiliation:"", commSameAsAadhaar:true, commAddr:"",
+        // PAN verification (before bank)
+        pan:"", panDone:false,
+        // Bank verification — UPI reverse penny-drop or manual penny-drop
+        bankMode:"", upi:"", accNumber:"", ifsc:"",
+        bankDone:false, bankName:"", accHolderName:"",
+        // Consent
         locationConsent:true, perfConsent:true, commConsent:true,
       });
       const set = (k,v) => setF(p=>({...p,[k]:v}));
       const tog = k => setF(p=>({...p,[k]:!p[k]}));
-      const toggleArr = (k,val) => setF(p=>({...p,[k]:p[k].includes(val)?p[k].filter(x=>x!==val):[...p[k],val]}));
 
-      const STEPS = ['Personal','Professional','Bank & Payout','KYC Docs','Consent'];
-      const expOpts = [['<1yr','< 1 year'],['1-3yr','1–3 years'],['3-5yr','3–5 years'],['5-10yr','5–10 years'],['10+yr','10+ years']];
-      const leadsOpts = [['1-5','1–5 leads'],['5-15','5–15 leads'],['15-30','15–30 leads'],['30+','30+ leads']];
-      const productOpts = ['LAP','Home Loan','Gold Loan','Business Loan','Personal Loan','Vehicle Loan','Education Loan'];
-      const regionOpts = ['Mumbai','Pune','Ahmedabad','Surat','Jaipur','Delhi NCR','Bangalore','Chennai','Hyderabad','Kolkata','Other'];
-      const stateOpts = [['MH','Maharashtra'],['GJ','Gujarat'],['RJ','Rajasthan'],['KA','Karnataka'],['TN','Tamil Nadu'],['DL','Delhi'],['UP','Uttar Pradesh'],['MP','Madhya Pradesh'],['WB','West Bengal'],['Other','Other']];
+      const STEPS = ['Aadhaar KYC','Contact','PAN','Bank','Consent'];
 
-      const SelectField = ({ label, value, onChange, opts, placeholder }) => (
-        <div style={{ marginBottom:14 }}>
-          {label && <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.4px" }}>{label}</div>}
-          <select value={value} onChange={e=>onChange(e.target.value)}
-            style={{ width:"100%", padding:"13px 16px", borderRadius:12, border:`1px solid ${C.border}`, background:C.bgInput, color:value?C.text:C.textTer, fontSize:15, fontFamily:"inherit", outline:"none" }}>
-            <option value="">{placeholder||"Select..."}</option>
-            {opts.map(([v,l])=><option key={v} value={v}>{l}</option>)}
-          </select>
+      // Simulated provider responses (prototype). In production these come from
+      // the OKYC, PAN-NSDL and reverse-penny-drop / penny-drop verification APIs.
+      const SIM = { name:"Amit Kumar Patel", dob:"1990-05-14", gender:"Male",
+        addr:"12, Shanti Nagar, Andheri West, Mumbai, Maharashtra — 400058",
+        bank:"HDFC Bank" };
+
+      const VerifiedTag = ({ label="Verified" }) => (
+        <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, fontWeight:700, padding:"3px 9px", borderRadius:20, background:C.accentDim, color:C.accent }}>
+          <I.Check s={11} c={C.accent}/>{label}
+        </span>
+      );
+
+      const ReadRow = ({ l, v }) => (
+        <div style={{ display:"flex", justifyContent:"space-between", gap:12, padding:"9px 0", borderBottom:`1px solid ${C.border}` }}>
+          <span style={{ fontSize:12, color:C.textSec, flexShrink:0 }}>{l}</span>
+          <span style={{ fontSize:13, fontWeight:600, color:C.text, textAlign:"right" }}>{v}</span>
         </div>
       );
 
@@ -784,124 +791,198 @@
           ))}
           <div style={{ padding:"12px 14px", borderRadius:12, background:C.bgCard, border:`1px solid ${C.border}`, display:"flex", gap:10, alignItems:"flex-start", margin:"16px 0 24px" }}>
             <I.Alert s={14} c={C.textSec}/>
-            <span style={{ fontSize:12, color:C.textSec, lineHeight:1.55 }}>Takes about 5 minutes. You'll need PAN, Aadhaar & bank details.</span>
+            <span style={{ fontSize:12, color:C.textSec, lineHeight:1.55 }}>Takes under 2 minutes — fully digital. Keep your Aadhaar-linked mobile and a UPI app (or bank account) handy.</span>
           </div>
           <PrimaryBtn onClick={()=>setStep(1)}>Start Registration →</PrimaryBtn>
         </div>
       );
 
-      const Personal = () => (
+      // STEP 1 — Aadhaar OKYC. OTP to Aadhaar-linked mobile; on verify we pull
+      // Name, DOB, Gender and Address straight from UIDAI — no manual typing.
+      const AadhaarKyc = () => (
         <div style={{ flex:1, overflowY:"auto", padding:"0 24px 24px" }}>
-          <div style={{ marginBottom:24 }}>
-            <div style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:"-0.3px" }}>Personal Details</div>
-            <div style={{ fontSize:12, color:C.textSec, marginTop:4 }}>As per your PAN card</div>
+          <div style={{ marginBottom:20 }}>
+            <div style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:"-0.3px" }}>Aadhaar KYC</div>
+            <div style={{ fontSize:12, color:C.textSec, marginTop:4, lineHeight:1.5 }}>We verify your identity instantly via Aadhaar OTP and auto-fill your details. No documents to upload.</div>
           </div>
-          <TextInput label="Full Name (as per PAN)" placeholder="e.g. Amit Kumar Patel" value={f.fullName} onChange={v=>set("fullName",v)}/>
+
+          {!f.kycDone ? <>
+            <TextInput label="Aadhaar Number" placeholder="XXXX XXXX XXXX" value={f.aadhaarNo}
+              onChange={v=>{ if(/^\d{0,12}$/.test(v.replace(/\s/g,""))) set("aadhaarNo", v.replace(/\s/g,"")); }} type="tel"/>
+
+            {!f.aadhaarOtpSent
+              ? <button onClick={()=>set("aadhaarOtpSent",true)} disabled={f.aadhaarNo.length!==12}
+                  style={{ width:"100%", padding:"14px", borderRadius:14, background:f.aadhaarNo.length===12?C.accent:C.bgCard, color:f.aadhaarNo.length===12?"#0D1117":C.textTer, fontSize:15, fontWeight:700, border:"none", cursor:f.aadhaarNo.length===12?"pointer":"not-allowed", fontFamily:"inherit" }}>
+                  Send OTP to linked mobile →
+                </button>
+              : <>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, margin:"2px 0 12px", fontSize:12, color:C.accent }}>
+                    <I.Check s={13} c={C.accent}/> OTP sent to mobile ending ••89
+                  </div>
+                  <TextInput label="Enter 6-digit OTP" placeholder="••••••" value={f.aadhaarOtp}
+                    onChange={v=>{ if(/^\d{0,6}$/.test(v)) set("aadhaarOtp",v); }} type="tel"/>
+                  <PrimaryBtn disabled={f.aadhaarOtp.length!==6}
+                    onClick={()=>setF(p=>({...p, kycDone:true, fullName:SIM.name, dob:SIM.dob, gender:SIM.gender, aadhaarAddr:SIM.addr }))}>
+                    Verify & Fetch Details →
+                  </PrimaryBtn>
+                  <div style={{ textAlign:"center", marginTop:12, fontSize:13, color:C.textSec }}>Didn't get it? <span style={{ color:C.accent, fontWeight:600 }}>Resend in 30s</span></div>
+                </>}
+
+            <div style={{ display:"flex", gap:10, alignItems:"flex-start", padding:"12px 14px", borderRadius:12, background:C.bgCard, border:`1px solid ${C.border}`, marginTop:20 }}>
+              <I.Alert s={14} c={C.textSec}/>
+              <span style={{ fontSize:11, color:C.textSec, lineHeight:1.55 }}>Offline OKYC per UIDAI guidelines. We never store your full Aadhaar number — only the masked reference and signed KYC XML.</span>
+            </div>
+          </> : <>
+            <div style={{ background:C.bgCard, borderRadius:14, padding:"16px", border:`1px solid ${C.accentMid}`, marginBottom:20 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                <span style={{ fontSize:11, fontWeight:600, color:C.textSec, textTransform:"uppercase", letterSpacing:"0.4px" }}>Verified Identity</span>
+                <VerifiedTag label="Aadhaar Verified"/>
+              </div>
+              <ReadRow l="Name" v={f.fullName}/>
+              <ReadRow l="Date of Birth" v={f.dob}/>
+              <ReadRow l="Gender" v={f.gender}/>
+              <div style={{ padding:"9px 0 2px" }}>
+                <div style={{ fontSize:12, color:C.textSec, marginBottom:4 }}>Aadhaar Address</div>
+                <div style={{ fontSize:13, color:C.text, lineHeight:1.5 }}>{f.aadhaarAddr}</div>
+              </div>
+            </div>
+            <PrimaryBtn onClick={()=>setStep(2)}>Continue →</PrimaryBtn>
+          </>}
+        </div>
+      );
+
+      // STEP 2 — Contact + communication address. Name/DOB already from Aadhaar.
+      const Contact = () => (
+        <div style={{ flex:1, overflowY:"auto", padding:"0 24px 24px" }}>
+          <div style={{ marginBottom:20 }}>
+            <div style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:"-0.3px" }}>Contact Details</div>
+            <div style={{ fontSize:12, color:C.textSec, marginTop:4 }}>For lead updates and payout notifications.</div>
+          </div>
           <TextInput label="Email Address" placeholder="e.g. amit@example.com" value={f.email} onChange={v=>set("email",v)}/>
-          <div style={{ marginBottom:14 }}>
-            <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.4px" }}>Date of Birth</div>
-            <input type="date" value={f.dob} onChange={e=>set("dob",e.target.value)}
-              style={{ width:"100%", padding:"12px 16px", borderRadius:12, border:`1px solid ${C.border}`, background:C.bgInput, color:f.dob?C.text:C.textTer, fontSize:14, fontFamily:"inherit", outline:"none", boxSizing:"border-box" }}/>
-          </div>
-          <TextInput label="Pincode" placeholder="e.g. 400001" value={f.pincode} onChange={v=>set("pincode",v)} type="tel"/>
-          <TextInput label="City" placeholder="Tap to use GPS or type your city" value={f.city} onChange={v=>set("city",v)}/>
-          <SelectField label="State" value={f.state} onChange={v=>set("state",v)} opts={stateOpts} placeholder="Select state"/>
-          <div style={{ marginTop:4 }}><PrimaryBtn onClick={()=>setStep(2)}>Continue →</PrimaryBtn></div>
-        </div>
-      );
-
-      const Professional = () => (
-        <div style={{ flex:1, overflowY:"auto", padding:"0 24px 24px" }}>
-          <div style={{ marginBottom:24 }}>
-            <div style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:"-0.3px" }}>Professional Background</div>
-          </div>
-          <SelectField label="Experience in Loan Distribution" value={f.experience} onChange={v=>set("experience",v)} opts={expOpts} placeholder="Select experience"/>
           <TextInput label="Current Affiliation (optional)" placeholder="e.g. Andromeda, IndiaLends, Independent" value={f.affiliation} onChange={v=>set("affiliation",v)}/>
-          <SelectField label="Avg. Monthly Leads (optional)" value={f.monthlyLeads} onChange={v=>set("monthlyLeads",v)} opts={leadsOpts} placeholder="Select range"/>
-          <div style={{ marginBottom:16 }}>
-            <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:8, textTransform:"uppercase", letterSpacing:"0.4px" }}>Loan Products Handled</div>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-              {productOpts.map(p=>{ const sel=f.loanProducts.includes(p); return (
-                <button key={p} onClick={()=>toggleArr("loanProducts",p)}
-                  style={{ padding:"7px 14px", borderRadius:20, border:`1.5px solid ${sel?C.accent:C.border}`, background:sel?C.accentDim:C.bgCard, color:sel?C.accent:C.textSec, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>{p}</button>
-              );})}
-            </div>
+
+          <div style={{ marginTop:4, marginBottom:14 }}>
+            <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:8, textTransform:"uppercase", letterSpacing:"0.4px" }}>Communication Address</div>
+            <button onClick={()=>tog("commSameAsAadhaar")}
+              style={{ width:"100%", display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:12, border:`1.5px solid ${f.commSameAsAadhaar?C.accent:C.border}`, background:f.commSameAsAadhaar?C.accentDim:C.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+              <div style={{ width:20, height:20, borderRadius:10, border:`1.5px solid ${f.commSameAsAadhaar?C.accent:C.border}`, background:f.commSameAsAadhaar?C.accent:"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                {f.commSameAsAadhaar && <I.Check s={12} c="#0D1117"/>}
+              </div>
+              <div>
+                <div style={{ fontSize:13, fontWeight:600, color:C.text }}>Same as Aadhaar address</div>
+                <div style={{ fontSize:11, color:C.textSec, lineHeight:1.5, marginTop:2 }}>{f.aadhaarAddr}</div>
+              </div>
+            </button>
           </div>
-          <div style={{ marginBottom:24 }}>
-            <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:8, textTransform:"uppercase", letterSpacing:"0.4px" }}>Active Regions / Cities</div>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-              {regionOpts.map(r=>{ const sel=f.regions.includes(r); return (
-                <button key={r} onClick={()=>toggleArr("regions",r)}
-                  style={{ padding:"7px 14px", borderRadius:20, border:`1.5px solid ${sel?C.accent:C.border}`, background:sel?C.accentDim:C.bgCard, color:sel?C.accent:C.textSec, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>{r}</button>
-              );})}
+
+          {!f.commSameAsAadhaar && (
+            <div style={{ marginBottom:14 }}>
+              <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.4px" }}>Enter Communication Address</div>
+              <textarea value={f.commAddr} onChange={e=>set("commAddr",e.target.value)} rows={3} placeholder="House / street, area, city, state, pincode"
+                style={{ width:"100%", padding:"13px 16px", borderRadius:12, border:`1px solid ${C.border}`, background:C.bgInput, color:C.text, fontSize:15, fontFamily:"inherit", outline:"none", boxSizing:"border-box", resize:"vertical" }}/>
             </div>
+          )}
+
+          <div style={{ marginTop:8 }}>
+            <PrimaryBtn disabled={f.email.length<5 || (!f.commSameAsAadhaar && f.commAddr.trim().length<8)} onClick={()=>setStep(3)}>Continue →</PrimaryBtn>
           </div>
-          <PrimaryBtn onClick={()=>setStep(3)}>Continue →</PrimaryBtn>
         </div>
       );
 
-      const Bank = () => (
-        <div style={{ flex:1, overflowY:"auto", padding:"0 24px 24px" }}>
-          <div style={{ marginBottom:24 }}>
-            <div style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:"-0.3px" }}>Bank & Payout Details</div>
-            <div style={{ fontSize:12, color:C.textSec, marginTop:4 }}>Commissions processed on the 15th of each month.</div>
-          </div>
-          <TextInput label="Account Holder Name" placeholder="Must match your PAN name" value={f.accHolderName} onChange={v=>set("accHolderName",v)}/>
-          <TextInput label="Account Number" placeholder="Your bank account number" value={f.accNumber} onChange={v=>set("accNumber",v)} type="tel"/>
-          <TextInput label="IFSC Code" placeholder="e.g. HDFC0001234" value={f.ifsc} onChange={v=>set("ifsc",v.toUpperCase())}/>
-          <div style={{ marginBottom:14 }}>
-            <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.4px" }}>Bank Name</div>
-            <div style={{ padding:"13px 16px", borderRadius:12, border:`1px solid ${C.border}`, background:C.bgCard, color:f.ifsc.length===11?C.text:C.textTer, fontSize:14 }}>
-              {f.ifsc.length===11 ? "HDFC Bank — Auto-filled from IFSC" : "Auto-filled from IFSC"}
-            </div>
-          </div>
-          <TextInput label="UPI ID (optional)" placeholder="e.g. name@upi" value={f.upi} onChange={v=>set("upi",v)}/>
-          <div style={{ padding:"10px 12px", borderRadius:10, background:C.bgCard, border:`1px solid ${C.border}`, marginBottom:24, fontSize:11, color:C.textSec, lineHeight:1.6 }}>
-            TDS deducted at source per Income Tax Act. GST invoicing required if annual turnover exceeds ₹20L.
-          </div>
-          <PrimaryBtn onClick={()=>setStep(4)}>Continue →</PrimaryBtn>
-        </div>
-      );
-
-      const KycDoc = ({ label, subtitle, docKey }) => {
-        const uploaded = !!f[docKey];
+      // STEP 3 — PAN verification (before bank). Name matched against Aadhaar.
+      const Pan = () => {
+        const valid = /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(f.pan);
         return (
-          <div onClick={()=>set(docKey, uploaded?null:`${label.replace(/[/ ]/g,"_").toLowerCase()}.pdf`)}
-            style={{ background:C.bgCard, borderRadius:12, padding:"14px", border:`1.5px solid ${uploaded?C.accent:C.border}`, marginBottom:10, display:"flex", alignItems:"center", gap:14, cursor:"pointer" }}>
-            <div style={{ width:40, height:40, borderRadius:10, background:uploaded?C.accentDim:C.bgInput, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-              {uploaded?<I.Check s={18} c={C.accent}/>:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke={C.textSec} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+          <div style={{ flex:1, overflowY:"auto", padding:"0 24px 24px" }}>
+            <div style={{ marginBottom:20 }}>
+              <div style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:"-0.3px" }}>PAN Verification</div>
+              <div style={{ fontSize:12, color:C.textSec, marginTop:4 }}>Required for TDS and commission payouts.</div>
             </div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2 }}>
-                <span style={{ fontSize:13, fontWeight:600, color:C.text }}>{label}</span>
-                <span style={{ fontSize:10, padding:"2px 6px", borderRadius:4, background:C.accentDim, color:C.accent }}>Required</span>
-              </div>
-              <div style={{ fontSize:12, color:uploaded?C.accent:C.textSec, textOverflow:"ellipsis", overflow:"hidden", whiteSpace:"nowrap" }}>
-                {uploaded?f[docKey]:subtitle}
-              </div>
-            </div>
-            <span style={{ fontSize:11, color:C.accent, flexShrink:0 }}>{uploaded?"Change":"Tap to upload"}</span>
+            <TextInput label="PAN Number" placeholder="ABCDE1234F" value={f.pan}
+              onChange={v=>{ if(/^[A-Z0-9]{0,10}$/.test(v.toUpperCase())) set("pan",v.toUpperCase()); }}/>
+
+            {!f.panDone
+              ? <PrimaryBtn disabled={!valid} onClick={()=>set("panDone",true)}>Verify PAN →</PrimaryBtn>
+              : <>
+                  <div style={{ background:C.bgCard, borderRadius:14, padding:"16px", border:`1px solid ${C.accentMid}`, margin:"4px 0 20px" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                      <span style={{ fontSize:11, fontWeight:600, color:C.textSec, textTransform:"uppercase", letterSpacing:"0.4px" }}>PAN Record</span>
+                      <VerifiedTag label="PAN Active"/>
+                    </div>
+                    <ReadRow l="Name on PAN" v={f.fullName}/>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, paddingTop:10, fontSize:12, color:C.accent }}>
+                      <I.Check s={13} c={C.accent}/> Name matches Aadhaar
+                    </div>
+                  </div>
+                  <PrimaryBtn onClick={()=>setStep(4)}>Continue →</PrimaryBtn>
+                </>}
           </div>
         );
       };
 
-      const Kyc = () => (
-        <div style={{ flex:1, overflowY:"auto", padding:"0 24px 24px" }}>
-          <div style={{ marginBottom:24 }}>
-            <div style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:"-0.3px" }}>KYC Documents</div>
-            <div style={{ fontSize:12, color:C.textSec, marginTop:4 }}>Accepted formats: JPG, PNG, PDF</div>
+      // STEP 4 — Bank verification. Account-holder name is fetched (not typed)
+      // via UPI reverse penny-drop or penny-drop, then matched to Aadhaar name.
+      const Bank = () => {
+        const verify = () => setF(p=>({...p, bankDone:true, bankName:SIM.bank, accHolderName:SIM.name }));
+        const ModeBtn = ({ id, title, sub }) => (
+          <button onClick={()=>setF(p=>({...p, bankMode:id, bankDone:false }))}
+            style={{ flex:1, padding:"14px 12px", borderRadius:12, border:`1.5px solid ${f.bankMode===id?C.accent:C.border}`, background:f.bankMode===id?C.accentDim:C.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+            <div style={{ fontSize:13, fontWeight:700, color:f.bankMode===id?C.accent:C.text }}>{title}</div>
+            <div style={{ fontSize:11, color:C.textSec, marginTop:3, lineHeight:1.4 }}>{sub}</div>
+          </button>
+        );
+        return (
+          <div style={{ flex:1, overflowY:"auto", padding:"0 24px 24px" }}>
+            <div style={{ marginBottom:18 }}>
+              <div style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:"-0.3px" }}>Bank Verification</div>
+              <div style={{ fontSize:12, color:C.textSec, marginTop:4, lineHeight:1.5 }}>We confirm the account name against your Aadhaar — no cancelled cheque needed.</div>
+            </div>
+
+            <div style={{ display:"flex", gap:10, marginBottom:18 }}>
+              <ModeBtn id="upi"    title="Connect via UPI" sub="Recommended · ₹1 auto-refunded"/>
+              <ModeBtn id="manual" title="Bank details"     sub="Account no. + IFSC"/>
+            </div>
+
+            {f.bankMode==="upi" && <>
+              <TextInput label="UPI ID" placeholder="e.g. amit@okhdfcbank" value={f.upi} onChange={v=>set("upi",v)}/>
+              {!f.bankDone && <PrimaryBtn disabled={!f.upi.includes("@")} onClick={verify}>Verify via ₹1 UPI →</PrimaryBtn>}
+              <div style={{ display:"flex", gap:8, alignItems:"flex-start", padding:"10px 12px", borderRadius:10, background:C.bgCard, border:`1px solid ${C.border}`, marginTop:12, fontSize:11, color:C.textSec, lineHeight:1.55 }}>
+                <I.Alert s={13} c={C.textSec}/> You'll approve a ₹1 request in your UPI app. It is refunded instantly; we read only the account name.
+              </div>
+            </>}
+
+            {f.bankMode==="manual" && <>
+              <TextInput label="Account Number" placeholder="Your bank account number" value={f.accNumber} onChange={v=>{ if(/^\d{0,18}$/.test(v)) set("accNumber",v); }} type="tel"/>
+              <TextInput label="IFSC Code" placeholder="e.g. HDFC0001234" value={f.ifsc} onChange={v=>set("ifsc",v.toUpperCase())}/>
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.4px" }}>Bank Name</div>
+                <div style={{ padding:"13px 16px", borderRadius:12, border:`1px solid ${C.border}`, background:C.bgCard, color:f.ifsc.length===11?C.text:C.textTer, fontSize:14 }}>
+                  {f.ifsc.length===11 ? `${SIM.bank} — Auto-filled from IFSC` : "Auto-filled from IFSC"}
+                </div>
+              </div>
+              {!f.bankDone && <PrimaryBtn disabled={f.accNumber.length<8 || f.ifsc.length!==11} onClick={verify}>Verify Account →</PrimaryBtn>}
+            </>}
+
+            {f.bankDone && <>
+              <div style={{ background:C.bgCard, borderRadius:14, padding:"16px", border:`1px solid ${C.accentMid}`, margin:"4px 0 16px" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                  <span style={{ fontSize:11, fontWeight:600, color:C.textSec, textTransform:"uppercase", letterSpacing:"0.4px" }}>Account Verified</span>
+                  <VerifiedTag/>
+                </div>
+                <ReadRow l="Name as per bank" v={f.accHolderName}/>
+                <ReadRow l="Bank" v={f.bankName}/>
+                <div style={{ display:"flex", alignItems:"center", gap:6, paddingTop:10, fontSize:12, color:C.accent }}>
+                  <I.Check s={13} c={C.accent}/> Name matches Aadhaar
+                </div>
+              </div>
+              <div style={{ padding:"10px 12px", borderRadius:10, background:C.bgCard, border:`1px solid ${C.border}`, marginBottom:18, fontSize:11, color:C.textSec, lineHeight:1.6 }}>
+                TDS deducted at source per Income Tax Act. GST invoicing required if annual turnover exceeds ₹20L.
+              </div>
+              <PrimaryBtn onClick={()=>setStep(5)}>Continue →</PrimaryBtn>
+            </>}
           </div>
-          <TextInput label="PAN Number" placeholder="e.g. ABCDE1234F" value={f.pan} onChange={v=>{ if(/^[A-Z0-9]{0,10}$/.test(v.toUpperCase())) set("pan",v.toUpperCase()); }}/>
-          <TextInput label="Aadhaar Last 4 Digits (optional)" placeholder="e.g. 4321" value={f.aadhaarLast4} onChange={v=>{ if(/^\d{0,4}$/.test(v)) set("aadhaarLast4",v); }} type="tel"/>
-          <div style={{ height:1, background:C.border, margin:"16px 0 12px" }}/>
-          <div style={{ fontSize:12, fontWeight:600, color:C.textSec, marginBottom:12, textTransform:"uppercase", letterSpacing:"0.4px" }}>Document Uploads</div>
-          <KycDoc label="Aadhaar Card" subtitle="Front & back" docKey="aadhaarDoc"/>
-          <KycDoc label="PAN Card" subtitle="Clear photo or scan" docKey="panDoc"/>
-          <KycDoc label="Address Proof" subtitle="Utility bill, passport, or voter ID" docKey="addressDoc"/>
-          <KycDoc label="Cancelled Cheque / Passbook" subtitle="For bank account verification" docKey="cheque"/>
-          <div style={{ marginTop:8 }}><PrimaryBtn onClick={()=>setStep(5)}>Continue →</PrimaryBtn></div>
-        </div>
-      );
+        );
+      };
 
       const ConsentRow = ({ title, subtitle, mandatory, value, onToggle }) => (
         <div style={{ background:C.bgCard, borderRadius:12, padding:"14px", border:`1px solid ${mandatory?C.accentMid:C.border}`, marginBottom:10 }}>
@@ -948,17 +1029,16 @@
               <I.Check s={44} c="#0D1117"/>
             </div>
             <div style={{ fontSize:24, fontWeight:800, color:C.text, textAlign:"center", letterSpacing:"-0.3px" }}>Registration Submitted!</div>
-            <div style={{ fontSize:14, color:C.textSec, textAlign:"center", marginTop:12, lineHeight:1.6 }}>Your profile is under review. We'll verify your KYC documents within 24–48 hours and notify you once approved.</div>
+            <div style={{ fontSize:14, color:C.textSec, textAlign:"center", marginTop:12, lineHeight:1.6 }}>Your identity, PAN and bank are already verified. Final activation typically completes within minutes — we'll notify you once your dashboard is live.</div>
           </div>
           <div style={{ background:C.bgCard, borderRadius:14, padding:"16px", border:`1px solid ${C.accentMid}`, marginBottom:32 }}>
-            <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:12, textTransform:"uppercase", letterSpacing:"0.4px" }}>Submitted Profile</div>
+            <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:12, textTransform:"uppercase", letterSpacing:"0.4px" }}>Verified Profile</div>
             {[
               { l:"Name",     v:f.fullName||"—"                              },
               { l:"Email",    v:f.email||"—"                                 },
-              { l:"PAN",      v:f.pan?`${f.pan.substring(0,5)}*****`:"—"    },
-              { l:"City",     v:f.city||"—"                                  },
-              { l:"Products", v:f.loanProducts.join(", ")||"—"               },
-              { l:"Regions",  v:f.regions.join(", ")||"—"                    },
+              { l:"Aadhaar",  v:f.kycDone?"Verified ✓":"—"                   },
+              { l:"PAN",      v:f.panDone?`${f.pan.substring(0,5)}***** ✓`:"—" },
+              { l:"Bank",     v:f.bankDone?`${f.bankName} ✓`:"—"             },
             ].map(({ l, v })=>(
               <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderBottom:`1px solid ${C.border}` }}>
                 <span style={{ fontSize:13, color:C.textSec, width:72, flexShrink:0 }}>{l}</span>
@@ -972,14 +1052,14 @@
 
       return (
         <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
-          <NavBar/>
-          {step===0 && <Welcome/>}
-          {step===1 && <Personal/>}
-          {step===2 && <Professional/>}
-          {step===3 && <Bank/>}
-          {step===4 && <Kyc/>}
-          {step===5 && <Consent/>}
-          {step===6 && <Success/>}
+          {NavBar()}
+          {step===0 && Welcome()}
+          {step===1 && AadhaarKyc()}
+          {step===2 && Contact()}
+          {step===3 && Pan()}
+          {step===4 && Bank()}
+          {step===5 && Consent()}
+          {step===6 && Success()}
         </div>
       );
     };
