@@ -1421,14 +1421,11 @@
       const [showPass, setShowPass] = useState(false);
       const [loading, setLoading]   = useState(false);
       const [error, setError]       = useState("");
-      const [fi, setFi]             = useState("HDFC Bank Ltd.");
-
-      const FI_LIST = ["HDFC Bank Ltd.", "ICICI Bank Ltd.", "Axis Bank Ltd.", "Bajaj Finserv Ltd.", "Kotak Mahindra Bank", "Aditya Birla Finance"];
 
       const handleLogin = () => {
         if (!email || !password) { setError("Work email and password are required."); return; }
         setLoading(true); setError("");
-        setTimeout(() => { setLoading(false); onLogin({ email, fi }); }, 1200);
+        setTimeout(() => { setLoading(false); onLogin({ email }); }, 1200);
       };
 
 
@@ -1490,18 +1487,6 @@
                 <div style={{ fontSize:13, color:C.textSec }}>Access your FI's lead marketplace</div>
               </div>
 
-              {/* FI selector */}
-              <div style={{ marginBottom:16 }}>
-                <label style={{ fontSize:11, fontWeight:600, color:C.textSec, display:"block", marginBottom:6, letterSpacing:"0.2px" }}>Financial Institution</label>
-                <div style={{ position:"relative" }}>
-                  <select value={fi} onChange={e=>setFi(e.target.value)}
-                    style={{ width:"100%", padding:"10px 36px 10px 14px", borderRadius:8, border:`1px solid ${C.inputBorder}`, background:C.input, fontSize:13, appearance:"none", cursor:"pointer" }}>
-                    {FI_LIST.map(f => <option key={f} value={f}>{f}</option>)}
-                  </select>
-                  <span style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", color:C.textSec, fontSize:10, pointerEvents:"none" }}>▾</span>
-                </div>
-              </div>
-
               {/* Email field */}
               <div style={{ marginBottom:14 }}>
                 <label style={{ fontSize:11, fontWeight:600, color:C.textSec, display:"block", marginBottom:6, letterSpacing:"0.2px" }}>Work Email</label>
@@ -1538,18 +1523,6 @@
               <button onClick={handleLogin} disabled={loading}
                 style={{ width:"100%", padding:"11px", borderRadius:8, border:"none", background:loading ? C.accentDim : C.accent, color:loading ? C.accent : C.bg, fontSize:13, fontWeight:700, cursor:loading?"not-allowed":"pointer", letterSpacing:"0.1px", transition:"background 0.15s, color 0.15s" }}>
                 {loading ? "Signing in…" : "Sign In to Lead Market"}
-              </button>
-
-              {/* Divider */}
-              <div style={{ display:"flex", alignItems:"center", gap:10, margin:"16px 0" }}>
-                <div style={{ flex:1, height:1, background:C.border }}/>
-                <span style={{ fontSize:10, color:C.textTer }}>OR</span>
-                <div style={{ flex:1, height:1, background:C.border }}/>
-              </div>
-
-              {/* SSO option */}
-              <button style={{ width:"100%", padding:"10px", borderRadius:8, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.textSec, fontSize:12, fontWeight:600, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-                <span style={{ fontSize:14 }}>🏛</span> Continue with Institutional SSO
               </button>
 
               {/* Access notice */}
