@@ -1629,21 +1629,14 @@
     const LoginPage = ({ onLogin }) => {
       const [email, setEmail]       = useState("");
       const [password, setPassword] = useState("");
-      const [role, setRole]         = useState("converter");
       const [loading, setLoading]   = useState(false);
       const [error, setError]       = useState("");
       const [showPass, setShowPass] = useState(false);
 
-      const ROLES = [
-        { id:"converter", label:"Converter",      desc:"Lead processing & FI coordination"   },
-        { id:"onboarder", label:"Onboarder",      desc:"Connector recruitment & activation"   },
-        { id:"admin",     label:"Platform Admin", desc:"Full platform access — elevated audit" },
-      ];
-
       const handleLogin = () => {
         if (!email || !password) { setError("Credentials required."); return; }
         setLoading(true); setError("");
-        setTimeout(() => { setLoading(false); onLogin({ email, role }); }, 1000);
+        setTimeout(() => { setLoading(false); onLogin({ email }); }, 1000);
       };
 
       return (
@@ -1689,30 +1682,11 @@
                 <div style={{ fontSize:11, color:C.textSec, fontFamily:C.mono }}>Enter credentials to access the platform</div>
               </div>
 
-              {/* Role selector — monospaced radio buttons for command-centre feel */}
-              <div style={{ marginBottom:16 }}>
-                <div style={{ fontSize:9, fontWeight:700, color:C.textTer, letterSpacing:"0.9px", textTransform:"uppercase", marginBottom:8, fontFamily:C.mono }}>Access Role</div>
-                <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                  {ROLES.map(r => (
-                    <button key={r.id} onClick={()=>setRole(r.id)}
-                      style={{ padding:"9px 12px", borderRadius:6, border:`1px solid ${role===r.id ? C.accent : C.border}`, background:role===r.id ? C.accentDim : C.surface, textAlign:"left", display:"flex", gap:8, alignItems:"center" }}>
-                      <span style={{ fontFamily:C.mono, fontSize:12, color:role===r.id ? C.accent : C.textTer, flexShrink:0 }}>
-                        {role===r.id ? "●" : "○"}
-                      </span>
-                      <div>
-                        <div style={{ fontSize:12, fontWeight:600, color:role===r.id ? C.accent : C.textSec }}>{r.label}</div>
-                        <div style={{ fontSize:9, color:role===r.id ? C.textSec : C.textTer, fontFamily:C.mono, marginTop:1 }}>{r.desc}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Email field */}
               <div style={{ marginBottom:12 }}>
-                <div style={{ fontSize:9, fontWeight:700, color:C.textTer, letterSpacing:"0.9px", textTransform:"uppercase", marginBottom:6, fontFamily:C.mono }}>Work Email</div>
+                <div style={{ fontSize:9, fontWeight:700, color:C.textTer, letterSpacing:"0.9px", textTransform:"uppercase", marginBottom:6, fontFamily:C.mono }}>Email ID</div>
                 <input type="email" value={email} onChange={e=>{ setEmail(e.target.value); setError(""); }}
-                  placeholder="you@creditbridge.in"
+                  placeholder="you@example.com"
                   style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:`1px solid ${error ? C.red : C.inputBorder}`, background:C.input, fontSize:13 }}/>
               </div>
 
