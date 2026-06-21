@@ -119,7 +119,7 @@
       converter: { label: "Converter / Ops", persona: "Sneha K.",  initials: "SK", color: C.accent,
                    modules: ["dashboard","connectors","pipeline","sla","compliance","analytics"] },
       billing:   { label: "Billing",         persona: "Rohan T.",  initials: "RT", color: C.blue,
-                   modules: ["dashboard","fi_management","billing","connectors"] },
+                   modules: ["billing","fi_management","connectors"] },
       onboarder: { label: "Onboarder",       persona: "Priya N.",  initials: "PN", color: C.amber,
                    modules: ["onboarding"] },
     };
@@ -204,22 +204,24 @@
     );
 
     // ─── VIEW: Ops Dashboard ─────────────────────────────────────────────────
-    const DashboardView = () => {
+    const DashboardView = ({ role }) => {
+      const isConverter = role === "converter";
+      // Money KPIs (Disbursed ₹, FI Revenue) hidden for the Converter/Ops role
       const kpis = [
         { label: "Active Leads",     value: "347",     sub: "+12 today",    color: C.text   },
-        { label: "Disbursed (Apr)",  value: "₹1.4 Cr", sub: "62 loans",     color: C.accent },
+        { label: "Disbursed (Apr)",  value: "₹1.4 Cr", sub: "62 loans",     color: C.accent, money: true },
         { label: "SLA Breaches",     value: "4",       sub: "Needs action", color: C.red    },
         { label: "Conversion Rate",  value: "34.2%",   sub: "↑2.1% MoM",   color: C.green  },
-        { label: "FI Revenue (Apr)", value: "₹8.6L",   sub: "Accrued",      color: C.amber  },
+        { label: "FI Revenue (Apr)", value: "₹8.6L",   sub: "Accrued",      color: C.amber, money: true },
         { label: "Connectors",       value: "218",     sub: "171 active",   color: C.purple },
-      ];
+      ].filter(k => !(isConverter && k.money));
       const recentActivity = [
         { time: "09:14", event: "Lead #3847 sanctioned by HDFC", tag: "sanctioned" },
         { time: "09:02", event: "Connector KYC approved — Amit Sharma (MH-12)", tag: "kyc" },
         { time: "08:51", event: "SLA breach — Lead #3831 > 48h at FI", tag: "sla" },
         { time: "08:44", event: "Invoice INV-2026-094 raised for Axis Bank", tag: "billing" },
         { time: "08:31", event: "Lead #3815 rejected by Bajaj Finserv, cascading", tag: "routing" },
-      ];
+      ].filter(a => !(isConverter && a.tag === "billing"));
       const tagColor = { sanctioned: C.accent, kyc: C.blue, sla: C.red, billing: C.purple, routing: C.amber };
       return (
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
@@ -387,7 +389,8 @@
     ];
 
     // ─── VIEW: Connector Management ──────────────────────────────────────────
-    const ConnectorsView = () => {
+    const ConnectorsView = ({ role }) => {
+      const isConverter = role === "converter";
       const [filter, setFilter]                     = useState("all");
       const [selectedId, setSelectedId]             = useState(null);
       const [activeTab, setActiveTab]               = useState("overview");
@@ -465,9 +468,9 @@
             {[
               { id:"overview", label:"Overview" },
               { id:"leads",    label:"Leads",              badge: c.leadsList.length || null },
-              { id:"payouts",  label:"Payouts" },
+              { id:"payouts",  label:"Payouts",            money: true },
               { id:"notes",    label:"Notes & Coaching",   badge: c.coaching.length || null },
-            ].map(({ id, label, badge }) => (
+            ].filter(t => !(isConverter && t.money)).map(({ id, label, badge }) => (
               <button key={id} onClick={() => setActiveTab(id)} style={{ padding:"10px 14px", background:"none", border:"none", borderBottom:`2px solid ${activeTab===id?C.accent:"transparent"}`, color:activeTab===id?C.accent:C.textSec, fontSize:12, fontWeight:activeTab===id?600:400, cursor:"pointer", fontFamily:C.sans, display:"flex", alignItems:"center", gap:6 }}>
                 {label}
                 {badge ? <span style={{ fontSize:9, fontWeight:700, padding:"1px 5px", borderRadius:8, background:C.accentDim, color:C.accent, fontFamily:C.mono }}>{badge}</span> : null}
@@ -487,8 +490,8 @@
                     { label:"Conversion Rate", value:c.conversion,     color:parseInt(c.conversion)>30?C.accent:C.amber },
                     { label:"Active Leads",    value:c.activeLeads,    color:C.blue    },
                     { label:"Quality Score",   value:c.score??'—',     color:scoreColor },
-                    { label:"Payout YTD",      value:c.netPayoutYTD,   color:C.amber   },
-                  ].map(({ label, value, color }) => (
+                    { label:"Payout YTD",      value:c.netPayoutYTD,   color:C.amber, money: true },
+                  ].filter(k => !(isConverter && k.money)).map(({ label, value, color }) => (
                     <Card key={label} style={{ padding:"12px 14px" }}>
                       <div style={{ fontSize:9, color:C.textTer, textTransform:"uppercase", letterSpacing:"0.6px", marginBottom:6, fontFamily:C.sans }}>{label}</div>
                       <div style={{ fontSize:20, fontWeight:700, color, fontFamily:C.mono, letterSpacing:"-0.5px" }}>{value}</div>
@@ -869,38 +872,56 @@
       );
     };
 
-    // ─── VIEW: FI Billing ─────────────────────────────────────────────────────
+    // ─── VIEW: Billing & Payouts (Billing role — money-centric) ──────────────
+    // Billing cares about what's owed and what's late — pending FI billing and
+    // delayed connector payouts — NOT lead conversion or SLA breaches.
     const BillingView = () => {
+      // FI receivables — what FIs owe CreditBridge. overdueDays>0 = past NET terms.
       const invoices = [
-        { inv:"INV-2026-094", fi:"HDFC Bank",        period:"Mar 2026", disbursed:18, gross:"₹3,24,000", gst:"₹58,320", net:"₹2,65,680", status:"paid"    },
-        { inv:"INV-2026-093", fi:"ICICI Bank",        period:"Mar 2026", disbursed:11, gross:"₹1,87,000", gst:"₹33,660", net:"₹1,53,340", status:"paid"    },
-        { inv:"INV-2026-092", fi:"Axis Bank",         period:"Mar 2026", disbursed:7,  gross:"₹1,12,000", gst:"₹20,160", net:"₹91,840",   status:"pending" },
-        { inv:"INV-2026-091", fi:"Bajaj Finserv",     period:"Feb 2026", disbursed:9,  gross:"₹1,44,000", gst:"₹25,920", net:"₹1,18,080", status:"paid"    },
+        { inv:"INV-2026-092", fi:"Axis Bank",     period:"Mar 2026", net:"₹91,840",   terms:"NET 30", overdueDays:12, status:"overdue" },
+        { inv:"INV-2026-090", fi:"Bajaj Finserv", period:"Feb 2026", net:"₹1,18,080", terms:"NET 45", overdueDays:6,  status:"overdue" },
+        { inv:"INV-2026-094", fi:"HDFC Bank",     period:"Mar 2026", net:"₹2,65,680", terms:"NET 30", overdueDays:0,  status:"pending" },
+        { inv:"INV-2026-093", fi:"ICICI Bank",    period:"Mar 2026", net:"₹1,53,340", terms:"NET 15", overdueDays:0,  status:"paid"    },
       ];
-      const statusColor = { paid: C.accent, pending: C.amber };
+      // Connector payouts — what CreditBridge owes connectors. CreditBridge fronts
+      // the payout on disbursement; "delayed" = past the payout SLA from disbursal.
+      const payouts = [
+        { id:"C-0188", connector:"Amit Sharma",   net:"₹26,980", disbursedOn:"02 Apr", delayDays:5, status:"delayed" },
+        { id:"C-0212", connector:"Sunita Devi",   net:"₹18,810", disbursedOn:"05 Apr", delayDays:2, status:"delayed" },
+        { id:"C-0204", connector:"Rahul Verma",   net:"₹11,200", disbursedOn:"08 Apr", delayDays:0, status:"due"     },
+        { id:"C-0151", connector:"Kavita Singh",  net:"₹9,400",  disbursedOn:"01 Apr", delayDays:0, status:"paid"    },
+      ];
+      const invColor = { paid: C.accent, pending: C.amber, overdue: C.red };
+      const payColor = { paid: C.accent, due: C.amber, delayed: C.red };
       return (
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-          <div className="cv-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
+          {/* Money-pain KPIs — what's owed and what's late */}
+          <div className="cv-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 16 }}>
             {[
-              { l:"Revenue (Mar)",     v:"₹6.23L",  c:C.accent },
-              { l:"GST Collected",     v:"₹1.12L",  c:C.textSec },
-              { l:"Pending Invoices",  v:"₹91,840", c:C.amber   },
-              { l:"Total FIs",         v:"6",        c:C.text    },
-            ].map(({ l, v, c }) => (
+              { l:"Pending FI Billing",     v:"₹5.10L",  sub:"3 invoices unpaid",        c:C.amber },
+              { l:"Overdue FI Receivables", v:"₹2.10L",  sub:"2 invoices past terms",    c:C.red   },
+              { l:"Connector Payouts Due",  v:"₹66,390", sub:"4 connectors",             c:C.amber },
+              { l:"Delayed Payouts",        v:"₹45,790", sub:"2 past payout SLA",        c:C.red   },
+            ].map(({ l, v, sub, c }) => (
               <Card key={l} style={{ padding: "12px 14px" }}>
                 <div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.5px" }}>{l}</div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: c, fontFamily: C.mono }}>{v}</div>
+                <div style={{ fontSize: 10, color: C.textTer, marginTop: 4, fontFamily: C.sans }}>{sub}</div>
               </Card>
             ))}
+          </div>
+
+          {/* Pending / overdue FI billing */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.amber, marginBottom: 8, fontFamily: C.sans, display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: 3, background: C.amber, display: "inline-block" }}/> Pending FI Billing — collect receivables
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
             <Btn primary>+ Generate Invoice</Btn>
           </div>
-          <Card style={{ padding: 0, overflow: "hidden" }}>
+          <Card style={{ padding: 0, overflow: "hidden", marginBottom: 20 }}>
             <div className="cv-tablewrap"><table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead style={{ background: C.surface }}><tr>
-                <TH>Invoice</TH><TH>FI</TH><TH>Period</TH><TH>Disbursed</TH>
-                <TH>Gross</TH><TH>GST (18%)</TH><TH>Net Receivable</TH><TH>Status</TH><TH>Actions</TH>
+                <TH>Invoice</TH><TH>FI</TH><TH>Period</TH><TH>Terms</TH><TH>Net Receivable</TH><TH>Ageing</TH><TH>Status</TH><TH>Actions</TH>
               </tr></thead>
               <tbody>
                 {invoices.map(inv => (
@@ -908,12 +929,36 @@
                     <TD mono color={C.blue}>{inv.inv}</TD>
                     <TD bold color={C.text}>{inv.fi}</TD>
                     <TD>{inv.period}</TD>
-                    <TD mono bold color={C.text}>{inv.disbursed}</TD>
-                    <TD mono>{inv.gross}</TD>
-                    <TD mono color={C.textTer}>{inv.gst}</TD>
-                    <TD mono bold color={inv.status==="paid"?C.accent:C.amber}>{inv.net}</TD>
-                    <TD><Badge label={inv.status} color={statusColor[inv.status]} dot/></TD>
-                    <TD style={{ display:"flex", gap:5 }}><Btn small>PDF</Btn>{inv.status==="pending"&&<Btn small primary>Mark Paid</Btn>}</TD>
+                    <TD mono color={C.textTer}>{inv.terms}</TD>
+                    <TD mono bold color={inv.status==="paid"?C.accent:inv.status==="overdue"?C.red:C.amber}>{inv.net}</TD>
+                    <TD mono color={inv.overdueDays>0?C.red:C.textTer}>{inv.overdueDays>0?`+${inv.overdueDays}d overdue`:"—"}</TD>
+                    <TD><Badge label={inv.status} color={invColor[inv.status]} dot/></TD>
+                    <TD style={{ display:"flex", gap:5 }}><Btn small>PDF</Btn>{inv.status!=="paid"&&<Btn small primary>Mark Paid</Btn>}{inv.status==="overdue"&&<Btn small danger title="Send payment reminder to the FI billing contact">Remind</Btn>}</TD>
+                  </tr>
+                ))}
+              </tbody>
+            </table></div>
+          </Card>
+
+          {/* Connector payouts — what we owe connectors */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.red, marginBottom: 8, fontFamily: C.sans, display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: 3, background: C.red, display: "inline-block" }}/> Connector Payouts — clear delays first
+          </div>
+          <Card style={{ padding: 0, overflow: "hidden" }}>
+            <div className="cv-tablewrap"><table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead style={{ background: C.surface }}><tr>
+                <TH>Connector</TH><TH>ID</TH><TH>Disbursed On</TH><TH>Net Payout</TH><TH>Delay</TH><TH>Status</TH><TH>Actions</TH>
+              </tr></thead>
+              <tbody>
+                {payouts.map(p => (
+                  <tr key={p.id} onMouseEnter={e=>e.currentTarget.style.background=C.surface} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <TD bold color={C.text}>{p.connector}</TD>
+                    <TD mono color={C.textTer}>{p.id}</TD>
+                    <TD>{p.disbursedOn}</TD>
+                    <TD mono bold color={p.status==="paid"?C.accent:p.status==="delayed"?C.red:C.amber}>{p.net}</TD>
+                    <TD mono color={p.delayDays>0?C.red:C.textTer}>{p.delayDays>0?`+${p.delayDays}d late`:"on time"}</TD>
+                    <TD><Badge label={p.status} color={payColor[p.status]} dot/></TD>
+                    <TD style={{ display:"flex", gap:5 }}>{p.status!=="paid"&&<Btn small primary>Release Payout</Btn>}<Btn small>Statement</Btn></TD>
                   </tr>
                 ))}
               </tbody>
@@ -1010,7 +1055,8 @@
     };
 
     // ─── VIEW: Analytics ────────────────────────────────────────────────────
-    const AnalyticsView = () => {
+    const AnalyticsView = ({ role }) => {
+      const isConverter = role === "converter";  // Converter/Ops: conversion only, no money (revenue / AUM)
       const months = ["Oct","Nov","Dec","Jan","Feb","Mar"];
       const disbursal = [18,24,31,19,27,38];
       const revenue =   [2.1,2.8,3.6,2.2,3.1,4.4];
@@ -1033,7 +1079,7 @@
       const avgAumPerConn = (totAum*100/totActive).toFixed(2); // ₹ Lakh per active connector
       return (
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isConverter ? "1fr" : "1fr 1fr", gap: 14 }}>
             <Card>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 14 }}>Monthly Disbursals</div>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 120 }}>
@@ -1049,6 +1095,7 @@
                 ))}
               </div>
             </Card>
+            {!isConverter && (
             <Card>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 14 }}>Revenue (₹ Lakh)</div>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 120 }}>
@@ -1063,6 +1110,7 @@
                 ))}
               </div>
             </Card>
+            )}
           </div>
 
           <Card style={{ marginTop: 14 }}>
@@ -1087,13 +1135,13 @@
           </Card>
 
           {/* Connector network KPIs */}
-          <div className="cv-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginTop: 14 }}>
+          <div className="cv-grid" style={{ display: "grid", gridTemplateColumns: isConverter ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: 10, marginTop: 14 }}>
             {[
               { l:"Enrolled Connectors",        v:String(totEnrolled),            c:C.text   },
               { l:"Active Connectors",          v:String(totActive),              c:C.accent },
-              { l:"Disbursed AUM (₹ Cr)",       v:totAum.toFixed(1),              c:C.purple },
-              { l:"Avg AUM / Active (₹ L)",     v:avgAumPerConn,                  c:C.blue   },
-            ].map(({ l, v, c }) => (
+              { l:"Disbursed AUM (₹ Cr)",       v:totAum.toFixed(1),              c:C.purple, money: true },
+              { l:"Avg AUM / Active (₹ L)",     v:avgAumPerConn,                  c:C.blue,   money: true },
+            ].filter(k => !(isConverter && k.money)).map(({ l, v, c }) => (
               <Card key={l} style={{ padding: "12px 14px" }}>
                 <div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.5px" }}>{l}</div>
                 <div style={{ fontSize: 24, fontWeight: 700, color: c, fontFamily: C.mono }}>{v}</div>
@@ -1102,7 +1150,8 @@
           </div>
 
           {/* Geography — contribution by city */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isConverter ? "1fr" : "1fr 1fr", gap: 14, marginTop: 14 }}>
+            {!isConverter && (
             <Card>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 4 }}>Disbursed AUM by City (₹ Cr)</div>
               <div style={{ fontSize: 10, color: C.textTer, fontFamily: C.sans, marginBottom: 14 }}>Geographic contribution to disbursals</div>
@@ -1116,12 +1165,13 @@
                 </div>
               ))}
             </Card>
+            )}
             <Card>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 4 }}>Connectors by City</div>
-              <div style={{ fontSize: 10, color: C.textTer, fontFamily: C.sans, marginBottom: 14 }}>Enrolled vs active, with avg AUM per active connector</div>
+              <div style={{ fontSize: 10, color: C.textTer, fontFamily: C.sans, marginBottom: 14 }}>{isConverter ? "Enrolled vs active connectors" : "Enrolled vs active, with avg AUM per active connector"}</div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead><tr>
-                  <TH>City</TH><TH>Enrolled</TH><TH>Active</TH><TH>Avg AUM / Active (₹ L)</TH>
+                  <TH>City</TH><TH>Enrolled</TH><TH>Active</TH>{!isConverter && <TH>Avg AUM / Active (₹ L)</TH>}
                 </tr></thead>
                 <tbody>
                   {geo.map(g => (
@@ -1129,7 +1179,7 @@
                       <TD bold color={C.text}>{g.city}</TD>
                       <TD mono>{g.enrolled}</TD>
                       <TD mono color={C.accent}>{g.active}</TD>
-                      <TD mono color={C.blue}>{(g.aum*100/g.active).toFixed(2)}</TD>
+                      {!isConverter && <TD mono color={C.blue}>{(g.aum*100/g.active).toFixed(2)}</TD>}
                     </tr>
                   ))}
                 </tbody>
@@ -1952,7 +2002,7 @@
               <Badge label="● Live" color={C.accent} dot={false}/>
               <span style={{ fontSize:11, color:C.textSec, fontFamily:C.mono }}>04 Apr 2026 · 09:41 IST</span>
             </>}/>
-            <View/>
+            <View role={role}/>
           </div>
         </div>
       );
