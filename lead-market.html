@@ -64,6 +64,9 @@
       "MSME Loan":       { c: C.blue,   bg: C.blueDim    },
     };
 
+    // Connector quality bands — neutral tier labels (avoid "Low/Medium" judgement language)
+    const QLABEL = { High: "Tier A", Medium: "Tier B", Low: "Tier C" };
+
     // ─── Primitives ─────────────────────────────────────────────────────────
     const Badge = ({ label, color = C.accent, bg, dot, s = 10 }) => (
       <span style={{ fontSize: s, fontWeight: 600, padding: "2px 8px", borderRadius: 3, background: bg || (color + "22"), color, whiteSpace: "nowrap", letterSpacing: "0.2px", fontFamily: C.sans, display: "inline-flex", alignItems: "center", gap: 4 }}>
@@ -182,6 +185,7 @@
       const [biddingCard, setBiddingCard] = useState(null);
       const [bidInputs, setBidInputs]     = useState({});  // { [id]: { rate, fee, tat } }
       const [demoOffHours, setDemoOffHours] = useState(false);
+      const [showPassed, setShowPassed]     = useState(false);
       // Bid window: Mon–Fri 9:00–18:00 IST
       const now = new Date();
       const dayOfWeek = now.getDay(); // 0=Sun,6=Sat
@@ -216,7 +220,7 @@
         if (filters.score === "680-699" && (lo < 680 || lo >= 700)) return false;
         if (filters.city !== "all" && l.city !== filters.city) return false;
         return true;
-      }).filter(l => !passed[l.id]).sort(SORTS[filters.sort] || SORTS.fresh);
+      }).filter(l => showPassed ? passed[l.id] : !passed[l.id]).sort(SORTS[filters.sort] || SORTS.fresh);
 
       const doAccept = (id, e) => {
         e.stopPropagation();
@@ -226,6 +230,11 @@
         e.stopPropagation();
         setPassed(p => ({ ...p, [id]: true }));
       };
+      const undoPass = (id, e) => {
+        e.stopPropagation();
+        setPassed(p => { const n = { ...p }; delete n[id]; return n; });
+      };
+      const passedCount = Object.keys(passed).length;
 
       return (
         <div className="lm-feed" style={{ flex: 1, display: "flex", overflow: "hidden" }}>
@@ -256,7 +265,10 @@
                 <option value="iterations">Fewest FIs seen</option>
               </select>
               <div style={{ flex: 1 }}/>
-              <div style={{ fontSize: 12, color: C.textSec, fontFamily: C.sans }}>{filtered.length} leads available</div>
+              <button onClick={() => setShowPassed(v=>!v)} style={{ padding:"5px 10px", borderRadius:5, border:`1px solid ${showPassed?C.accentMid:C.border}`, background:showPassed?C.accentDim:C.input, color:showPassed?C.accent:C.textTer, fontSize:10, fontFamily:C.sans, cursor:"pointer" }}>
+                {showPassed ? "← Back to feed" : `Passed leads (${passedCount})`}
+              </button>
+              <div style={{ fontSize: 12, color: C.textSec, fontFamily: C.sans }}>{filtered.length} {showPassed ? "passed" : "leads available"}</div>
               <button onClick={() => setDemoOffHours(v=>!v)} style={{ padding:"5px 10px", borderRadius:5, border:`1px solid ${C.border}`, background:demoOffHours?C.amberDim:C.input, color:demoOffHours?C.amber:C.textTer, fontSize:10, fontFamily:C.mono, cursor:"pointer" }}>
                 {demoOffHours ? "⏱ Demo: Off-hours" : "Demo: Working hours"}
               </button>
@@ -293,7 +305,7 @@
                           { l:"Income Band",   v: l.income                            },
                           { l:"City / Pin",    v: `${l.city} (${l.pincode})`          },
                           { l:"Employment",    v: l.employment                        },
-                          { l:"Connector",     v: `${l.connQuality} Quality`, color: l.connQuality==="High"?C.accent:l.connQuality==="Medium"?C.amber:C.red },
+                          { l:"Connector",     v: QLABEL[l.connQuality], color: l.connQuality==="High"?C.accent:l.connQuality==="Medium"?C.amber:C.textSec },
                           { l:"PAN",           v: isAccepted?"ABCDE1234F":"ABCDE****", pii:!isAccepted },
                         ].map(({ l:k, v, bold, color, pii }) => (
                           <div key={k}>
@@ -309,7 +321,12 @@
                     <div className="lm-card-actions" style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0, minWidth: 120 }}>
                       <CompleteBar pct={l.completeness}/>
                       <div style={{ marginTop:4 }}>
-                        {isAccepted
+                        {passed[l.id]
+                          ? <div style={{ padding: "8px 12px", borderRadius: 6, background: C.input, border: `1px solid ${C.border}`, textAlign: "center" }}>
+                              <div style={{ fontSize: 11, color: C.textSec, fontWeight: 700, fontFamily: C.sans, marginBottom:4 }}>Passed</div>
+                              <Btn ghost small onClick={e => undoPass(l.id,e)} style={{ justifyContent: "center", width:"100%", fontSize:10 }}>↩ Restore to feed</Btn>
+                            </div>
+                          : isAccepted
                           ? <div style={{ padding: "8px 12px", borderRadius: 6, background: C.accentDim, border: `1px solid ${C.accentMid}`, textAlign: "center" }}>
                               <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, fontFamily: C.sans }}>✓ Bid Placed</div>
                               <div style={{ fontSize: 9, color: C.textSec, fontFamily: C.sans }}>{(bidInputs[l.id]||{}).rate||"—"}% APR · {(bidInputs[l.id]||{}).tat||"—"}h TAT</div>
@@ -386,7 +403,7 @@
                   { k:"Bureau Score Band", v:`CRIF/CIBIL ${l.scoreBand}`, pii:false },
                   { k:"Employment",        v:l.employment,   pii:false },
                   { k:"File Complete",     v:`${l.completeness}%`, pii:false },
-                  { k:"Connector Quality", v:`${l.connQuality}`, pii:false },
+                  { k:"Connector Tier", v:QLABEL[l.connQuality], pii:false },
                   { k:"Full Name",         v:"Rajesh Kumar",  pii:true },
                   { k:"Phone",             v:"+91 98765 43210", pii:true },
                   { k:"PAN",               v:"ABCDE1234F",   pii:true  },
@@ -531,6 +548,7 @@
               <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 110 }}>
                 {months.map((m,i)=>(
                   <div key={m} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: C.accent, fontFamily: C.mono }}>{Math.round((disbursed[i]/accepted[i])*100)}%</span>
                     <div style={{ display: "flex", gap: 2, alignItems: "flex-end", width: "100%" }}>
                       <div style={{ flex:1, borderRadius:"2px 2px 0 0", background:C.accentDim, height:`${(accepted[i]/maxA)*90}px` }}>
                         <div style={{ height:"100%", background:C.accentMid, borderRadius:"2px 2px 0 0" }}/>
@@ -544,6 +562,8 @@
               <div style={{ display: "flex", gap: 14, marginTop: 8 }}>
                 <div style={{ display: "flex", gap: 5, alignItems: "center" }}><div style={{ width: 8, height: 8, borderRadius: 2, background: C.accentMid }}/><span style={{ fontSize: 9, color: C.textSec, fontFamily: C.sans }}>Accepted</span></div>
                 <div style={{ display: "flex", gap: 5, alignItems: "center" }}><div style={{ width: 8, height: 8, borderRadius: 2, background: C.accent }}/><span style={{ fontSize: 9, color: C.textSec, fontFamily: C.sans }}>Disbursed</span></div>
+                <div style={{ flex:1 }}/>
+                <span style={{ fontSize: 9, color: C.accent, fontFamily: C.sans }}>% = disbursed ÷ accepted</span>
               </div>
             </Card>
             <Card>

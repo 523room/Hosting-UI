@@ -476,14 +476,14 @@ const FEATURES = [
   {s:SURF.CA, n:'Commission Display', p:0, actor:'Connector', story:'See expected commission per qualified lead and confirmed payouts at disbursement to manage income expectations.', flow:'Lead view → estimated commission for qualified → confirmed on disbursement → payout history → TDS shown → payout notification per credit.'},
   {s:SURF.CA, n:'Settings & Profile', p:0, actor:'Connector', story:'Update my display name, switch language and control notifications so the app works the way I prefer.', flow:'Settings → edit name → toggle English/Hindi → configure push preferences.'},
   {s:SURF.CA, n:'Qualification Result', p:1, actor:'Connector', story:'See qualified/disqualified within 90 seconds with a plain-language reason so I can give the borrower an immediate answer.', flow:'Submitted → bureau soft pull, PAN, OKYC, income/FOIR, geography → QUALIFIED (est. commission) or DISQUALIFIED (reason Q001–Q007) ≤ 90s.'},
-  {s:SURF.CA, n:'DPDP Consent', p:1, actor:'Connector', story:'Capture borrower consent for data processing at submission so CreditBridge\'s use of data is lawful and auditable.', flow:'Granular consent (purpose + data categories) captured pre-submit → immutable audit trail → withdrawal flagged for Converter review (OQ-1).'},
-  {s:SURF.CA, n:'eKYC', p:1, actor:'Connector', story:'Have borrower identity verified digitally so we confirm who they are before sending the lead to an FI.', flow:'Initiate eKYC → Aadhaar OTP to borrower → confirmed → PAN verified against tax records → KYC status on lead.'},
+  {s:SURF.CA, n:'DPDP Consent', p:0, actor:'Connector', story:'Confirm borrower has agreed to data processing at submission so CreditBridge\'s use of data is lawful from day one.', flow:'Connector ticks a single plain-language combined consent acknowledgment at lead submission (no technical jargon shown; data-sharing + bureau check + purpose limitation summarised into one statement) → basic consent record stored immutably (Connector ID, borrower mobile hash, product, timestamp, app version, OS). Granular per-activity consent + withdrawal mechanism handled by Phase 1 backend Consent Management.'},
+  {s:SURF.CA, n:'eKYC', p:0, actor:'Connector', story:'Have borrower identity verified digitally so we confirm who they are before sending the lead to an FI.', flow:'Initiate eKYC → Aadhaar OTP to borrower → confirmed → PAN verified against tax records → KYC status on lead.'},
   {s:SURF.CA, n:'Document Tasks', p:1, actor:'Connector', story:'A clear task list of documents to collect so I know exactly what action is required at each stage.', flow:'Checklist generated → 3 task types: digital (auto), physical (collect in person), upload → escalations T+4h/8h/24h/36h/48h.'},
   {s:SURF.CA, n:'Document Upload', p:2, actor:'Connector', story:'Photograph and upload physical documents from my phone so I complete tasks without visiting an office.', flow:'Select upload task → camera capture → OCR field extraction → confirm/correct → uploaded and linked to lead.'},
   {s:SURF.CA, n:'FI Offer Display', p:2, actor:'Connector', story:'Show the borrower loan offers ranked by interest rate, with each KFS, so they can choose informed.', flow:'Offer stage → AI eligibility assessment → eligible FI offers ranked by APR → select offer → KFS delivered to borrower via WhatsApp.'},
   {s:SURF.CA, n:'Connector Quality Score', p:2, actor:'Connector', story:'See my quality score band so I understand my performance and what it means for lead prioritisation.', flow:'Profile → band shown (High/Medium/Low) from conversion, doc completeness, SLA compliance → numeric score hidden (anti-gaming).'},
   {s:SURF.CA, n:'Competitive Earnings', p:2, actor:'Connector', story:'See how my earnings compare to peers so I stay motivated and understand where I stand.', flow:'Anonymised peer benchmark — "top 20% in your city/product" — with own earnings trend. No connector named (named leaderboard = OQ-14).'},
-  {s:SURF.CA, n:'Lead Visibility Controls', p:2, actor:'Connector', story:'Hide my CreditBridge leads from specific FIs so leads aren\'t routed to institutions I\'d rather not share with.', flow:'Profile → Lead Visibility → select FIs to hide → excluded from this connector\'s matching (routing-level). Editable anytime (OQ-15).'},
+  {s:SURF.CA, n:'Lead Visibility Controls', p:1, actor:'Connector', story:'Choose which FIs can receive my CreditBridge leads.', flow:'Profile → Lead Visibility → turn off any FI → excluded from this connector\'s matching (routing-level). Neutral UI copy — must not promote working for an FI directly. Editable anytime (OQ-15).'},
   {s:SURF.CA, n:'Team Mode', p:3, actor:'Connector', story:'Manage a group of sub-agents under my code so I can track their leads, aggregate commission and onboard via referral.', flow:'Team view → sub-agent list with lead counts + commission → aggregated team commission → referral link → sub-agent signs up under team lead.'},
 
   // Lead Market
@@ -518,7 +518,7 @@ const FEATURES = [
   {s:SURF.CP, n:'Admin — User & Platform', p:1, actor:'Admin', story:'Create, edit and suspend accounts for all roles and configure platform settings so access is tightly controlled.', flow:'User management (all roles) → edit/suspend → platform config (commission defaults, SLA thresholds, templates, pincode master) → full audit log queries.'},
 
   // Lead Lifecycle
-  {s:SURF.LL, n:'Borrower Qualification', p:0, actor:'CreditBridge', story:'Qualify or disqualify every lead within 90 seconds so connectors get an immediate answer.', flow:'PAN check → Aadhaar OKYC → bureau soft pull (score + 90-DPD, no footprint) → income/FOIR → geography → QUALIFIED/DISQUALIFIED (Q001–Q007) ≤ 90s.'},
+  {s:SURF.LL, n:'Borrower Qualification', p:1, actor:'CreditBridge', story:'Qualify or disqualify every lead within 90 seconds so connectors get an immediate answer.', flow:'PAN check → Aadhaar OKYC → bureau soft pull (score + 90-DPD, no footprint) → income/FOIR → geography → QUALIFIED/DISQUALIFIED (Q001–Q007) ≤ 90s.'},
   {s:SURF.LL, n:'Document Collection & Enrichment', p:1, actor:'CreditBridge', story:'Collect all required documents through the most efficient channel so the file is complete before any FI sees it.', flow:'Checklist by loan type × employment × score × amount → 4 parallel channels (API, Account Aggregator, WhatsApp, physical) → escalations T+4h..48h → advance at 80% complete.'},
   {s:SURF.LL, n:'FI Matching & Routing', p:1, actor:'CreditBridge', story:'Match each ready lead to the most eligible FI via bid or waterfall so borrower gets the best offer.', flow:'3-gate pre-filter → bid (2h window, weighted scoring) or waterfall (priority order) → accept releases PII + 48h SLA → pass/breach cascades → receiving FI never named.'},
   {s:SURF.LL, n:'Disbursement Tracking', p:1, actor:'CreditBridge', story:'Track every FI status update to disbursement and notify all parties so connectors/borrowers stay informed.', flow:'FI updates status → event timestamped → connector push + borrower WhatsApp + Converter pipeline updated → Disbursed triggers commission calc.'},
@@ -527,16 +527,16 @@ const FEATURES = [
 
 const PHASES = [
   {id:0, name:'Phase 0', theme:'Foundation', lanes:{
-    'Connector App':['Lead capture','Pipeline tracker','Commission display','Push notifications'],
+    'Connector App':['Lead capture','Pipeline tracker','Commission display','Push notifications','eKYC','DPDP consent'],
     'Lead Market':['Lead feed (filter+sort)','Soft approval / pass','Post-accept PII + doc vault','Status update','Document request','Cascade display','Source-IP gate'],
     'Converter Portal':['Manual email workflow (no portal yet)'],
-    'Lead Lifecycle':['90-second qualification','Basic routing'],
+    'Lead Lifecycle':['Basic routing'],
   }},
   {id:1, name:'Phase 1', theme:'Intelligence', lanes:{
-    'Connector App':['Qualification result','Document tasks','eKYC','WhatsApp doc guidance','DPDP consent'],
+    'Connector App':['Qualification result','Document tasks','WhatsApp doc guidance','Lead visibility controls'],
     'Lead Market':['Bid submission + window','Lead inbox (per-stage SLA)','Analytics (TAT hero)','Billing with filters','FI config (variants+rates)','Org user management','User preferences'],
     'Converter Portal':['Ops dashboard','Lead pipeline','Connector lifecycle','FI management','Billing','Admin'],
-    'Lead Lifecycle':['Document collection','Multi-channel escalation','Bid window','Disbursement tracking','Commission payout'],
+    'Lead Lifecycle':['Borrower qualification (<90 sec)','Document collection','Multi-channel escalation','Bid window','Disbursement tracking','Commission payout'],
   }},
   {id:2, name:'Phase 2', theme:'Enrichment', lanes:{
     'Connector App':['FI offer display + KFS','AI credit summary','Document upload','Quality score band','Advanced analytics'],

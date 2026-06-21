@@ -361,6 +361,7 @@
       const [selectedId, setSelectedId]             = useState(null);
       const [activeTab, setActiveTab]               = useState("overview");
       const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
+      const [suspendReason, setSuspendReason]           = useState("");
 
       const statusColor = { active: C.accent, pending: C.amber, suspended: C.red };
       const kycColor    = { verified: C.accent, pending: C.amber, failed: C.red };
@@ -665,12 +666,28 @@
             <div style={{ position:"fixed", inset:0, background:"rgba(8,11,16,0.85)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
               <div style={{ background:C.card, border:`1px solid ${C.borderLight}`, borderRadius:10, width:400, maxWidth:"92vw", maxHeight:"90vh", overflowY:"auto", padding:24 }}>
                 <div style={{ fontSize:14, fontWeight:700, color:C.text, fontFamily:C.sans, marginBottom:8 }}>Suspend Connector?</div>
-                <div style={{ fontSize:12, color:C.textSec, fontFamily:C.sans, marginBottom:20, lineHeight:1.5 }}>
+                <div style={{ fontSize:12, color:C.textSec, fontFamily:C.sans, marginBottom:16, lineHeight:1.5 }}>
                   Suspending <strong style={{ color:C.text }}>{c.name}</strong> will immediately revoke their access to the Connector App. Active leads will continue processing unaffected.
                 </div>
+                <div style={{ fontSize:11, fontWeight:600, color:C.text, fontFamily:C.sans, marginBottom:6 }}>
+                  Reason for suspension <span style={{ color:C.red }}>*</span>
+                </div>
+                <textarea
+                  value={suspendReason}
+                  onChange={e => setSuspendReason(e.target.value)}
+                  placeholder="State why this connector is being suspended (e.g. repeated KYC failure, fraudulent leads, policy breach). Logged against your name for audit."
+                  style={{ width:"100%", minHeight:72, padding:"8px 10px", borderRadius:6, border:`1px solid ${C.inputBorder}`, background:C.input, color:C.text, fontSize:12, fontFamily:C.sans, outline:"none", boxSizing:"border-box", resize:"vertical", marginBottom:6 }}
+                />
+                <div style={{ fontSize:10, color:C.textTer, fontFamily:C.sans, marginBottom:18 }}>
+                  This note is recorded in the connector's history with your user ID and timestamp.
+                </div>
                 <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
-                  <Btn onClick={() => setShowSuspendConfirm(false)}>Cancel</Btn>
-                  <Btn danger onClick={() => setShowSuspendConfirm(false)}>Confirm Suspend</Btn>
+                  <Btn onClick={() => { setShowSuspendConfirm(false); setSuspendReason(""); }}>Cancel</Btn>
+                  <Btn danger
+                    onClick={() => { if(suspendReason.trim().length >= 5){ setShowSuspendConfirm(false); setSuspendReason(""); } }}
+                    style={{ opacity: suspendReason.trim().length >= 5 ? 1 : 0.5, cursor: suspendReason.trim().length >= 5 ? "pointer" : "not-allowed" }}>
+                    Confirm Suspend
+                  </Btn>
                 </div>
               </div>
             </div>
@@ -791,8 +808,12 @@
               </Card>
             ))}
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.red, marginBottom: 10, fontFamily: C.sans, display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.red, marginBottom: 6, fontFamily: C.sans, display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 6, height: 6, borderRadius: 3, background: C.red, display: "inline-block" }}/> SLA Breaches — Requires Escalation
+          </div>
+          <div style={{ fontSize: 10, color: C.textSec, fontFamily: C.sans, marginBottom: 10, lineHeight: 1.5, maxWidth: 620 }}>
+            <strong style={{ color: C.text }}>Escalate</strong> raises the lead to CB Ops management and emails the FI's relationship manager to action it within the FI; the lead stays with the same FI.
+            <strong style={{ color: C.text }}>&nbsp; Cascade</strong> moves the lead to the next FI in the waterfall when the current FI is unresponsive.
           </div>
           <Card style={{ padding: 0, overflow: "hidden" }}>
             <div className="cv-tablewrap"><table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -808,7 +829,7 @@
                     <TD><Badge label={b.stage} color={STAGE_COLOR[b.stage].c} bg={STAGE_COLOR[b.stage].bg}/></TD>
                     <TD mono bold color={C.red}>{b.hours}h</TD>
                     <TD mono color={C.redText}>+{b.hours-b.limit}h</TD>
-                    <TD style={{ display: "flex", gap: 6 }}><Btn small danger>Escalate</Btn><Btn small>Cascade →</Btn></TD>
+                    <TD style={{ display: "flex", gap: 6 }}><Btn small danger title="Notify CB Ops management + email the FI's relationship manager to action this lead">Escalate</Btn><Btn small title="Re-route this lead to the next FI in the waterfall">Cascade →</Btn></TD>
                   </tr>
                 ))}
               </tbody>
@@ -965,6 +986,21 @@
       const revenue =   [2.1,2.8,3.6,2.2,3.1,4.4];
       const maxD = Math.max(...disbursal);
       const maxR = Math.max(...revenue);
+
+      // Geography contribution — disbursed AUM (₹ Cr) and connectors by city
+      const geo = [
+        { city:"Mumbai",    aum:9.4, enrolled:142, active:98, c:C.accent },
+        { city:"Pune",      aum:6.1, enrolled:88,  active:61, c:C.blue   },
+        { city:"Bengaluru", aum:5.3, enrolled:76,  active:49, c:C.purple },
+        { city:"Ahmedabad", aum:3.8, enrolled:54,  active:33, c:C.amber  },
+        { city:"Chennai",   aum:2.6, enrolled:41,  active:24, c:C.teal   },
+        { city:"Hyderabad", aum:1.9, enrolled:35,  active:19, c:C.textSec},
+      ];
+      const maxAum = Math.max(...geo.map(g=>g.aum));
+      const totEnrolled = geo.reduce((s,g)=>s+g.enrolled,0);
+      const totActive   = geo.reduce((s,g)=>s+g.active,0);
+      const totAum      = geo.reduce((s,g)=>s+g.aum,0);
+      const avgAumPerConn = (totAum*100/totActive).toFixed(2); // ₹ Lakh per active connector
       return (
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -1019,6 +1055,57 @@
               </div>
             ))}
           </Card>
+
+          {/* Connector network KPIs */}
+          <div className="cv-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginTop: 14 }}>
+            {[
+              { l:"Enrolled Connectors",        v:String(totEnrolled),            c:C.text   },
+              { l:"Active Connectors",          v:String(totActive),              c:C.accent },
+              { l:"Disbursed AUM (₹ Cr)",       v:totAum.toFixed(1),              c:C.purple },
+              { l:"Avg AUM / Active (₹ L)",     v:avgAumPerConn,                  c:C.blue   },
+            ].map(({ l, v, c }) => (
+              <Card key={l} style={{ padding: "12px 14px" }}>
+                <div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.5px" }}>{l}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: c, fontFamily: C.mono }}>{v}</div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Geography — contribution by city */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
+            <Card>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 4 }}>Disbursed AUM by City (₹ Cr)</div>
+              <div style={{ fontSize: 10, color: C.textTer, fontFamily: C.sans, marginBottom: 14 }}>Geographic contribution to disbursals</div>
+              {geo.map(g => (
+                <div key={g.city} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 9 }}>
+                  <span style={{ fontSize: 11, color: C.textSec, fontFamily: C.sans, width: 78, flexShrink: 0 }}>{g.city}</span>
+                  <div style={{ flex: 1, height: 7, borderRadius: 3, background: C.border }}>
+                    <div style={{ width: `${(g.aum/maxAum)*100}%`, height: "100%", borderRadius: 3, background: g.c }}/>
+                  </div>
+                  <span style={{ fontSize: 11, fontFamily: C.mono, fontWeight: 700, color: g.c, width: 40, textAlign: "right" }}>{g.aum}</span>
+                </div>
+              ))}
+            </Card>
+            <Card>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 4 }}>Connectors by City</div>
+              <div style={{ fontSize: 10, color: C.textTer, fontFamily: C.sans, marginBottom: 14 }}>Enrolled vs active, with avg AUM per active connector</div>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead><tr>
+                  <TH>City</TH><TH>Enrolled</TH><TH>Active</TH><TH>Avg AUM / Active (₹ L)</TH>
+                </tr></thead>
+                <tbody>
+                  {geo.map(g => (
+                    <tr key={g.city}>
+                      <TD bold color={C.text}>{g.city}</TD>
+                      <TD mono>{g.enrolled}</TD>
+                      <TD mono color={C.accent}>{g.active}</TD>
+                      <TD mono color={C.blue}>{(g.aum*100/g.active).toFixed(2)}</TD>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          </div>
         </div>
       );
     };

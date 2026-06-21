@@ -367,7 +367,7 @@
       const amountBands = ["₹50K–₹1L","₹1L–₹3L","₹3L–₹10L","₹10L–₹25L","₹25L–₹1Cr","₹1Cr+"];
       const incomeBands = ["< ₹20K/mo","₹20K–₹40K/mo","₹40K–₹60K/mo","₹60K–₹1L/mo","₹1L+/mo"];
       const employmentTypes = ["Salaried","Self-Employed","Professional","Business Owner"];
-      const allConsent = f.c1 && f.c2 && f.c3;
+      const allConsent = f.c1;
       const canNext = [
         f.name.length>1 && f.phone.length>=10 && f.aadhaarLast4.length===4,
         f.product && f.amount && f.income && f.employment,
@@ -453,12 +453,10 @@
                   <I.Shield s={20} c={C.accent}/>
                   <div><div style={{ fontSize:14, fontWeight:700, color:C.text }}>DPDP Consent Capture</div><div style={{ fontSize:11, color:C.textSec }}>Digital Personal Data Protection Act 2023</div></div>
                 </div>
-                <div style={{ fontSize:12, color:C.textSec, lineHeight:1.7 }}>Borrower consent record will be stored immutably with: Connector ID, borrower mobile hash, product, timestamp, app version, and OS — per RBI/2022-23/111.</div>
+                <div style={{ fontSize:12, color:C.textSec, lineHeight:1.7 }}>We securely save a record of this consent so it can be verified later. The borrower's details are kept private and used only for their loan request.</div>
               </div>
               {[
-                { k:"c1", text:"Borrower has given verbal consent to share their personal and financial data for credit assessment" },
-                { k:"c2", text:"Data will be used solely for loan processing and credit evaluation — not for any other purpose" },
-                { k:"c3", text:"Borrower consents to a bureau check (CIBIL / Experian / Equifax / CRIF) on their credit profile" },
+                { k:"c1", text:"The borrower agrees to share their personal and financial details for this loan, including a credit check, and understands the information will be used only to process their loan request." },
               ].map(({ k, text })=>(
                 <button key={k} onClick={()=>set(k,!f[k])} style={{ display:"flex", gap:12, alignItems:"flex-start", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${f[k]?C.accent:C.border}`, background:f[k]?C.accentDim:C.bgCard, cursor:"pointer", textAlign:"left", width:"100%", marginBottom:10, fontFamily:"inherit" }}>
                   <div style={{ width:20, height:20, borderRadius:6, border:`2px solid ${f[k]?C.accent:C.border}`, background:f[k]?C.accent:"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>
@@ -688,7 +686,7 @@
             <div style={{ background:C.bgCard, borderRadius:14, border:`1px solid ${C.border}`, marginBottom:16, padding:"14px 16px" }}>
               <div style={{ marginBottom:4 }}>
                 <div style={{ fontSize:14, fontWeight:600, color:C.text }}>Lead Visibility</div>
-                <div style={{ fontSize:12, color:C.textSec, lineHeight:1.5 }}>Hide your leads from specific FIs — useful if you also work for them directly. Hidden FIs won't receive your leads.</div>
+                <div style={{ fontSize:12, color:C.textSec, lineHeight:1.5 }}>Choose which FIs can receive your leads. Any FI you turn off here will not be sent your leads.</div>
               </div>
               <div style={{ marginTop:10 }}>
                 {FI_LIST.map(fi=>{ const hidden=hiddenFIs.includes(fi); return (
@@ -1008,13 +1006,12 @@
             <div style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:"-0.3px" }}>Review & Consent</div>
             <div style={{ fontSize:14, color:C.textSec, marginTop:6, lineHeight:1.5 }}>Before we proceed, please review the following disclosures.</div>
           </div>
-          <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:10, textTransform:"uppercase", letterSpacing:"1.2px" }}>Mandatory</div>
-          <ConsentRow title="KYC & Identity Verification" subtitle="Verify your Aadhaar, PAN, and bank account for onboarding and regulatory compliance." mandatory={true} value={true}/>
-          <ConsentRow title="Financial Data Processing" subtitle="Process your earnings data for TDS deduction, GST invoicing, and commission payments. Data shared with tax authorities as required by law." mandatory={true} value={true}/>
-          <div style={{ fontSize:11, fontWeight:600, color:C.textSec, margin:"16px 0 10px", textTransform:"uppercase", letterSpacing:"1.2px" }}>Optional</div>
-          <ConsentRow title="Location Tracking (Field Visits)" subtitle="Track GPS location during field operations to verify customer visits. You can disable this anytime in Settings." mandatory={false} value={f.locationConsent} onToggle={()=>tog("locationConsent")}/>
-          <ConsentRow title="Performance Profiling" subtitle="CreditBridge may score your lead quality and activity for matching optimisation under DPDP." mandatory={false} value={f.perfConsent} onToggle={()=>tog("perfConsent")}/>
-          <ConsentRow title="Communication (WhatsApp & SMS)" subtitle="Receive lead updates, payout notifications, and announcements. Opt out anytime." mandatory={false} value={f.commConsent} onToggle={()=>tog("commConsent")}/>
+          <ConsentRow
+            title="I agree to the terms above"
+            subtitle="I authorise CreditBridge to verify my identity (Aadhaar, PAN, bank) and process my earnings for tax, invoicing, and commission payments as required by law. I also agree to location use during field visits, lead-quality scoring, and updates over WhatsApp & SMS — each of which I can manage anytime in Settings."
+            mandatory={false}
+            value={f.locationConsent && f.perfConsent && f.commConsent}
+            onToggle={()=>{ const v=!(f.locationConsent && f.perfConsent && f.commConsent); set("locationConsent",v); set("perfConsent",v); set("commConsent",v); }}/>
           <div style={{ padding:"12px 14px", borderRadius:12, background:C.bgCard, border:`1px solid ${C.border}`, fontSize:11, color:C.textSec, lineHeight:1.6, marginBottom:24 }}>
             Data stored on Indian servers with AES-256 encryption. Retained for 3 years post last activity or as required by tax law. Full policy at creditbridge.in/privacy.
           </div>
