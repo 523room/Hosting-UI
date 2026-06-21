@@ -398,7 +398,6 @@
                       <TD style={{ display: "flex", gap: 6 }}>
                         <Btn small onClick={() => { setSelectedId(c.id); setActiveTab("overview"); }}>View →</Btn>
                         {c.status==="pending"   && <Btn small primary>Approve</Btn>}
-                        {c.status==="active"    && <Btn small danger>Suspend</Btn>}
                         {c.status==="suspended" && <Btn small style={{ color:C.accent, borderColor:C.accentMid }}>Reactivate</Btn>}
                       </TD>
                     </tr>
