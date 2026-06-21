@@ -110,24 +110,47 @@
       );
     };
 
+    // ─── Roles (RBAC) ───────────────────────────────────────────────────────
+    // Each role sees only the modules listed. `onboarder` is a stub today —
+    // its only job is enrolling connectors via the Connector App registration.
+    const ROLES = {
+      admin:     { label: "Admin",           persona: "Vikram K.", initials: "VK", color: C.purple,
+                   modules: ["dashboard","connectors","fi_management","pipeline","sla","compliance","analytics","billing","config"] },
+      converter: { label: "Converter / Ops", persona: "Sneha K.",  initials: "SK", color: C.accent,
+                   modules: ["dashboard","connectors","pipeline","sla","compliance","analytics"] },
+      billing:   { label: "Billing",         persona: "Rohan T.",  initials: "RT", color: C.blue,
+                   modules: ["dashboard","fi_management","billing","connectors"] },
+      onboarder: { label: "Onboarder",       persona: "Priya N.",  initials: "PN", color: C.amber,
+                   modules: ["onboarding"] },
+    };
+
     // ─── Sidebar ────────────────────────────────────────────────────────────
-    const Sidebar = ({ active, onNav }) => {
-      const groups = [
+    const Sidebar = ({ active, onNav, role, onRole }) => {
+      const allGroups = [
         { title: "Operations", items: [
           { id: "dashboard",      label: "Dashboard",         ico: "⬡" },
           { id: "connectors",     label: "Connectors",        ico: "◈" },
+          { id: "onboarding",     label: "Onboarding",        ico: "✦" },
           { id: "fi_management",  label: "FI Management",     ico: "◫" },
           { id: "pipeline",       label: "Lead Pipeline",     ico: "⬕" },
           { id: "sla",            label: "SLA Tracker",       ico: "◷" },
+        ]},
+        { title: "Finance", items: [
+          { id: "billing",     label: "Billing & Payouts", ico: "₹" },
         ]},
         { title: "Compliance & Analytics", items: [
           { id: "compliance",  label: "Compliance",     ico: "▣" },
           { id: "analytics",   label: "Analytics",      ico: "▨" },
         ]},
         { title: "System", items: [
-          { id: "config",      label: "Config",         ico: "◉" },
+          { id: "config",      label: "Users & Config", ico: "◉" },
         ]},
       ];
+      const allowed = ROLES[role].modules;
+      const groups = allGroups
+        .map(g => ({ ...g, items: g.items.filter(it => allowed.includes(it.id)) }))
+        .filter(g => g.items.length > 0);
+      const r = ROLES[role];
       return (
         <div className="cv-sidebar" style={{ width: 200, background: C.sidebar, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", flexShrink: 0, height: "100%" }}>
           <div className="cv-side-top" style={{ padding: "14px 14px 12px", borderBottom: `1px solid ${C.border}` }}>
@@ -153,9 +176,17 @@
               </div>
             ))}
           </div>
-          <div className="cv-side-foot" style={{ padding: "10px 12px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 14, background: C.purpleDim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: C.purple, fontFamily: C.mono }}>SK</div>
-            <div><div style={{ fontSize: 12, fontWeight: 600, color: C.text, fontFamily: C.sans }}>Sneha K.</div><div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans }}>Converter</div></div>
+          <div className="cv-side-foot" style={{ padding: "10px 12px", borderTop: `1px solid ${C.border}` }}>
+            {/* Role switcher — demo aid for viewing each role's portal */}
+            <div style={{ fontSize: 8, fontWeight: 700, color: C.textTer, textTransform: "uppercase", letterSpacing: "0.9px", marginBottom: 4, fontFamily: C.sans }}>View as role</div>
+            <select value={role} onChange={e => onRole(e.target.value)}
+              style={{ width: "100%", padding: "6px 8px", borderRadius: 5, border: `1px solid ${C.inputBorder}`, background: C.input, color: C.text, fontSize: 11, fontFamily: C.sans, marginBottom: 10, cursor: "pointer" }}>
+              {Object.entries(ROLES).map(([key, val]) => <option key={key} value={key}>{val.label}</option>)}
+            </select>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 14, background: `${r.color}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: r.color, fontFamily: C.mono }}>{r.initials}</div>
+              <div><div style={{ fontSize: 12, fontWeight: 600, color: C.text, fontFamily: C.sans }}>{r.persona}</div><div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans }}>{r.label}</div></div>
+            </div>
           </div>
         </div>
       );
@@ -1816,23 +1847,81 @@
       );
     };
 
+    // ─── VIEW: Onboarding (Onboarder role — stub) ────────────────────────────
+    // No dedicated onboarder build yet. Connectors self-register in the
+    // Connector App; the onboarder shares their code so the enrolment is
+    // attributed to them. Expands to team management later.
+    const OnboardingView = () => {
+      const onboarderCode = "ONB-PRIYA-4821";
+      const appLink = "https://creditbridge.in/app";
+      return (
+        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+          <Card glow style={{ marginBottom: 16, padding: "18px 22px", background:`linear-gradient(135deg, ${C.accentSoft}, ${C.card})` }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 6 }}>Enrol a Connector</div>
+            <div style={{ fontSize: 12, color: C.textSec, fontFamily: C.sans, lineHeight: 1.6, maxWidth: 620 }}>
+              Connectors register themselves in the <strong style={{ color: C.text }}>Connector App</strong>. Ask them to download the app and enter your <strong style={{ color: C.text }}>Onboarder Code</strong> on the registration screen — the enrolment is then credited to you. A dedicated onboarder workspace (team management, bulk enrolment) comes later.
+            </div>
+          </Card>
+
+          <div className="cv-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+            <Card>
+              <div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Your Onboarder Code</div>
+              <div style={{ fontSize: 26, fontWeight: 700, color: C.accent, fontFamily: C.mono, letterSpacing: "1px" }}>{onboarderCode}</div>
+              <div style={{ fontSize: 11, color: C.textSec, fontFamily: C.sans, marginTop: 8, lineHeight: 1.5 }}>Connector enters this on the app's registration screen.</div>
+            </Card>
+            <Card>
+              <div style={{ fontSize: 9, color: C.textTer, fontFamily: C.sans, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>App Download Link</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.blue, fontFamily: C.mono, wordBreak: "break-all" }}>{appLink}</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <Btn small primary>Copy Link</Btn>
+                <Btn small>Share via WhatsApp</Btn>
+              </div>
+            </Card>
+          </div>
+
+          <Card>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: C.sans, marginBottom: 12 }}>How enrolment works</div>
+            {[
+              "Share the app link + your onboarder code with the prospective connector.",
+              "Connector downloads the Connector App and starts registration (eKYC, PAN, bank, consent).",
+              "They enter your onboarder code on the registration screen — enrolment is attributed to you.",
+              "The connector appears in Connectors → Pending for Ops/Admin to approve.",
+            ].map((t, i) => (
+              <div key={i} style={{ display: "flex", gap: 12, marginBottom: 9, alignItems: "flex-start" }}>
+                <div style={{ width: 20, height: 20, borderRadius: 10, background: C.accentDim, color: C.accent, fontSize: 11, fontWeight: 700, fontFamily: C.mono, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</div>
+                <span style={{ fontSize: 12, color: C.textSec, fontFamily: C.sans, lineHeight: 1.5 }}>{t}</span>
+              </div>
+            ))}
+          </Card>
+        </div>
+      );
+    };
+
     // ─── Root App ────────────────────────────────────────────────────────────
     function LeadPlatform() {
+      const [role, setRole]         = useState("converter");
       const [active, setActive]     = useState("dashboard");
       const [loggedIn, setLoggedIn] = useState(false);
+
+      const handleRole = (r) => { setRole(r); setActive(ROLES[r].modules[0]); };
 
       const views = {
         dashboard:  { title:"Operations Dashboard",  sub:"Live platform overview", component: DashboardView },
         connectors: { title:"Connector Management",  sub:"Lifecycle · KYC · Performance · Payouts", component: ConnectorsView },
+        onboarding: { title:"Onboarding",            sub:"Enrol connectors via the Connector App", component: OnboardingView },
         pipeline:   { title:"Lead Pipeline",         sub:"Stage management · Routing", component: PipelineView },
         sla:        { title:"SLA Tracker",           sub:"Breach detection · Escalation", component: SlaView },
+        billing:    { title:"Billing & Payouts",     sub:"FI invoices · GST · Connector payouts", component: BillingView },
         compliance: { title:"Compliance Dashboard",  sub:"DPDP Act · RBI/2022-23/111 · Audit log", component: ComplianceView },
         analytics:  { title:"Analytics",            sub:"Conversion funnel · Revenue", component: AnalyticsView },
         fi_management: { title:"FI Management", sub:"Onboarding · Eligibility · Users & Lead Detail · Bid Priority", component: FiManagementView },
-        config:     { title:"Platform Configuration",sub:"RBAC · FI config · System", component: () => <div style={{padding:40,color:C.textSec,fontFamily:C.sans}}>Configuration — Admin access required</div> },
+        config:     { title:"Users & Configuration", sub:"RBAC · internal users · FI config · System", component: () => <div style={{padding:40,color:C.textSec,fontFamily:C.sans}}>Internal user management & platform configuration — Admin only.</div> },
       };
 
-      const { title, sub, component: View } = views[active] || views.dashboard;
+      // Guard: if active module is not permitted for the current role, fall back
+      const allowed = ROLES[role].modules;
+      const activeId = allowed.includes(active) ? active : allowed[0];
+      const { title, sub, component: View } = views[activeId] || views.dashboard;
 
       if (typeof window !== "undefined") injectFont();
       if (!loggedIn) return <LoginPage onLogin={() => setLoggedIn(true)} />;
@@ -1857,7 +1946,7 @@
               .cv-tablewrap table{ min-width:680px; }
             }
             @media (max-width:480px){ .cv-grid{ grid-template-columns:1fr !important; } }`}</style>
-          <Sidebar active={active} onNav={setActive}/>
+          <Sidebar active={activeId} onNav={setActive} role={role} onRole={handleRole}/>
           <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
             <Topbar title={title} sub={sub} actions={<>
               <Badge label="● Live" color={C.accent} dot={false}/>

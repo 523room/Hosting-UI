@@ -715,7 +715,7 @@
         aadhaarNo:"", aadhaarOtp:"", aadhaarOtpSent:false, kycDone:false,
         fullName:"", dob:"", gender:"", aadhaarAddr:"",
         // Contact + communication address
-        email:"", affiliation:"", commSameAsAadhaar:true, commAddr:"",
+        email:"", affiliation:"", onboarderCode:"", commSameAsAadhaar:true, commAddr:"",
         // PAN verification (before bank)
         pan:"", panDone:false,
         // Bank verification — UPI reverse penny-drop or manual penny-drop
@@ -858,6 +858,11 @@
           </div>
           <TextInput label="Email Address" placeholder="e.g. amit@example.com" value={f.email} onChange={v=>set("email",v)}/>
           <TextInput label="Current Affiliation (optional)" placeholder="e.g. Andromeda, IndiaLends, Independent" value={f.affiliation} onChange={v=>set("affiliation",v)}/>
+          <TextInput label="Onboarder Code (optional)" placeholder="e.g. ONB-PRIYA-4821" value={f.onboarderCode} onChange={v=>set("onboarderCode",v.toUpperCase())}/>
+          <div style={{ padding:"10px 12px", borderRadius:10, background:C.bgCard, border:`1px solid ${C.border}`, marginTop:-6, marginBottom:14, display:"flex", gap:8, alignItems:"flex-start" }}>
+            <I.Shield s={14} c={C.textSec}/>
+            <span style={{ fontSize:11, color:C.textSec, lineHeight:1.55 }}>Were you referred by a CreditBridge onboarder? Enter their code so your enrolment is credited to them. Leave blank if you signed up on your own.</span>
+          </div>
 
           <div style={{ marginTop:4, marginBottom:14 }}>
             <div style={{ fontSize:11, fontWeight:600, color:C.textSec, marginBottom:8, textTransform:"uppercase", letterSpacing:"0.4px" }}>Communication Address</div>
@@ -1036,6 +1041,7 @@
               { l:"Aadhaar",  v:f.kycDone?"Verified ✓":"—"                   },
               { l:"PAN",      v:f.panDone?`${f.pan.substring(0,5)}***** ✓`:"—" },
               { l:"Bank",     v:f.bankDone?`${f.bankName} ✓`:"—"             },
+              ...(f.onboarderCode ? [{ l:"Onboarder", v:f.onboarderCode }] : []),
             ].map(({ l, v })=>(
               <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderBottom:`1px solid ${C.border}` }}>
                 <span style={{ fontSize:13, color:C.textSec, width:72, flexShrink:0 }}>{l}</span>
