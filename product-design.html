@@ -347,11 +347,9 @@
       </div>
       <div class="ctrl-divider"></div>
       <div class="filter-group" id="phaseFilters">
-        <button class="chip active" data-phase="all">All Phases</button>
-        <button class="chip" data-phase="0"><span class="swatch" style="background:var(--p0)"></span>P0</button>
-        <button class="chip" data-phase="1"><span class="swatch" style="background:var(--p1)"></span>P1</button>
-        <button class="chip" data-phase="2"><span class="swatch" style="background:var(--p2)"></span>P2</button>
-        <button class="chip" data-phase="3"><span class="swatch" style="background:var(--p3)"></span>P3</button>
+        <button class="chip active" data-phase="all">All</button>
+        <button class="chip" data-phase="1"><span class="swatch" style="background:var(--p1)"></span>Phase 1</button>
+        <button class="chip" data-phase="3"><span class="swatch" style="background:var(--p3)"></span>Deferred</button>
       </div>
       <div class="ctrl-divider"></div>
       <div class="filter-group" id="surfaceFilters">
@@ -370,9 +368,9 @@
   <!-- TIMELINE -->
   <section id="timeline">
     <div class="sec-head">
-      <span class="sec-kicker">02 — Phased Delivery</span>
+      <span class="sec-kicker">02 — Single-Phase Delivery</span>
       <h2 class="sec-title">Timeline</h2>
-      <p class="sec-sub">Four phases from Foundation to Scale. Each phase shows the themed deliverables per surface.</p>
+      <p class="sec-sub">Everything ships in Phase 1 — the full platform across all four surfaces. The only deferred item is Team Mode (Connector App).</p>
     </div>
     <div class="timeline" id="timeline"><div class="tl-track"></div></div>
   </section>
@@ -469,30 +467,30 @@ const SURF = { CA:'Connector App', LM:'Lead Market', CP:'Converter Portal', LL:'
 
 const FEATURES = [
   // Connector App
-  {s:SURF.CA, n:'Authentication', p:0, actor:'Connector', story:'Log in securely with my registered mobile number so only I can access my leads and commission.', flow:'Enter mobile → OTP → verified → session established → token auto-refreshed on subsequent opens.'},
-  {s:SURF.CA, n:'Home Dashboard', p:0, actor:'Connector', story:'See active lead count, commission due and conversion rate on open so I can assess my business at a glance.', flow:'Loads dashboard → active leads, estimated commission, conversion %, activity feed → cached locally for offline read.'},
-  {s:SURF.CA, n:'Lead Submission', p:0, actor:'Connector', story:'Submit borrower details through a guided form so the lead enters qualification immediately, even offline.', flow:'4-step form (name, mobile, Aadhaar last-4, PAN, loan type/band, income band, employment, pincode, notes) → offline-queued → confirmation with Lead ID.'},
-  {s:SURF.CA, n:'Lead Tracking', p:0, actor:'Connector', story:'View all submitted leads with current status so I know where each borrower stands.', flow:'Lead list → filter by status/date → timeline: Submitted → Qualified → Docs Pending → Sent to FI → Soft/Hard Sanctioned → Disbursed (or Rejected/Stale).'},
-  {s:SURF.CA, n:'Commission Display', p:0, actor:'Connector', story:'See expected commission per qualified lead and confirmed payouts at disbursement to manage income expectations.', flow:'Lead view → estimated commission for qualified → confirmed on disbursement → payout history → TDS shown → payout notification per credit.'},
-  {s:SURF.CA, n:'Settings & Profile', p:0, actor:'Connector', story:'Update my display name, switch language and control notifications so the app works the way I prefer.', flow:'Settings → edit name → toggle English/Hindi → configure push preferences.'},
+  {s:SURF.CA, n:'Authentication', p:1, actor:'Connector', story:'Log in securely with my registered mobile number so only I can access my leads and commission.', flow:'Enter mobile → OTP → verified → session established → token auto-refreshed on subsequent opens.'},
+  {s:SURF.CA, n:'Home Dashboard', p:1, actor:'Connector', story:'See active lead count, commission due and conversion rate on open so I can assess my business at a glance.', flow:'Loads dashboard → active leads, estimated commission, conversion %, activity feed → cached locally for offline read.'},
+  {s:SURF.CA, n:'Lead Submission', p:1, actor:'Connector', story:'Submit borrower details through a guided form so the lead enters qualification immediately, even offline.', flow:'4-step form (name, mobile, Aadhaar last-4, PAN, loan type/band, income band, employment, pincode, notes) → offline-queued → confirmation with Lead ID.'},
+  {s:SURF.CA, n:'Lead Tracking', p:1, actor:'Connector', story:'View all submitted leads with current status so I know where each borrower stands.', flow:'Lead list → filter by status/date → timeline: Submitted → Qualified → Docs Pending → Sent to FI → Soft/Hard Sanctioned → Disbursed (or Rejected/Stale).'},
+  {s:SURF.CA, n:'Commission Display', p:1, actor:'Connector', story:'See expected commission per qualified lead and confirmed payouts at disbursement to manage income expectations.', flow:'Lead view → estimated commission for qualified → confirmed on disbursement → payout history → TDS shown → payout notification per credit.'},
+  {s:SURF.CA, n:'Settings & Profile', p:1, actor:'Connector', story:'Update my display name, switch language and control notifications so the app works the way I prefer.', flow:'Settings → edit name → toggle English/Hindi → configure push preferences.'},
   {s:SURF.CA, n:'Qualification Result', p:1, actor:'Connector', story:'See qualified/disqualified within 90 seconds with a plain-language reason so I can give the borrower an immediate answer.', flow:'Submitted → bureau soft pull, PAN, OKYC, income/FOIR, geography → QUALIFIED (est. commission) or DISQUALIFIED (reason Q001–Q007) ≤ 90s.'},
-  {s:SURF.CA, n:'DPDP Consent', p:0, actor:'Connector', story:'Confirm borrower has agreed to data processing at submission so CreditBridge\'s use of data is lawful from day one.', flow:'Connector ticks a single plain-language combined consent acknowledgment at lead submission (no technical jargon shown; data-sharing + bureau check + purpose limitation summarised into one statement) → basic consent record stored immutably (Connector ID, borrower mobile hash, product, timestamp, app version, OS). Granular per-activity consent + withdrawal mechanism handled by Phase 1 backend Consent Management.'},
-  {s:SURF.CA, n:'eKYC', p:0, actor:'Connector', story:'Have borrower identity verified digitally so we confirm who they are before sending the lead to an FI.', flow:'Initiate eKYC → Aadhaar OTP to borrower → confirmed → PAN verified against tax records → KYC status on lead.'},
+  {s:SURF.CA, n:'DPDP Consent', p:1, actor:'Connector', story:'Confirm borrower has agreed to data processing at submission so CreditBridge\'s use of data is lawful from day one.', flow:'Connector ticks a single plain-language combined consent acknowledgment at lead submission (no technical jargon shown; data-sharing + bureau check + purpose limitation summarised into one statement) → basic consent record stored immutably (Connector ID, borrower mobile hash, product, timestamp, app version, OS). Granular per-activity consent + withdrawal mechanism handled by Phase 1 backend Consent Management.'},
+  {s:SURF.CA, n:'eKYC', p:1, actor:'Connector', story:'Have borrower identity verified digitally so we confirm who they are before sending the lead to an FI.', flow:'Initiate eKYC → Aadhaar OTP to borrower → confirmed → PAN verified against tax records → KYC status on lead.'},
   {s:SURF.CA, n:'Document Tasks', p:1, actor:'Connector', story:'A clear task list of documents to collect so I know exactly what action is required at each stage.', flow:'Checklist generated → 3 task types: digital (auto), physical (collect in person), upload → escalations T+4h/8h/24h/36h/48h.'},
-  {s:SURF.CA, n:'Document Upload', p:2, actor:'Connector', story:'Photograph and upload physical documents from my phone so I complete tasks without visiting an office.', flow:'Select upload task → camera capture → OCR field extraction → confirm/correct → uploaded and linked to lead.'},
-  {s:SURF.CA, n:'FI Offer Display', p:2, actor:'Connector', story:'Show the borrower loan offers ranked by interest rate, with each KFS, so they can choose informed.', flow:'Offer stage → AI eligibility assessment → eligible FI offers ranked by APR → select offer → KFS delivered to borrower via WhatsApp.'},
-  {s:SURF.CA, n:'Connector Quality Score', p:2, actor:'Connector', story:'See my quality score band so I understand my performance and what it means for lead prioritisation.', flow:'Profile → band shown (High/Medium/Low) from conversion, doc completeness, SLA compliance → numeric score hidden (anti-gaming).'},
-  {s:SURF.CA, n:'Competitive Earnings', p:2, actor:'Connector', story:'See how my earnings compare to peers so I stay motivated and understand where I stand.', flow:'Anonymised peer benchmark — "top 20% in your city/product" — with own earnings trend. No connector named (named leaderboard = OQ-14).'},
+  {s:SURF.CA, n:'Document Upload', p:1, actor:'Connector', story:'Photograph and upload physical documents from my phone so I complete tasks without visiting an office.', flow:'Select upload task → camera capture → OCR field extraction → confirm/correct → uploaded and linked to lead.'},
+  {s:SURF.CA, n:'FI Offer Display', p:1, actor:'Connector', story:'Show the borrower loan offers ranked by interest rate, with each KFS, so they can choose informed.', flow:'Offer stage → AI eligibility assessment → eligible FI offers ranked by APR → select offer → KFS delivered to borrower via WhatsApp.'},
+  {s:SURF.CA, n:'Connector Quality Score', p:1, actor:'Connector', story:'See my quality score band so I understand my performance and what it means for lead prioritisation.', flow:'Profile → band shown (High/Medium/Low) from conversion, doc completeness, SLA compliance → numeric score hidden (anti-gaming).'},
+  {s:SURF.CA, n:'Competitive Earnings', p:1, actor:'Connector', story:'See how my earnings compare to peers so I stay motivated and understand where I stand.', flow:'Anonymised peer benchmark — "top 20% in your city/product" — with own earnings trend. No connector named (named leaderboard = OQ-14).'},
   {s:SURF.CA, n:'Lead Visibility Controls', p:1, actor:'Connector', story:'Choose which FIs can receive my CreditBridge leads.', flow:'Profile → Lead Visibility → turn off any FI → excluded from this connector\'s matching (routing-level). Neutral UI copy — must not promote working for an FI directly. Editable anytime (OQ-15).'},
   {s:SURF.CA, n:'Team Mode', p:3, actor:'Connector', story:'Manage a group of sub-agents under my code so I can track their leads, aggregate commission and onboard via referral.', flow:'Team view → sub-agent list with lead counts + commission → aggregated team commission → referral link → sub-agent signs up under team lead.'},
 
   // Lead Market
-  {s:SURF.LM, n:'Lead Feed', p:0, actor:'FI Manager', story:'See a continuously updated feed of pre-qualified leads matching my product and geography so I skip ineligible borrowers.', flow:'Pre-filter against FI eligibility (product, pincode, CIBIL band) → anonymised cards (no PII) → filter + sort (freshness, score, amount, completeness, quality) → default sort OQ-11.'},
-  {s:SURF.LM, n:'Lead Detail — Pre-Accept', p:0, actor:'FI Manager', story:'Review a lead\'s anonymised profile before accepting so I decide informed without exposing identity prematurely.', flow:'Anonymised card → full anonymised profile → KFS shown before acceptance → accept or pass.'},
-  {s:SURF.LM, n:'Soft Approval & Pass', p:0, actor:'FI Manager', story:'Signal acceptance or disinterest so CreditBridge routes correctly and the borrower gets a timely outcome.', flow:'Accept → PII unlocked, lead to inbox. Pass → returned to routing pool for cascade. Pass recorded in SLA history.'},
-  {s:SURF.LM, n:'Lead Detail — Post-Accept', p:0, actor:'FI Manager', story:'Full access to PII, documents and bureau score once accepted so underwriting proceeds without delay.', flow:'Name, mobile, address shown → document vault (view/download, 24h signed links re-issued on demand) until reject/cascade → bureau band → connector contact.'},
-  {s:SURF.LM, n:'Lead Status Update', p:0, actor:'FI Manager', story:'Update a lead through sanctioning/disbursement so CreditBridge, connector and borrower are informed in real time.', flow:'Sequential actions: Additional Docs → Soft Sanctioned → Hard Sanctioned → Disbursed/Declined (mandatory reason) → per-stage SLA countdown with "−X pts if missed".'},
-  {s:SURF.LM, n:'Document Request', p:0, actor:'FI Manager', story:'Request additional documents and be notified when uploaded so underwriting doesn\'t follow up manually.', flow:'Specify doc type + instructions → borrower notified (WhatsApp + voice) → connector notified (app) → uploaded → FI notified → status updates.'},
+  {s:SURF.LM, n:'Lead Feed', p:1, actor:'FI Manager', story:'See a continuously updated feed of pre-qualified leads matching my product and geography so I skip ineligible borrowers.', flow:'Pre-filter against FI eligibility (product, pincode, CIBIL band) → anonymised cards (no PII) → filter + sort (freshness, score, amount, completeness, quality) → default sort OQ-11.'},
+  {s:SURF.LM, n:'Lead Detail — Pre-Accept', p:1, actor:'FI Manager', story:'Review a lead\'s anonymised profile before accepting so I decide informed without exposing identity prematurely.', flow:'Anonymised card → full anonymised profile → KFS shown before acceptance → accept or pass.'},
+  {s:SURF.LM, n:'Soft Approval & Pass', p:1, actor:'FI Manager', story:'Signal acceptance or disinterest so CreditBridge routes correctly and the borrower gets a timely outcome.', flow:'Accept → PII unlocked, lead to inbox. Pass → returned to routing pool for cascade. Pass recorded in SLA history.'},
+  {s:SURF.LM, n:'Lead Detail — Post-Accept', p:1, actor:'FI Manager', story:'Full access to PII, documents and bureau score once accepted so underwriting proceeds without delay.', flow:'Name, mobile, address shown → document vault (view/download, 24h signed links re-issued on demand) until reject/cascade → bureau band → connector contact.'},
+  {s:SURF.LM, n:'Lead Status Update', p:1, actor:'FI Manager', story:'Update a lead through sanctioning/disbursement so CreditBridge, connector and borrower are informed in real time.', flow:'Sequential actions: Additional Docs → Soft Sanctioned → Hard Sanctioned → Disbursed/Declined (mandatory reason) → per-stage SLA countdown with "−X pts if missed".'},
+  {s:SURF.LM, n:'Document Request', p:1, actor:'FI Manager', story:'Request additional documents and be notified when uploaded so underwriting doesn\'t follow up manually.', flow:'Specify doc type + instructions → borrower notified (WhatsApp + voice) → connector notified (app) → uploaded → FI notified → status updates.'},
   {s:SURF.LM, n:'Lead Inbox', p:1, actor:'FI Manager', story:'A consolidated view of accepted leads with SLA timers so my team doesn\'t miss deadlines.', flow:'Accepted leads with status chips + per-stage SLA countdown → penalty + projected SLA score shown → near-breach highlighted.'},
   {s:SURF.LM, n:'Bid Submission', p:1, actor:'FI Manager', story:'Submit a competitive bid — rate, processing fee, TAT — within the active window to win matching leads.', flow:'Notified of 2-working-hour window → form pre-filled with defaults → adjust rate/fee within range → enter TAT → submit → countdown shown.'},
   {s:SURF.LM, n:'Bid Window Status', p:1, actor:'FI Manager', story:'See the live window countdown and win/loss result so I manage my team\'s pipeline expectations.', flow:'Window opens → live countdown → own bid status → on close, win/loss notification in-portal + notification centre.'},
@@ -500,7 +498,7 @@ const FEATURES = [
   {s:SURF.LM, n:'Billing & Invoices', p:1, actor:'FI Billing', story:'View daily invoices with per-loan breakdowns and download PDFs so finance reconciles without manual work.', flow:'Daily invoices filterable by date/status/loan type/Lead ID → per-loan rows (Lead ID, product, disbursed, rate, gross, GST, net) → PDF → receivables summary. fi_billing only.'},
   {s:SURF.LM, n:'FI Eligibility Configuration', p:1, actor:'FI Manager', story:'View my eligibility config — multiple variants per product, each with its published rate — and manage change requests.', flow:'Per-variant cards (score, amount, APR, commission, pincodes) → change request with effective-from date → FI-admin approves self-approvable; CreditBridge override for geography/compliance (OQ-4).'},
   {s:SURF.LM, n:'FI Org User Management', p:1, actor:'FI Manager', story:'Create and manage users in my own FI org so I control who acts on leads and billing, without depending on CreditBridge.', flow:'CreditBridge onboards only the FI Manager → invite users, assign sub-roles (RM, billing) → per-user lead detail (handled, conversion, SLA record). Confined to own tenant.'},
-  {s:SURF.LM, n:'Notification Centre', p:2, actor:'FI Manager', story:'All platform notifications in one place with direct action links so I don\'t miss windows, uploads or SLA alerts.', flow:'Chronological list with type labels + CTA per notification → read/unread tracked. Email confirmed for key events (push+email Phase 2; pull-forward OQ-8).'},
+  {s:SURF.LM, n:'Notification Centre', p:1, actor:'FI Manager', story:'All platform notifications in one place with direct action links so I don\'t miss windows, uploads or SLA alerts.', flow:'Chronological list with type labels + CTA per notification → read/unread tracked. Email confirmed for key events (push + email, Phase 1).'},
   {s:SURF.LM, n:'User Preferences', p:1, actor:'FI Manager', story:'Save my preferred lead feed filters so I don\'t re-apply them every session.', flow:'Set default filters (product, score band, city) → auto-applied on feed load → override per session without losing defaults.'},
 
   // Converter Portal
@@ -526,24 +524,14 @@ const FEATURES = [
 ];
 
 const PHASES = [
-  {id:0, name:'Phase 0', theme:'Foundation', lanes:{
-    'Connector App':['Lead capture','Pipeline tracker','Commission display','Push notifications','eKYC','DPDP consent'],
-    'Lead Market':['Lead feed (filter+sort)','Soft approval / pass','Post-accept PII + doc vault','Status update','Document request','Cascade display','Source-IP gate'],
-    'Converter Portal':['Manual email workflow (no portal yet)'],
-    'Lead Lifecycle':['Basic routing'],
+  {id:1, name:'Phase 1', theme:'Full Platform', lanes:{
+    'Connector App':['Lead capture','Pipeline tracker','Commission display','Push notifications','eKYC','DPDP consent','Qualification result','Document tasks','WhatsApp doc guidance','Lead visibility controls','FI offer display + KFS','AI credit summary','Document upload','Quality score band','Advanced analytics','Territory analytics','Connector SaaS tiers'],
+    'Lead Market':['Lead feed (filter+sort)','Soft approval / pass','Post-accept PII + doc vault','Status update','Document request','Cascade display','Source-IP gate','Bid submission + window','Lead inbox (per-stage SLA)','Analytics (TAT hero)','Billing with filters','FI config (variants+rates)','FI eligibility self-edit','Weighted bidding dashboard','Org user management','User preferences','Push + email notifications'],
+    'Converter Portal':['Ops dashboard','Lead pipeline','Connector lifecycle','FI management','Billing','Compliance dashboard','Admin'],
+    'Lead Lifecycle':['Borrower qualification (<90 sec)','Document collection','Multi-channel escalation','Bid window + waterfall','Disbursement tracking','Commission payout'],
   }},
-  {id:1, name:'Phase 1', theme:'Intelligence', lanes:{
-    'Connector App':['Qualification result','Document tasks','WhatsApp doc guidance','Lead visibility controls'],
-    'Lead Market':['Bid submission + window','Lead inbox (per-stage SLA)','Analytics (TAT hero)','Billing with filters','FI config (variants+rates)','Org user management','User preferences'],
-    'Converter Portal':['Ops dashboard','Lead pipeline','Connector lifecycle','FI management','Billing','Admin'],
-    'Lead Lifecycle':['Borrower qualification (<90 sec)','Document collection','Multi-channel escalation','Bid window','Disbursement tracking','Commission payout'],
-  }},
-  {id:2, name:'Phase 2', theme:'Enrichment', lanes:{
-    'Connector App':['FI offer display + KFS','AI credit summary','Document upload','Quality score band','Advanced analytics'],
-    'Lead Market':['FI eligibility self-edit','Weighted bidding dashboard','Push + email notifications'],
-  }},
-  {id:3, name:'Phase 3', theme:'Scale', lanes:{
-    'Connector App':['Team mode','Territory analytics','Connector SaaS tiers'],
+  {id:3, name:'Deferred', theme:'Post-Phase-1', lanes:{
+    'Connector App':['Team mode (sub-agents, team commission, referral onboarding)'],
   }},
 ];
 
@@ -569,13 +557,13 @@ const DECISIONS = [
 
 const OQ = [
   {id:'OQ-1', st:'open', t:'DPDP consent withdrawal when lead already at an FI', s:'Connector App · P1', b:'Data already shared with an FI cannot be recalled; the FI has its own DPDP retention duties. Correct withdrawal procedure unclear — needs legal opinion vs DPDP Act 2023, Clause 6.'},
-  {id:'OQ-2', st:'directed', t:'Connector quality score: numeric vs band', s:'Connector App · P2', b:'Decision taken: band (High/Medium/Low) from Phase 2. Flagged for Product + Ops sign-off on the anti-gaming rationale before build.'},
+  {id:'OQ-2', st:'directed', t:'Connector quality score: numeric vs band', s:'Connector App · P1', b:'Decision taken: band (High/Medium/Low) in Phase 1. Flagged for Product + Ops sign-off on the anti-gaming rationale before build.'},
   {id:'OQ-3', st:'review', t:'Cascade trigger + per-stage SLA behaviour', s:'Lead Market · Lifecycle', b:'48h hard-sanction vs flat 72h cascade was overturned. SLA now per-stage with provisional defaults (Soft 48h, Hard 72h, Disbursed 24h). Post-sanction breach: cascade or escalate-only? Needs business + ops.'},
   {id:'OQ-4', st:'directed', t:'CreditBridge approval gate for FI config changes', s:'Lead Market · Converter', b:'Direction set: FI admin approves within Lead Market; Converter review queue removed; CreditBridge retains override. Live part: the precise boundary of self-approvable vs CreditBridge-gated changes.'},
   {id:'OQ-5', st:'open', t:'Bid working hours: national holiday calendar', s:'Lead Market', b:'Fixed national public-holiday list vs ops-configurable calendar — affects bid scheduling during regional/gazetted holidays.'},
   {id:'OQ-6', st:'open', t:'Bid window duration', s:'Lead Market · Lifecycle', b:'Currently 2 working hours. Needs confirmation it stays unchanged before the bid module is built.'},
-  {id:'OQ-7', st:'open', t:'LOS push to FI internal systems', s:'Lead Market · Lifecycle', b:'Direct push to FI loan-origination systems. Cannot scope until FI systems named, data contract defined, responsibility allocated. Out of scope for P0–P2.'},
-  {id:'OQ-8', st:'open', t:'Notification Centre phase assignment', s:'Lead Market', b:'In-portal notifications are Phase 1. Case to pull core types (bid window, SLA warning) to Phase 0 given time-sensitivity. Decision needed before P0 scope is locked.'},
+  {id:'OQ-7', st:'open', t:'LOS push to FI internal systems', s:'Lead Market · Lifecycle', b:'Direct push to FI loan-origination systems. Cannot scope until FI systems named, data contract defined, responsibility allocated. Out of scope for Phase 1.'},
+  {id:'OQ-8', st:'directed', t:'Notification Centre phase assignment', s:'Lead Market', b:'Resolved by single-phase delivery (July 2026): the notification centre — including bid window and SLA warning types — ships in Phase 1 with everything else.'},
   {id:'OQ-9', st:'open', t:'Daily invoice cadence + GST IRN', s:'Lead Market · Converter', b:'Daily batching means one GST IRN per day per FI. Amendment handling on reversed disbursement must be confirmed with compliance + finance.'},
   {id:'OQ-10', st:'open', t:'CreditBridge override if FI maker/checker adopted', s:'Converter Portal', b:'Contingent on OQ-4. Whether CreditBridge keeps a unilateral override for geography/compliance violations — without it, an RBI-breaching pincode add cannot be corrected.'},
   {id:'OQ-11', st:'open', t:'Default sort order for the Lead Feed', s:'Lead Market', b:'Multiple sort keys added. Default undecided — freshest-first (engagement) vs highest-quality-first (conversion). Needs business decision.'},
@@ -600,7 +588,7 @@ const PCLASS = p => 'p'+p;
 // stats — animated counters
 const STATS = [
   {to:FEATURES.length, suffix:'', label:'Product modules'},
-  {to:4, suffix:'', label:'Phases · Foundation → Scale'},
+  {to:1, suffix:'', label:'Delivery phase · everything ships in Phase 1'},
   {to:OQ.length, suffix:'', label:'Open questions tracked'},
   {to:90, suffix:'s', label:'Qualification SLA'},
 ];
@@ -640,7 +628,7 @@ function renderFeatures(){
   list.forEach(f=>{
     const c=document.createElement('div'); c.className='feat-card '+PCLASS(f.p);
     c.innerHTML=`
-      <div class="feat-top"><span class="feat-surface">${f.s}</span><span class="phase-pill ${PCLASS(f.p)}">Phase ${f.p}</span></div>
+      <div class="feat-top"><span class="feat-surface">${f.s}</span><span class="phase-pill ${PCLASS(f.p)}">${f.p===3?'Deferred':'Phase 1'}</span></div>
       <div class="feat-name">${f.n}</div>
       <div class="feat-story">${f.story}</div>
       <div class="feat-flow"><b style="color:var(--muted)">Flow · </b>${f.flow}</div>`;
@@ -658,7 +646,7 @@ function renderStories(){
     const r=document.createElement('div'); r.className='story';
     r.innerHTML=`<span class="story-actor">${f.actor}</span>
       <span class="story-text">As a <b>${f.actor}</b>, I want to ${f.story}</span>
-      <span class="phase-pill ${PCLASS(f.p)}">P${f.p}</span>`;
+      <span class="phase-pill ${PCLASS(f.p)}">${f.p===3?'DEF':'P1'}</span>`;
     storyList.appendChild(r);
   });
 }
@@ -685,7 +673,7 @@ PHASES.forEach(ph=>{
     <div class="tl-lane"><div class="tl-lane-name">${name}</div><ul>${items.map(i=>`<li>${i}</li>`).join('')}</ul></div>`).join('');
   const d=document.createElement('div'); d.className='tl-phase '+PCLASS(ph.id);
   d.innerHTML=`
-    <div class="tl-marker">${ph.id}</div>
+    <div class="tl-marker">${ph.id===3?'⏳':'1'}</div>
     <div class="tl-card">
       <div class="tl-head"><span class="tl-name">${ph.name}</span><span class="tl-theme">${ph.theme}</span><span class="tl-count">${count} module${count!==1?'s':''}</span></div>
       <div class="tl-lanes">${lanes}</div>
