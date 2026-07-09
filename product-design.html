@@ -122,11 +122,22 @@
   .center-pane{position:relative}
 
   /* ===== loupe (magnifier band + region rect) ===== */
-  .loupe-band{flex:none;height:190px;border-top:1px solid var(--line2);background:var(--panel);display:flex;flex-direction:column}
-  .lb-head{flex:none;display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid var(--line)}
+  .loupe-band{flex:none;height:190px;border-top:1px solid var(--line2);background:var(--panel);display:flex;flex-direction:column;position:relative}
+  .lb-resize{flex:none;height:9px;margin-top:-1px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;
+    background:var(--panel);touch-action:none;user-select:none}
+  .lb-resize:hover,.lb-resize.dragging{background:var(--panel2)}
+  .lb-grip{width:42px;height:3px;border-radius:2px;background:var(--line2);transition:background .15s}
+  .lb-resize:hover .lb-grip,.lb-resize.dragging .lb-grip{background:var(--mint)}
+  .lb-head{flex:none;display:flex;align-items:center;gap:10px;padding:5px 14px 7px;border-bottom:1px solid var(--line)}
   .lb-head .lb-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
   .lb-head .lb-hint{font-size:11px;color:var(--sky)}
   .lb-head .spacer{flex:1}
+  .lb-zoom{display:inline-flex;align-items:center;gap:2px}
+  .lz-btn{font-family:var(--mono);font-size:14px;line-height:1;width:24px;height:24px;color:var(--text);background:var(--panel2);
+    border:1px solid var(--line2);border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:.15s}
+  .lz-btn:hover{border-color:var(--mint);color:var(--mint)}
+  .lz-btn:disabled{opacity:.4;cursor:default;border-color:var(--line2);color:var(--dim)}
+  .lz-val{font-family:var(--mono);font-size:11px;color:var(--mut);min-width:34px;text-align:center}
   .lb-head .fs-btn{font-family:var(--mono);font-size:11px;color:var(--text);background:var(--panel2);border:1px solid var(--line2);
     border-radius:8px;padding:6px 11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s}
   .lb-head .fs-btn:hover{border-color:var(--mint);color:var(--mint)}
@@ -236,10 +247,16 @@
     <div class="pane-scroll" id="diagramMount"></div>
     <div class="loupe-rect" id="loupeRect"></div>
     <div class="loupe-band" id="loupeBand">
+      <div class="lb-resize" id="loupeResize" title="Drag to resize the loupe"><span class="lb-grip"></span></div>
       <div class="lb-head">
         <span class="lb-lbl">Loupe</span>
         <span class="lb-hint">hover the diagram to magnify</span>
         <span class="spacer"></span>
+        <span class="lb-zoom">
+          <button class="lz-btn" id="loupeZoomOut" type="button" title="Less magnification (show more)" aria-label="Zoom out">−</button>
+          <span class="lz-val" id="loupeZoomVal">1.6×</span>
+          <button class="lz-btn" id="loupeZoomIn" type="button" title="More magnification (show less)" aria-label="Zoom in">+</button>
+        </span>
         <button class="fs-btn" id="fsOpen" type="button" title="Open fullscreen zoomable view">⤢ Fullscreen</button>
       </div>
       <div class="loupe-stage">
@@ -281,7 +298,6 @@
 sequenceDiagram
     actor C as Connector
     participant CA as Connector App
-    participant HV as Hive (device)
     participant LP as Lead Platform
     participant DB as PostgreSQL
     participant KYC as eKYC · PAN · Penny-drop
@@ -363,7 +379,6 @@ sequenceDiagram
 sequenceDiagram
     actor C as Connector
     participant CA as Connector App
-    participant HV as Hive (device)
     participant LP as Lead Platform
     participant DB as PostgreSQL
     participant KYC as eKYC · PAN · Penny-drop
@@ -400,7 +415,6 @@ sequenceDiagram
 sequenceDiagram
     actor C as Connector
     participant CA as Connector App
-    participant HV as Hive (device)
     participant LP as Lead Platform
     participant DB as PostgreSQL
     participant KYC as eKYC · PAN · Penny-drop
@@ -1266,9 +1280,11 @@ const loupeBand=document.getElementById('loupeBand');
 const loupeSvg=document.getElementById('loupeSvg');
 const loupeStage=loupeSvg.parentElement;   /* .loupe-stage div — reliable clientWidth/Height */
 const loupeRect=document.getElementById('loupeRect');
-const LOUPE_ZOOM=2.7;
+const LOUPE_MIN=1.1, LOUPE_MAX=4, LOUPE_STEP=0.2;
+let loupeZoom=1.6;         // adjustable magnification (lower = more content shown)
 let loupeSourceRef=null;   // the <svg> currently cloned into the loupe
 let cloneSeq=0;
+let lastLoupeEvt=null;     // last pointer position, to re-render on zoom change
 
 /* copy the mounted diagram's svg content into the loupe, namespacing ids so
    marker/gradient url(#..) refs resolve within the clone, not the main diagram */
@@ -1286,17 +1302,21 @@ function buildLoupeClone(svg){
 function hideLoupe(){ loupeBand.classList.remove('active'); loupeRect.classList.remove('show'); }
 
 function onLoupeMove(e){
+  if(e){ lastLoupeEvt={clientX:e.clientX,clientY:e.clientY}; }
+  const ev=e||lastLoupeEvt;
+  if(!ev) return;
   const svg=mount.querySelector('.mermaid svg');
   if(!svg){ hideLoupe(); return; }
   if(svg!==loupeSourceRef) buildLoupeClone(svg);
   const ctm=svg.getScreenCTM();
   if(!ctm){ hideLoupe(); return; }
   /* cursor client coords -> diagram user space */
-  const p=new DOMPoint(e.clientX,e.clientY).matrixTransform(ctm.inverse());
+  const p=new DOMPoint(ev.clientX,ev.clientY).matrixTransform(ctm.inverse());
   const Lw=loupeStage.clientWidth||1, Lh=loupeStage.clientHeight||1;
   /* viewBox window in user units = loupe pixel size / zoom -> shows content at
-     ~LOUPE_ZOOM px per user unit (mermaid viewBox ~= natural px), crisp + readable */
-  const vbW=Lw/LOUPE_ZOOM, vbH=Lh/LOUPE_ZOOM;
+     ~loupeZoom px per user unit (mermaid viewBox ~= natural px), crisp + readable.
+     recomputed live so it stays correct as zoom AND band size change */
+  const vbW=Lw/loupeZoom, vbH=Lh/loupeZoom;
   loupeSvg.setAttribute('viewBox',`${p.x-vbW/2} ${p.y-vbH/2} ${vbW} ${vbH}`);
   loupeBand.classList.add('active');
   /* region rectangle = that user window mapped back to main on-screen px */
@@ -1304,12 +1324,58 @@ function onLoupeMove(e){
   const cr=centerPane.getBoundingClientRect();
   const rw=vbW*sx, rh=vbH*sy;
   loupeRect.style.width=rw+'px'; loupeRect.style.height=rh+'px';
-  loupeRect.style.left=(e.clientX-cr.left-rw/2)+'px';
-  loupeRect.style.top=(e.clientY-cr.top-rh/2)+'px';
+  loupeRect.style.left=(ev.clientX-cr.left-rw/2)+'px';
+  loupeRect.style.top=(ev.clientY-cr.top-rh/2)+'px';
   loupeRect.classList.add('show');
 }
 mount.addEventListener('mousemove',onLoupeMove);
-mount.addEventListener('mouseleave',hideLoupe);
+mount.addEventListener('mouseleave',()=>{ lastLoupeEvt=null; hideLoupe(); });
+
+/* ---- adjustable loupe magnification ---- */
+const loupeZoomVal=document.getElementById('loupeZoomVal');
+const loupeZoomIn=document.getElementById('loupeZoomIn');
+const loupeZoomOut=document.getElementById('loupeZoomOut');
+function updateLoupeZoomUI(){
+  loupeZoomVal.textContent=loupeZoom.toFixed(1)+'×';
+  loupeZoomOut.disabled=loupeZoom<=LOUPE_MIN+1e-9;
+  loupeZoomIn.disabled=loupeZoom>=LOUPE_MAX-1e-9;
+}
+function setLoupeZoom(z){
+  loupeZoom=clamp(Math.round(z/LOUPE_STEP)*LOUPE_STEP,LOUPE_MIN,LOUPE_MAX);
+  updateLoupeZoomUI();
+  if(lastLoupeEvt&&loupeBand.classList.contains('active')) onLoupeMove(null); /* live re-render */
+}
+loupeZoomIn.addEventListener('click',()=>setLoupeZoom(loupeZoom+LOUPE_STEP));
+loupeZoomOut.addEventListener('click',()=>setLoupeZoom(loupeZoom-LOUPE_STEP));
+updateLoupeZoomUI();
+
+/* ---- resizable loupe band (drag the top handle; grows up into the diagram area) ---- */
+const loupeResize=document.getElementById('loupeResize');
+const LOUPE_BAND_MIN=90, DIAGRAM_MIN=130;
+let resizing=false, startY=0, startH=0, maxBandH=9999;
+loupeResize.addEventListener('pointerdown',e=>{
+  resizing=true; startY=e.clientY; startH=loupeBand.offsetHeight;
+  /* max height: band top edge stops flush at the diagram area's bottom border */
+  const noteH=centerNote.classList.contains('show')?centerNote.offsetHeight:0;
+  maxBandH=centerPane.clientHeight-noteH-DIAGRAM_MIN;
+  loupeResize.classList.add('dragging');
+  try{ loupeResize.setPointerCapture(e.pointerId); }catch(_){}
+  e.preventDefault();
+});
+loupeResize.addEventListener('pointermove',e=>{
+  if(!resizing) return;
+  /* dragging UP (negative delta) grows the band */
+  const h=clamp(startH-(e.clientY-startY),LOUPE_BAND_MIN,Math.max(LOUPE_BAND_MIN,maxBandH));
+  loupeBand.style.height=h+'px';
+  if(lastLoupeEvt&&loupeBand.classList.contains('active')) onLoupeMove(null);
+});
+function endResize(e){
+  if(!resizing) return;
+  resizing=false; loupeResize.classList.remove('dragging');
+  try{ loupeResize.releasePointerCapture(e.pointerId); }catch(_){}
+}
+loupeResize.addEventListener('pointerup',endResize);
+loupeResize.addEventListener('pointercancel',endResize);
 
 /* ---- fullscreen pan/zoom ---- */
 const fsOverlay=document.getElementById('fsOverlay');
