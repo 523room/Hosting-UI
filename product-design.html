@@ -358,6 +358,25 @@ sequenceDiagram
     participant LP as Lead Platform
     participant DB as PostgreSQL
     participant KYC as eKYC · PAN · Penny-drop
+    participant HV as Hive (device)
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
     C->>CA: Mobile number
     CA->>LP: POST /auth/otp/send
     LP-->>C: OTP (MSG91 → Gupshup fallback)
@@ -378,32 +397,68 @@ sequenceDiagram
 sequenceDiagram
     actor C as Connector
     participant CA as Connector App
-    participant HV as Hive (device)
     participant LP as Lead Platform
     participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    participant HV as Hive (device)
     actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
     C->>CA: 10-field form + one-tap consent
     alt Online
-        CA->>LP: POST /connector/leads (idempotency key)
-        LP->>DB: TX — lead + consent (atomic, append-only)
-        LP-->>CV: Ops email alert (Asynq)
-        LP-->>CA: Lead ID · Submitted
+    CA->>LP: POST /connector/leads (idempotency key)
+    LP->>DB: TX — lead + consent (atomic, append-only)
+    LP-->>CV: Ops email alert (Asynq)
+    LP-->>CA: Lead ID · Submitted
     else Offline
-        CA->>HV: Queue (pending)
-        HV->>CA: Reconnect event
-        CA->>CA: Duplicate mobile+product? flag first
-        CA->>LP: FIFO drain (3 retries, backoff)
+    CA->>HV: Queue (pending)
+    HV->>CA: Reconnect event
+    CA->>CA: Duplicate mobile+product? flag first
+    CA->>LP: FIFO drain (3 retries, backoff)
     end
       </pre></div></div>
 
       <div class="flow" id="FD-03"><div class="flhead"><span class="fid">FD-03</span><h3>Qualification in under 90 seconds</h3></div><div class="flcov" data-cov="FD-03"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
-    participant TW as Temporal · Phase A
+    actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    participant HV as Hive (device)
+    actor CV as Converter
+    participant TW as Temporal
     participant SETU as Setu (PAN + OKYC)
     participant CRIF as CRIF via Surepass
-    participant DB as PostgreSQL
-    participant CA as Connector App
     actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
     TW->>SETU: PAN verify
     Note over TW: Mismatch >30% → human review signal
     TW->>B: Aadhaar OTP
@@ -417,89 +472,161 @@ sequenceDiagram
 
       <div class="flow" id="FD-04"><div class="flhead"><span class="fid">FD-04</span><h3>Document collection &amp; enrichment</h3></div><div class="flcov" data-cov="FD-04"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
-    participant TW as Temporal · Phase B
+    actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    participant HV as Hive (device)
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
     actor B as Borrower
     participant WA as WhatsApp (Interakt)
     participant AA as Account Aggregator
     participant VO as AI Voice (Sarvam+Bolna)
-    participant CA as Connector App
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
     TW->>TW: Checklist — loan × employment × score × amount
     par WhatsApp uploads
-        TW->>WA: Upload flow
-        B->>WA: Photo → S3 → OCR → validate
+    TW->>WA: Upload flow
+    B->>WA: Photo → S3 → OCR → validate
     and Bank statement
-        TW->>WA: AA consent deep-link
-        B->>AA: Authorise → structured JSON → Perfios
+    TW->>WA: AA consent deep-link
+    B->>AA: Authorise → structured JSON → Perfios
     and Physical collection
-        TW->>CA: Task card (doc, due date, address)
+    TW->>CA: Task card (doc, due date, address)
     end
     loop Escalation T+4h → T+48h
-        TW->>VO: Voice (DND-scrubbed, 9am–9pm)
-        TW->>CA: T+36h connector push · T+48h ops takeover
+    TW->>VO: Voice (DND-scrubbed, 9am–9pm)
+    TW->>CA: T+36h connector push · T+48h ops takeover
     end
     TW->>TW: ≥80% complete → Phase C
       </pre></div></div>
 
       <div class="flow" id="FD-05"><div class="flhead"><span class="fid">FD-05</span><h3>Matching, bidding &amp; acceptance — PII unlock</h3></div><div class="flcov" data-cov="FD-05"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
+    actor C as Connector
+    participant CA as Connector App
     participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    participant HV as Hive (device)
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
     participant LM as Lead Market
     actor FI as FI Manager / RM
     participant S3 as S3 signed URLs
-    actor C as Connector
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
     LP->>LM: 3-gate pre-filter → anonymised feed (no PII)
     Note over LM: Per-FI source-IP allowlist on every request
     LP->>LM: Bid window opens (2h, sealed)
     FI->>LM: Bid — APR (variant pre-fill) + fee + TAT
     LP->>LP: Weighted winner — APR 60 · TAT 30 · SLA 10
     alt Accept
-        FI->>LM: KFS confirmed → Accept
-        LP->>LP: PII unlock + audit + SLA clock
-        LP->>S3: Document vault (24h links, re-issuable)
-        LP-->>C: "Accepted by [FI]" — name post-accept only
+    FI->>LM: KFS confirmed → Accept
+    LP->>LP: PII unlock + audit + SLA clock
+    LP->>S3: Document vault (24h links, re-issuable)
+    LP-->>C: "Accepted by [FI]" — name post-accept only
     else Pass
-        LP->>LP: Back to pool → cascade (recoverable pass)
+    LP->>LP: Back to pool → cascade (recoverable pass)
     else No bids
-        LP->>LP: Waterfall by bid priority
+    LP->>LP: Waterfall by bid priority
     end
       </pre></div></div>
 
       <div class="flow" id="FD-06"><div class="flhead"><span class="fid">FD-06</span><h3>Status, per-stage SLA &amp; cascade</h3></div><div class="flcov" data-cov="FD-06"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
-    actor FI as FI Manager / RM
-    participant LM as Lead Market
-    participant LOS as FI LOS webhooks
-    participant LP as Lead Platform
-    actor CV as Converter
     actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    participant HV as Hive (device)
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
     actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
     par Manual
-        FI->>LM: Docs Req → Soft → Hard → Disbursed / Declined(reason)
+    FI->>LM: Docs Req → Soft → Hard → Disbursed / Declined(reason)
     and Automated
-        LOS->>LP: Finezza / Bajaj events (signed, idempotent)
+    LOS->>LP: Finezza / Bajaj events (signed, idempotent)
     end
     LP-->>C: Push per milestone
     LP-->>B: WhatsApp per milestone
     Note over LM: Per-stage SLA countdown · "−X points if missed"
     alt Stage breached
-        LP->>CV: Nudge flag → escalate or cascade (reason)
-        LP->>LP: Next FI — old FI sees only "opportunity passed"
+    LP->>CV: Nudge flag → escalate or cascade (reason)
+    LP->>LP: Next FI — old FI sees only "opportunity passed"
     end
       </pre></div></div>
 
       <div class="flow" id="FD-07"><div class="flhead"><span class="fid">FD-07</span><h3>Disbursement → commission → payout</h3></div><div class="flcov" data-cov="FD-07"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
-    participant TW as Temporal · Phase D/E
-    participant GSTN as GSTN e-invoice
-    actor BL as Billing (maker)
-    actor AD as Admin (approver)
-    participant RZ as Razorpay Payouts
     actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    participant HV as Hive (device)
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
     TW->>TW: Gross − platform share − 18% GST − TDS 194H (paise)
     TW->>GSTN: Invoice ≤4h · IRN + QR · per-FI cadence
     BL->>TW: payout:initiate (maker recorded)
     opt Above threshold
-        AD->>TW: payout:approve
+    AD->>TW: payout:approve
     end
     BL->>TW: payout:release — checker ≠ maker (SQL CHECK)
     TW->>RZ: NEFT/IMPS (idempotency per payout+action)
@@ -509,20 +636,39 @@ sequenceDiagram
 
       <div class="flow" id="FD-08"><div class="flhead"><span class="fid">FD-08</span><h3>FI onboarding &amp; configuration change</h3></div><div class="flcov" data-cov="FD-08"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
-    actor CV as Converter
-    participant CP as Converter Portal
+    actor C as Connector
+    participant CA as Connector App
     participant LP as Lead Platform
-    actor FIM as FI Manager
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    participant HV as Hive (device)
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
     participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
     CV->>CP: Register FI → pending_setup
     CV->>CP: Variants (score · amount · APR · commission · pincodes) → active
-    FIM->>LM: Provision org users (RM, billing) — own tenant only
+    FI->>LM: Provision org users (RM, billing) — own tenant only
     loop Change requests (maker/checker in the FI org)
-        FIM->>LM: Submit + effective-from date
-        FIM->>LM: Approve → Scheduled → Live on date
+    FI->>LM: Submit + effective-from date
+    FI->>LM: Approve → Scheduled → Live on date
     end
     opt Geography / compliance change
-        CV->>CP: Override with mandatory reason (audit-logged)
+    CV->>CP: Override with mandatory reason (audit-logged)
     end
     LP->>LP: Daily scrape → LLM parse → human review (never auto-applied)
     LP->>LP: Bid priority — SLA 50 · Accept 30 · TAT 20 (ops ±10)
@@ -530,72 +676,152 @@ sequenceDiagram
 
       <div class="flow" id="FD-09"><div class="flhead"><span class="fid">FD-09</span><h3>Consent lifecycle &amp; compliance enforcement</h3></div><div class="flcov" data-cov="FD-09"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
-    actor B as Borrower
+    actor C as Connector
+    participant CA as Connector App
     participant LP as Lead Platform
-    participant DB as Append-only tables
-    participant CW as CloudWatch → S3 (2y)
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    participant HV as Hive (device)
     actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
     LP->>DB: Per-activity consent — bureau · OKYC · AA · ITR · data-to-FI · marketing
     Note over B,DB: Consent-withdrawal enforcement — DEFERRED
     B->>LP: Withdraw consent (deferred)
     alt Not yet at an FI
-        LP->>DB: Freeze → anonymise PII ≤30 days
+    LP->>DB: Freeze → anonymise PII ≤30 days
     else Already accepted by FI
-        LP->>DB: Immutable withdrawal event only (no recall — OQ-01)
+    LP->>DB: Immutable withdrawal event only (no recall — OQ-01)
     end
     loop Scheduled jobs
-        LP->>DB: Bureau purge at 30 days (band retained)
-        LP->>DB: PMLA — KYC kept 5y post closure
-        LP->>CW: Everything archived — PII access, status, config, payouts
+    LP->>DB: Bureau purge at 30 days (band retained)
+    LP->>DB: PMLA — KYC kept 5y post closure
+    LP->>CW: Everything archived — PII access, status, config, payouts
     end
     CV->>LP: Compliance dashboard + RBI audit export
       </pre></div></div>
 
       <div class="flow" id="FD-10"><div class="flhead"><span class="fid">FD-10</span><h3>Admin access — OTP &amp; IP allowlist</h3></div><div class="flcov" data-cov="FD-10"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
-    actor AD as Admin
+    actor C as Connector
+    participant CA as Connector App
     participant LP as Lead Platform
     participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    participant HV as Hive (device)
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
     AD->>LP: Login request (source IP)
     LP->>DB: Check admin IP allowlist
     alt IP allowed
-        LP-->>AD: 8-char alphanumeric OTP
-        AD->>LP: OTP
-        LP->>DB: Verify OTP → issue JWT
-        LP-->>AD: Admin session granted
+    LP-->>AD: 8-char alphanumeric OTP
+    AD->>LP: OTP
+    LP->>DB: Verify OTP → issue JWT
+    LP-->>AD: Admin session granted
     else IP not allowlisted
-        LP-->>AD: 403 — unapproved network
+    LP-->>AD: 403 — unapproved network
     end
       </pre></div></div>
 
       <div class="flow" id="FD-11"><div class="flhead"><span class="fid">FD-11</span><h3>FI source-IP access control</h3></div><div class="flcov" data-cov="FD-11"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
-    actor FIM as FI Manager
-    participant LM as Lead Market
+    actor C as Connector
+    participant CA as Connector App
     participant LP as Lead Platform
     participant DB as PostgreSQL
-    FIM->>LM: Login / any request (source IP)
+    participant KYC as eKYC · PAN · Penny-drop
+    participant HV as Hive (device)
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
+    FI->>LM: Login / any request (source IP)
     LM->>LP: Forward request with source IP
     LP->>DB: Per-FI source-IP allowlist check
     alt IP in allowlist
-        LP-->>FIM: Access granted
+    LP-->>FI: Access granted
     else IP not allowed
-        LP-->>FIM: 403 — blocked network
+    LP-->>FI: 403 — blocked network
     end
     Note over LP,DB: Enforced at login AND on every request
       </pre></div></div>
 
       <div class="flow" id="FD-12"><div class="flhead"><span class="fid">FD-12</span><h3>Admin account management</h3></div><div class="flcov" data-cov="FD-12"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
-    actor AD as Admin
-    participant CP as Converter Portal
+    actor C as Connector
+    participant CA as Connector App
     participant LP as Lead Platform
     participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    participant HV as Hive (device)
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
     AD->>CP: Create / edit / suspend account (any role)
     CP->>LP: POST /admin/users (role, action)
     LP->>DB: Upsert user + role
     alt Suspend
-        LP->>DB: status = suspended + jti denylist
+    LP->>DB: status = suspended + jti denylist
     end
     LP->>DB: Audit event (actor, action)
     LP-->>CP: Confirmation
@@ -603,10 +829,30 @@ sequenceDiagram
 
       <div class="flow" id="FD-13"><div class="flhead"><span class="fid">FD-13</span><h3>Admin platform settings</h3></div><div class="flcov" data-cov="FD-13"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
-    actor AD as Admin
-    participant CP as Converter Portal
+    actor C as Connector
+    participant CA as Connector App
     participant LP as Lead Platform
     participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    participant HV as Hive (device)
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
     AD->>CP: Edit platform settings
     CP->>LP: PUT /admin/config (commission · SLA · templates · pincodes)
     LP->>DB: Persist config + audit event
@@ -1314,7 +1560,13 @@ q.addEventListener('input',()=>{
     const d=diagrams.find(x=>x.id===id);
     if(!d)return;
     cpTabs.querySelectorAll('.cp-tab').forEach(b=>b.classList.toggle('active',b.dataset.id===id));
-    const activeSet=new Set(d.participants);
+    /* Active lanes are entities that actually SEND or RECEIVE a message in
+       this diagram — not every declared participant. Since every diagram
+       now declares the full 24-entity roster (for fixed lane positions),
+       deriving from d.participants would light up all 24 lanes on every
+       tab; deriving from message endpoints keeps the fade meaningful. */
+    const activeSet=new Set();
+    d.messages.forEach(m=>{activeSet.add(m.from);activeSet.add(m.to)});
     lanesG.querySelectorAll('.lane').forEach(g=>{
       const on=activeSet.has(g.dataset.name);
       g.classList.toggle('active',on);
