@@ -119,6 +119,42 @@
   .center-note{flex:none;padding:10px 18px;font-size:12px;color:var(--amber);background:rgba(255,170,51,.08);
     border-bottom:1px solid rgba(255,170,51,.3);display:none}
   .center-note.show{display:block}
+  .center-pane{position:relative}
+
+  /* ===== loupe (magnifier band + region rect) ===== */
+  .loupe-band{flex:none;height:190px;border-top:1px solid var(--line2);background:var(--panel);display:flex;flex-direction:column}
+  .lb-head{flex:none;display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid var(--line)}
+  .lb-head .lb-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+  .lb-head .lb-hint{font-size:11px;color:var(--sky)}
+  .lb-head .spacer{flex:1}
+  .lb-head .fs-btn{font-family:var(--mono);font-size:11px;color:var(--text);background:var(--panel2);border:1px solid var(--line2);
+    border-radius:8px;padding:6px 11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s}
+  .lb-head .fs-btn:hover{border-color:var(--mint);color:var(--mint)}
+  .loupe-stage{flex:1;min-height:0;position:relative;overflow:hidden}
+  #loupeSvg{position:absolute;inset:0;width:100%;height:100%;display:none;background:var(--panel2)}
+  .loupe-band.active #loupeSvg{display:block}
+  .loupe-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:12px;font-family:var(--mono)}
+  .loupe-band.active .loupe-empty{display:none}
+  .loupe-rect{position:absolute;border:1.5px solid var(--mint);background:rgba(0,200,150,.1);pointer-events:none;
+    display:none;z-index:5;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+  .loupe-rect.show{display:block}
+
+  /* ===== fullscreen pan/zoom overlay ===== */
+  .fs-overlay{position:fixed;inset:0;z-index:200;background:rgba(8,10,14,.95);backdrop-filter:blur(4px);
+    display:none;flex-direction:column}
+  .fs-overlay.open{display:flex}
+  .fs-bar{flex:none;display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line)}
+  .fs-bar .fs-title{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--sky)}
+  .fs-bar .fs-title b{color:var(--text);font-weight:600}
+  .fs-bar .fs-hint{font-size:11px;color:var(--dim)}
+  .fs-bar .spacer{flex:1}
+  .fs-bar button{font-family:var(--mono);font-size:12px;color:var(--text);background:var(--panel2);border:1px solid var(--line2);
+    border-radius:8px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .fs-bar button:hover{border-color:var(--mint);color:var(--mint)}
+  .fs-canvas{flex:1;min-height:0;overflow:hidden;position:relative;touch-action:none;cursor:grab}
+  .fs-canvas.grabbing{cursor:grabbing}
+  .fs-wrap{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform}
+  .fs-wrap svg{display:block;max-width:none!important}
 
   /* ===== right pane: tasks / tests / questions ===== */
   .rp-empty{padding:30px 20px;color:var(--dim);font-size:12.5px;text-align:center}
@@ -198,6 +234,19 @@
   <section class="pane center-pane" id="centerPane">
     <div class="center-note" id="centerNote">No flow diagram for this story.</div>
     <div class="pane-scroll" id="diagramMount"></div>
+    <div class="loupe-rect" id="loupeRect"></div>
+    <div class="loupe-band" id="loupeBand">
+      <div class="lb-head">
+        <span class="lb-lbl">Loupe</span>
+        <span class="lb-hint">hover the diagram to magnify</span>
+        <span class="spacer"></span>
+        <button class="fs-btn" id="fsOpen" type="button" title="Open fullscreen zoomable view">⤢ Fullscreen</button>
+      </div>
+      <div class="loupe-stage">
+        <svg id="loupeSvg" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="loupe-empty">Hover a diagram lane to inspect it here</div>
+      </div>
+    </div>
   </section>
 
   <aside class="pane right-pane" id="rightPane">
@@ -208,6 +257,18 @@
   </aside>
 
   <button class="edge-btn edge-right" id="rightToggle" aria-label="Toggle tasks panel">☰</button>
+</div>
+
+<!-- ============ FULLSCREEN PAN/ZOOM OVERLAY ============ -->
+<div class="fs-overlay" id="fsOverlay" aria-hidden="true">
+  <div class="fs-bar">
+    <span class="fs-title" id="fsTitle"></span>
+    <span class="fs-hint">wheel / pinch to zoom · drag to pan</span>
+    <span class="spacer"></span>
+    <button id="fsFit" type="button">Fit</button>
+    <button id="fsClose" type="button">✕ Close</button>
+  </div>
+  <div class="fs-canvas" id="fsCanvas"><div class="fs-wrap" id="fsWrap"></div></div>
 </div>
 
 <!-- ============ HIDDEN FLOW POOL ============
@@ -1100,6 +1161,7 @@ function selectFD(id,opts={}){
   const c=document.querySelector(`.fd-chip[data-fd="${id}"]`);
   if(c)c.classList.add('active');
   centerNote.classList.toggle('show',!!opts.note);
+  onDiagramChanged();
 }
 
 /* ================= RIGHT PANE: tasks / tests / questions ================= */
@@ -1206,6 +1268,165 @@ function syncTopbarHeight(){
   document.documentElement.style.setProperty('--topbar-h',document.getElementById('topbar').offsetHeight+'px');
 }
 window.addEventListener('resize',syncTopbarHeight);
+
+/* ================= FEATURE 1: hover loupe + FEATURE 2: fullscreen zoom ================= */
+const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+const centerPane=document.getElementById('centerPane');
+const loupeBand=document.getElementById('loupeBand');
+const loupeSvg=document.getElementById('loupeSvg');
+const loupeStage=loupeSvg.parentElement;   /* .loupe-stage div — reliable clientWidth/Height */
+const loupeRect=document.getElementById('loupeRect');
+const LOUPE_ZOOM=2.7;
+let loupeSourceRef=null;   // the <svg> currently cloned into the loupe
+let cloneSeq=0;
+
+/* copy the mounted diagram's svg content into the loupe, namespacing ids so
+   marker/gradient url(#..) refs resolve within the clone, not the main diagram */
+function buildLoupeClone(svg){
+  const uid='lp'+(cloneSeq++);
+  let html=svg.innerHTML
+    .replace(/id="([^"]+)"/g,`id="${uid}-$1"`)
+    .replace(/url\(#([^)]+)\)/g,`url(#${uid}-$1)`)
+    .replace(/(xlink:href|href)="#([^"]+)"/g,`$1="#${uid}-$2"`);
+  loupeSvg.innerHTML=html;
+  const vb=svg.getAttribute('viewBox');
+  if(vb)loupeSvg.dataset.srcvb=vb;
+  loupeSourceRef=svg;
+}
+function hideLoupe(){ loupeBand.classList.remove('active'); loupeRect.classList.remove('show'); }
+
+function onLoupeMove(e){
+  const svg=mount.querySelector('.mermaid svg');
+  if(!svg){ hideLoupe(); return; }
+  if(svg!==loupeSourceRef) buildLoupeClone(svg);
+  const ctm=svg.getScreenCTM();
+  if(!ctm){ hideLoupe(); return; }
+  /* cursor client coords -> diagram user space */
+  const p=new DOMPoint(e.clientX,e.clientY).matrixTransform(ctm.inverse());
+  const Lw=loupeStage.clientWidth||1, Lh=loupeStage.clientHeight||1;
+  /* viewBox window in user units = loupe pixel size / zoom -> shows content at
+     ~LOUPE_ZOOM px per user unit (mermaid viewBox ~= natural px), crisp + readable */
+  const vbW=Lw/LOUPE_ZOOM, vbH=Lh/LOUPE_ZOOM;
+  loupeSvg.setAttribute('viewBox',`${p.x-vbW/2} ${p.y-vbH/2} ${vbW} ${vbH}`);
+  loupeBand.classList.add('active');
+  /* region rectangle = that user window mapped back to main on-screen px */
+  const sx=ctm.a||1, sy=ctm.d||1;               /* on-screen px per user unit */
+  const cr=centerPane.getBoundingClientRect();
+  const rw=vbW*sx, rh=vbH*sy;
+  loupeRect.style.width=rw+'px'; loupeRect.style.height=rh+'px';
+  loupeRect.style.left=(e.clientX-cr.left-rw/2)+'px';
+  loupeRect.style.top=(e.clientY-cr.top-rh/2)+'px';
+  loupeRect.classList.add('show');
+}
+mount.addEventListener('mousemove',onLoupeMove);
+mount.addEventListener('mouseleave',hideLoupe);
+
+/* ---- fullscreen pan/zoom ---- */
+const fsOverlay=document.getElementById('fsOverlay');
+const fsCanvas=document.getElementById('fsCanvas');
+const fsWrap=document.getElementById('fsWrap');
+const fsTitle=document.getElementById('fsTitle');
+const MINZ=0.1, MAXZ=12;
+let fsScale=1, fsX=0, fsY=0;
+
+function fsSvgSize(){
+  const s=fsWrap.querySelector('svg'); if(!s)return[100,100];
+  const vb=s.viewBox&&s.viewBox.baseVal;
+  if(vb&&vb.width)return[vb.width,vb.height];
+  try{const b=s.getBBox();if(b.width)return[b.width,b.height];}catch(_){}
+  return[s.clientWidth||100,s.clientHeight||100];
+}
+function applyFsTransform(){ fsWrap.style.transform=`translate(${fsX}px,${fsY}px) scale(${fsScale})`; }
+function fitFullscreen(){
+  const[w,h]=fsSvgSize();
+  const cw=fsCanvas.clientWidth||1, ch=fsCanvas.clientHeight||1;
+  const s=Math.min(cw/w,ch/h)*0.95;
+  fsScale=clamp(s,MINZ,MAXZ);
+  fsX=(cw-w*fsScale)/2; fsY=(ch-h*fsScale)/2;
+  applyFsTransform();
+}
+function loadFsDiagram(){
+  const svg=mount.querySelector('.mermaid svg');
+  fsWrap.innerHTML='';
+  if(svg){
+    const clone=svg.cloneNode(true);
+    const vb=svg.viewBox&&svg.viewBox.baseVal;
+    clone.removeAttribute('style');
+    if(vb&&vb.width){ clone.setAttribute('width',vb.width); clone.setAttribute('height',vb.height); }
+    fsWrap.appendChild(clone);
+  }
+  const flow=mount.firstElementChild;
+  const fid=flow?.querySelector('.flhead .fid')?.textContent||'—';
+  const ttl=flow?.querySelector('.flhead h3')?.textContent||'No flow selected';
+  fsTitle.innerHTML=`${fid} <b>${ttl}</b>`;
+}
+function openFullscreen(){
+  loadFsDiagram();
+  fsOverlay.classList.add('open');
+  fsOverlay.setAttribute('aria-hidden','false');
+  requestAnimationFrame(fitFullscreen);
+}
+function closeFullscreen(){
+  fsOverlay.classList.remove('open');
+  fsOverlay.setAttribute('aria-hidden','true');
+}
+function zoomAt(mx,my,factor){
+  const ns=clamp(fsScale*factor,MINZ,MAXZ), k=ns/fsScale;
+  fsX=mx-(mx-fsX)*k; fsY=my-(my-fsY)*k; fsScale=ns; applyFsTransform();
+}
+document.getElementById('fsOpen').addEventListener('click',openFullscreen);
+document.getElementById('fsClose').addEventListener('click',closeFullscreen);
+document.getElementById('fsFit').addEventListener('click',fitFullscreen);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&fsOverlay.classList.contains('open'))closeFullscreen(); });
+
+fsCanvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const r=fsCanvas.getBoundingClientRect();
+  const factor=Math.exp(-e.deltaY*0.0015);
+  zoomAt(e.clientX-r.left,e.clientY-r.top,factor);
+},{passive:false});
+
+/* Pointer Events: 1 pointer = pan, 2 pointers = pinch-zoom (touch-friendly) */
+const fsPointers=new Map();
+let pinchPrev=null;
+fsCanvas.addEventListener('pointerdown',e=>{
+  fsPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  try{ fsCanvas.setPointerCapture(e.pointerId); }catch(_){}
+  fsCanvas.classList.add('grabbing');
+});
+fsCanvas.addEventListener('pointermove',e=>{
+  if(!fsPointers.has(e.pointerId))return;
+  const prev=fsPointers.get(e.pointerId);
+  fsPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(fsPointers.size===1){
+    fsX+=e.clientX-prev.x; fsY+=e.clientY-prev.y; applyFsTransform();
+  } else if(fsPointers.size===2){
+    const pts=[...fsPointers.values()];
+    const dist=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
+    const mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+    const r=fsCanvas.getBoundingClientRect();
+    if(pinchPrev){
+      zoomAt(mid.x-r.left,mid.y-r.top,dist/pinchPrev.dist);
+      fsX+=mid.x-pinchPrev.mid.x; fsY+=mid.y-pinchPrev.mid.y; applyFsTransform();
+    }
+    pinchPrev={dist,mid};
+  }
+});
+function fsEndPointer(e){
+  fsPointers.delete(e.pointerId);
+  if(fsPointers.size<2)pinchPrev=null;
+  if(fsPointers.size===0)fsCanvas.classList.remove('grabbing');
+}
+fsCanvas.addEventListener('pointerup',fsEndPointer);
+fsCanvas.addEventListener('pointercancel',fsEndPointer);
+window.addEventListener('resize',()=>{ if(fsOverlay.classList.contains('open'))fitFullscreen(); });
+
+/* called by selectFD whenever the mounted diagram changes */
+function onDiagramChanged(){
+  loupeSourceRef=null;          /* force loupe clone rebuild on next hover */
+  hideLoupe();
+  if(fsOverlay.classList.contains('open')){ loadFsDiagram(); requestAnimationFrame(fitFullscreen); }
+}
 
 /* ================= mermaid ================= */
 mermaid.initialize({startOnLoad:true,theme:'dark',securityLevel:'loose',
