@@ -134,11 +134,13 @@
   .lb-head .lb-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
   .lb-head .lb-hint{font-size:11px;color:var(--sky)}
   .lb-head .spacer{flex:1}
-  .lb-zoom{display:inline-flex;align-items:center;gap:2px}
-  .lz-btn{font-family:var(--mono);font-size:14px;line-height:1;width:24px;height:24px;color:var(--text);background:var(--panel2);
-    border:1px solid var(--line2);border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:.15s}
-  .lz-btn:hover{border-color:var(--mint);color:var(--mint)}
-  .lz-btn:disabled{opacity:.4;cursor:default;border-color:var(--line2);color:var(--dim)}
+  .lb-zoom{display:inline-flex;align-items:center;gap:8px}
+  .lz-slider{-webkit-appearance:none;appearance:none;width:90px;height:3px;border-radius:2px;background:var(--line2);cursor:pointer;outline:none}
+  .lz-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:13px;height:13px;border-radius:50%;
+    background:var(--mint);border:2px solid var(--panel);cursor:pointer;transition:.15s}
+  .lz-slider::-webkit-slider-thumb:hover{transform:scale(1.15)}
+  .lz-slider::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--mint);border:2px solid var(--panel);cursor:pointer;transition:.15s}
+  .lz-slider::-moz-range-thumb:hover{transform:scale(1.15)}
   .lz-val{font-family:var(--mono);font-size:11px;color:var(--mut);min-width:34px;text-align:center}
   .lb-head .fs-btn{font-family:var(--mono);font-size:11px;color:var(--text);background:var(--panel2);border:1px solid var(--line2);
     border-radius:8px;padding:6px 11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s}
@@ -280,9 +282,8 @@
         <span class="lb-hint">hover the diagram to magnify</span>
         <span class="spacer"></span>
         <span class="lb-zoom">
-          <button class="lz-btn" id="loupeZoomOut" type="button" title="Less magnification (show more)" aria-label="Zoom out">−</button>
-          <span class="lz-val" id="loupeZoomVal">1.6×</span>
-          <button class="lz-btn" id="loupeZoomIn" type="button" title="More magnification (show less)" aria-label="Zoom in">+</button>
+          <input class="lz-slider" id="loupeZoomSlider" type="range" min="0.1" max="1" step="0.1" value="1" title="Loupe magnification" aria-label="Loupe magnification">
+          <span class="lz-val" id="loupeZoomVal">1.0×</span>
         </span>
         <button class="fs-btn" id="fsOpen" type="button" title="Open fullscreen zoomable view">⤢ Fullscreen</button>
       </div>
@@ -1416,8 +1417,8 @@ const loupeBand=document.getElementById('loupeBand');
 const loupeSvg=document.getElementById('loupeSvg');
 const loupeStage=loupeSvg.parentElement;   /* .loupe-stage div — reliable clientWidth/Height */
 const loupeRect=document.getElementById('loupeRect');
-const LOUPE_MIN=1.1, LOUPE_MAX=4, LOUPE_STEP=0.2;
-let loupeZoom=1.6;         // adjustable magnification (lower = more content shown)
+const LOUPE_MIN=0.1, LOUPE_MAX=1, LOUPE_STEP=0.1;
+let loupeZoom=1;           // adjustable magnification (lower = more content shown)
 let loupeSourceRef=null;   // the <svg> currently cloned into the loupe
 let cloneSeq=0;
 let lastLoupeEvt=null;     // last pointer position, to re-render on zoom change
@@ -1469,20 +1470,17 @@ mount.addEventListener('mouseleave',()=>{ lastLoupeEvt=null; hideLoupe(); });
 
 /* ---- adjustable loupe magnification ---- */
 const loupeZoomVal=document.getElementById('loupeZoomVal');
-const loupeZoomIn=document.getElementById('loupeZoomIn');
-const loupeZoomOut=document.getElementById('loupeZoomOut');
+const loupeZoomSlider=document.getElementById('loupeZoomSlider');
 function updateLoupeZoomUI(){
   loupeZoomVal.textContent=loupeZoom.toFixed(1)+'×';
-  loupeZoomOut.disabled=loupeZoom<=LOUPE_MIN+1e-9;
-  loupeZoomIn.disabled=loupeZoom>=LOUPE_MAX-1e-9;
+  loupeZoomSlider.value=loupeZoom;
 }
 function setLoupeZoom(z){
   loupeZoom=clamp(Math.round(z/LOUPE_STEP)*LOUPE_STEP,LOUPE_MIN,LOUPE_MAX);
   updateLoupeZoomUI();
   if(lastLoupeEvt&&loupeBand.classList.contains('active')) onLoupeMove(null); /* live re-render */
 }
-loupeZoomIn.addEventListener('click',()=>setLoupeZoom(loupeZoom+LOUPE_STEP));
-loupeZoomOut.addEventListener('click',()=>setLoupeZoom(loupeZoom-LOUPE_STEP));
+loupeZoomSlider.addEventListener('input',()=>setLoupeZoom(parseFloat(loupeZoomSlider.value)));
 updateLoupeZoomUI();
 
 /* ---- resizable loupe band (drag the top handle; grows up into the diagram area) ---- */
