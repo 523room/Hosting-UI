@@ -596,7 +596,7 @@ sequenceDiagram
     else IP not allowlisted
     NG-->>AD: 403 — unapproved network (never reaches app)
     end
-      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>The IP allowlist is enforced at the <b>Nginx reverse proxy</b>, before the request reaches the application — a disallowed network is 403'd at the edge and never reaches the TOTP prompt, closing off any probing of the second factor. Admin's second factor is <b>mandatory TOTP 2FA</b> (same primitive as FI Managers), so the highest-privilege role carries the strongest authentication, not a weaker emailed OTP.</div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span><b style="color:#FFAA33">⚑ DEFERRED (D-08d):</b> source-IP allowlist enforcement is deferred platform-wide (admin + FI); this diagram is retained for future reference — for now admin auth is TOTP-only. The IP allowlist is enforced at the <b>Nginx reverse proxy</b>, before the request reaches the application — a disallowed network is 403'd at the edge and never reaches the TOTP prompt, closing off any probing of the second factor. Admin's second factor is <b>mandatory TOTP 2FA</b> (same primitive as FI Managers), so the highest-privilege role carries the strongest authentication, not a weaker emailed OTP.</div></div>
 
   <div class="flow" id="FD-11"><div class="flhead"><span class="fid">FD-11</span><h3>FI source-IP access control</h3></div><div class="flcov" data-cov="FD-11"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -613,7 +613,7 @@ sequenceDiagram
     LP-->>FI: 403 — blocked network
     end
     Note over LP,DB: Enforced at login AND on every request
-      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>The source-IP check re-runs on every request, not just at login, so a session token stolen off-network still fails at the next call — this is enforced at the API gateway/middleware layer, ahead of business logic.</div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span><b style="color:#FFAA33">⚑ DEFERRED (D-08d):</b> FI source-IP access control is deferred platform-wide; this diagram is retained for future reference. The source-IP check re-runs on every request, not just at login, so a session token stolen off-network still fails at the next call — this is enforced at the API gateway/middleware layer, ahead of business logic.</div></div>
 
   <div class="flow" id="FD-12"><div class="flhead"><span class="fid">FD-12</span><h3>Admin account management</h3></div><div class="flcov" data-cov="FD-12"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -663,7 +663,7 @@ sequenceDiagram
     FI->>LM: Set password
     LP->>DB: Store Argon2 hash · status = pending_2fa
     FI->>LM: First login (email + password)
-    Note over LM,LP: ▶ FD-11 source-IP allowlist (US-05)
+    Note over LM,LP: ▶ FD-11 source-IP allowlist (US-05) — DEFERRED, skipped for now
     LP->>DB: role=fi_manager & pending_2fa → require 2FA
     LP-->>FI: TOTP secret + QR (enrolment) (US-05a)
     FI->>LM: Enter TOTP code
@@ -674,7 +674,7 @@ sequenceDiagram
     FI->>LM: Invite RM / Billing (tenant-scoped)
     LP->>EM: Activation link to invitee (same set-password + 2FA)
     end
-      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>FI accounts start with no password (<code>pending_setup</code>); the activation link is single-use and time-boxed, validated server-side before a password can be set. 2FA enrollment (TOTP secret + QR) only fires on first login and only after the FI-11 source-IP gate passes — 2FA is a second factor stacked on top of network trust, not a replacement for it.</div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>FI accounts start with no password (<code>pending_setup</code>); the activation link is single-use and time-boxed, validated server-side before a password can be set. 2FA enrollment (TOTP secret + QR) fires on first login. <b style="color:#FFAA33">⚑ DEFERRED (D-08d):</b> the FI-11 source-IP gate is deferred for now, so first login proceeds straight to TOTP; when re-enabled, the IP gate precedes 2FA (network trust + second factor).</div></div>
 
   <div class="flow" id="FD-15"><div class="flhead"><span class="fid">FD-15</span><h3>FI lifecycle &amp; routing controls</h3></div><div class="flcov" data-cov="FD-15"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -999,12 +999,12 @@ const FEATURES=[
  {id:'1.1',name:'Authentication & Session Management',sf:'Lead Platform · all clients',s:[
   ['US-01','Connector','log in with my registered mobile number and OTP','only I can access my leads and commission data'],
   ['US-02','Any user','sessions via short-lived access JWTs backed by a session token (30-day cap, 12h idle) with one active session per connector','I stay signed in securely without repeated logins and stale or duplicate sessions cannot linger'],
-  ['US-03','Admin','admin access gated by mandatory TOTP 2FA and an IP allowlist (enforced at the reverse proxy)','the highest-privilege role is hardest to compromise'],
+  ['US-03','Admin','admin access gated by mandatory TOTP 2FA (source-IP allowlist deferred)','the highest-privilege role is hardest to compromise'],
   ['US-91','Any user','to log out and "sign out of all devices" to end sessions I no longer trust','I can revoke access from a lost or shared device','deferred']]},
  {id:'1.2',name:'RBAC & Tenant Isolation',sf:'Lead Platform',s:[
   ['US-04','CreditBridge','every API request scoped by role and FI tenant','no user ever sees data outside their remit or another FI\'s leads']]},
  {id:'1.3',name:'Source-IP Access Control & FI Auth',sf:'Lead Market',s:[
-  ['US-05','FI Manager','a source-IP allowlist enforced at login and on every request','portal access from unapproved networks is blocked'],
+  ['US-05','FI Manager','a source-IP allowlist enforced at login and on every request','portal access from unapproved networks is blocked','deferred'],
   ['US-05a','FI Manager','to sign in with email + password and first-login mandatory 2FA (TOTP) after activating my emailed invite','FI portal access is strongly authenticated before any lead is exposed']]},
  {id:'1.4',name:'FI Org User Management',sf:'Lead Market',s:[
   ['US-06','FI Manager','invite, edit and deactivate users in my own FI org (RM, Billing)','I control who acts on leads and billing without CreditBridge'],
@@ -1213,8 +1213,8 @@ const FLOWS=[
 
 const TMS=[
  {id:'TM-01',name:'Auth Hardening & Platform RBAC',deps:[],oq:[],covers:['US-01','US-02','US-03','US-04','US-05','US-05a','US-08'],
-  tasks:['Extend roles to the full catalog + fi_id tenant column','Deny-by-default RequirePermission middleware (role→permission map, audited seed)','Row-level scoping: connector=self, fi_*=own tenant, onboarder=own-code','Publish JWKS endpoint for downstream verification','Redis jti denylist fired only by suspend; 15-min status TTL otherwise','Admin login: mandatory TOTP 2FA + Nginx IP allowlist (IP gate precedes auth)','Negative-case RBAC suite: every role × every denied permission'],
-  tcs:[['TC-01.1','Unregistered-permission route → 403 for every role'],['TC-01.2','converter calling payout release → 403'],['TC-01.3','billing calling lead:advance → 403'],['TC-01.4','Suspension rejects a still-valid JWT on the next request'],['TC-01.5','Replayed rotated refresh token → 401, pair revoked'],['TC-01.6','fi_rm of FI-A requesting FI-B resource → 404'],['TC-01.7','Admin auth from non-allowlisted IP blocked at proxy, never reaches TOTP']]},
+  tasks:['Extend roles to the full catalog + fi_id tenant column','Deny-by-default RequirePermission middleware (role→permission map, audited seed)','Row-level scoping: connector=self, fi_*=own tenant, onboarder=own-code','Publish JWKS endpoint for downstream verification','Redis jti denylist fired only by suspend; 15-min status TTL otherwise','Admin login: mandatory TOTP 2FA (Nginx source-IP allowlist DEFERRED — D-08d)','Negative-case RBAC suite: every role × every denied permission'],
+  tcs:[['TC-01.1','Unregistered-permission route → 403 for every role'],['TC-01.2','converter calling payout release → 403'],['TC-01.3','billing calling lead:advance → 403'],['TC-01.4','Suspension rejects a still-valid JWT on the next request'],['TC-01.5','Replayed rotated refresh token → 401, pair revoked'],['TC-01.6','fi_rm of FI-A requesting FI-B resource → 404'],['TC-01.7','Source-IP allowlist DEFERRED — admin auth gated by TOTP only for now']]},
  {id:'TM-02',name:'Connector Lifecycle & Activation',deps:['TM-01'],oq:['OQ-11'],covers:['US-11','US-12','US-13','US-14','US-15','US-16','US-19'],
   tasks:['Auto-activate on clean eKYC + PAN + UPI penny-drop — no manual gate for clean KYC','KYC-exception review queue — only mismatches/failures surface for Converter approve/reject with reason','Suspend/blacklist with reason + jti denylist + push','Onboarder code capture and attribution','Quality score job (50/30/20, 90-day rolling, 10-lead floor), band-only','Lead-visibility settings on profile'],
   tcs:[['TC-02.1','Clean KYC (eKYC+PAN+penny-drop) → status active with no manual step'],['TC-02.2','KYC mismatch/failure → routed to review queue, not auto-activated'],['TC-02.3','Review rejection without reason → 400; reason persisted'],['TC-02.4','Suspension effective on next API call'],['TC-02.5','Onboarder reads only own-code connectors'],['TC-02.6','9 leads → no score; 10+ → band only, never numeric'],['TC-02.7','Hidden-FI setting persists and reaches routing']]},
@@ -1234,7 +1234,7 @@ const TMS=[
   tasks:['Two-step onboarding wizard; FI Manager only CreditBridge-onboarded user','Schema migration to product variants','FI org user management with per-user lead detail','Change-request lifecycle in Lead Market with effective-from','CreditBridge override endpoint, audit-logged','Suspend/reactivate + bid priority job (50/30/20, ±10 audited)'],
   tcs:[['TC-07.1','pending_setup FI gets zero routing rows'],['TC-07.2','Two HL variants match independently'],['TC-07.3','Scheduled change goes Live only at effective date'],['TC-07.4','Rejection without reason → 400; reason shown inline'],['TC-07.5','Cross-tenant user creation → 403; fi_billing sees no lead actions'],['TC-07.6','Override reverses routing + immutable audit row'],['TC-07.7','Suspension: no new routing, accepted leads unaffected'],['TC-07.8','+11 adjustment → 400; −5 writes audit']]},
  {id:'TM-08',name:'Lead Market: Feed, Accept/Pass, PII Vault',deps:['TM-06','TM-07'],oq:['OQ-07'],covers:['US-05','US-32','US-42','US-43','US-44','US-45','US-46','US-47','US-48','US-54'],
-  tasks:['Anonymised feed API: 3-gate pre-filter, filters, sort keys','API-layer anonymisation — PII keys physically absent pre-accept','Accept: KFS confirm → PII unlock → audit → SLA start','Pass: recoverable via Passed-leads toggle','Vault: 24h signed URLs, re-issuable, dead on reject/cascade','Connector contact post-accept only','Per-FI source-IP hard gate','Connector lead-visibility exclusions honoured'],
+  tasks:['Anonymised feed API: 3-gate pre-filter, filters, sort keys','API-layer anonymisation — PII keys physically absent pre-accept','Accept: KFS confirm → PII unlock → audit → SLA start','Pass: recoverable via Passed-leads toggle','Vault: 24h signed URLs, re-issuable, dead on reject/cascade','Connector contact post-accept only','Per-FI source-IP hard gate (DEFERRED — D-08d)','Connector lead-visibility exclusions honoured'],
   tcs:[['TC-08.1','Pre-accept JSON contains zero PII keys'],['TC-08.2','FI-A reading FI-B\'s accepted lead → 404'],['TC-08.3','Accept without KFS flag → 400, no unlock'],['TC-08.4','Accept unlocks PII + audit event + SLA clock'],['TC-08.5','Restore works only while lead unclaimed'],['TC-08.6','URL dead after 24h; docs 403 after cascade'],['TC-08.7','Valid JWT from bad IP rejected at login and request'],['TC-08.8','Hidden-FI lead never appears in that FI\'s feed']]},
  {id:'TM-09',name:'Bidding, Waterfall Routing & Cascade',deps:['TM-08'],oq:['OQ-04','OQ-05','OQ-08'],covers:['US-49','US-50','US-51','US-55','US-56','US-57','US-58','US-70'],
   tasks:['2-hour window on ≥80% completeness in working hours','Sealed bids: variant APR pre-fill, one per FI per window','Winner: single bid wins; weighted score; no bids → waterfall','Waterfall by bid priority; cascade on pass/no-bid/breach','Cascade secrecy — receiving FI never serialised','Iteration count behind a feature flag (OQ-08)'],
