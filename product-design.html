@@ -350,10 +350,6 @@ sequenceDiagram
     CV->>CP: Approve / reject with reason
     CP->>LP: Decision recorded
     end
-    opt Fraud / misconduct
-    CV->>CP: Suspend or blacklist + mandatory reason (US-14)
-    CP->>LP: jti denylist + status update
-    end
     LP-->>CA: Push — activation result
       </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Connector App calls <b>POST /connector/onboard</b> once profile + consent are captured; Lead Platform fires eKYC/PAN/penny-drop synchronously against Setu. A clean result flips <code>status</code> to active in one write — no queue, no human in the loop. A dirty result instead writes a row to the Converter's review queue table; the Converter's approve/reject is a second, separate write that the Connector App picks up on next poll/push.</div></div>
 
@@ -807,6 +803,45 @@ sequenceDiagram
     LP->>DB: Platform analytics off transactional DB / ClickHouse (US-90)
       </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Each role's view hits a scoped endpoint (<code>/fi/analytics</code>, <code>/connector/payouts</code>, <code>/billing</code>) rather than one shared analytics API, keeping tenant isolation at the query layer. Aggregate analytics are served off ClickHouse, deliberately separated from the OLTP path so dashboard load can't contend with transactional writes.</div></div>
 
+  <div class="flow" id="FD-23"><div class="flhead"><span class="fid">FD-23</span><h3>Connector suspension &amp; fraud enforcement</h3></div><div class="flcov" data-cov="FD-23"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
+    par Manual — Converter action
+    CV->>CP: Suspend / blacklist connector + mandatory logged reason (US-14)
+    CP->>LP: POST /connector/suspend
+    LP->>DB: status = suspended/blacklisted + reason (append-only)
+    Note over LP,DB: ▶ SF-06 immutable audit write
+    LP->>DB: jti denylist — active session killed
+    LP-->>CA: Push — access revoked
+    and Automated — fraud detection
+    LP->>LP: 2 confirmed-fraudulent leads in rolling window (US-95)
+    LP->>DB: Auto-flag connector + block new lead submission
+    LP->>CV: Route to Converter exception review queue
+    end
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Both paths converge on the same enforcement primitive: a status write plus an append-only audit row (<b>▶ SF-06</b>). The manual path is a Converter decision with a mandatory reason; the automated path is a Lead Platform trip-wire (2 confirmed-fraudulent leads in a rolling window) that blocks new submission and hands a human the final call via the review queue — it never auto-blacklists. Suspension revokes the live session by adding the connector's <code>jti</code> to the Redis denylist.</div></div>
+
   <!-- ===== reusable sub-flows (compact "function" views) ===== -->
   <div class="flow" id="SF-01"><div class="flhead"><span class="fid">SF-01</span><h3>Auth &amp; session (reusable)</h3></div><div class="flcov" data-cov="SF-01"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -1107,7 +1142,7 @@ const FEATURES=[
 ];
 
 const FLOWS=[
- {id:'FD-01',covers:['US-01','US-11','US-12','US-13','US-14']},
+ {id:'FD-01',covers:['US-01','US-11','US-12','US-13']},
  {id:'FD-02',covers:['US-23','US-24','US-25','US-82','US-89']},
  {id:'FD-03',covers:['US-27','US-28','US-29','US-30','US-31','US-76']},
  {id:'FD-04',covers:['US-33','US-34','US-35','US-36','US-37','US-38','US-39','US-40']},
@@ -1130,6 +1165,7 @@ const FLOWS=[
  {id:'FD-20',covers:['US-62','US-88','US-89']},
  {id:'FD-21',covers:['US-16','US-17','US-22','US-26']},
  {id:'FD-22',covers:['US-52','US-77','US-80','US-81','US-87','US-90']},
+ {id:'FD-23',covers:['US-14','US-95']},
  {id:'SF-01',covers:['US-01','US-02','US-04','US-05a']},
  {id:'SF-02',covers:['US-82','US-83']},
  {id:'SF-03',covers:['US-37','US-53','US-63']},
@@ -1149,13 +1185,13 @@ const TMS=[
   tasks:['POST /connector/leads with full field validation','Idempotency key with 24-hour dedup window','Atomic lead + consent transaction; append-only consents','Hive offline queue: FIFO drain, 3 retries, banner','Duplicate mobile+product flag before sync','Lead list/detail APIs + ops alert email job'],
   tcs:[['TC-03.1','Duplicate idempotency key ≤24h → original ID, HTTP 200, no new row'],['TC-03.2','Malformed PAN → 400, nothing created'],['TC-03.3','Consent write failure rolls back the lead'],['TC-03.4','Airplane-mode leads queue and drain FIFO'],['TC-03.5','Duplicate flagged before sync, not silently sent'],['TC-03.6','Connector A reading B\'s lead → 404'],['TC-03.7','UPDATE/DELETE on lead_consents rejected by DB'],['TC-03.8','Exactly one ops alert per lead']]},
  {id:'TM-04',name:'Qualification Engine (<90 s)',deps:['TM-03'],oq:[],covers:['US-27','US-28','US-29','US-30','US-31'],
-  tasks:['Temporal Phase-A workflow: PAN → OKYC → Bureau → Decision','PAN mismatch >30% → human review signal, never auto-reject','OKYC retry once, then physical-KYC route','CRIF score-only pull; persist band only','Deterministic Q001–Q007 rules; GenAI writes reason text only','Result delivery with p95 <90 s metric'],
+  tasks:['Temporal Phase-A workflow: PAN → OKYC → Bureau → Decision','PAN mismatch >30% → human review signal, never auto-reject','OKYC retry once, then physical-KYC route','CRIF score-only pull; persist band only','Deterministic Q001–Q007 rules; GenAI writes reason text only (GoRules · Zen JDM decision tables)','Result delivery with p95 <90 s metric'],
   tcs:[['TC-04.1','PL score 640 → Q001'],['TC-04.2','Active 90+ DPD → Q002 regardless of score'],['TC-04.3','Inactive PAN → Q003; 35% mismatch pauses on signal'],['TC-04.4','Two OKYC failures → physical KYC, not rejection'],['TC-04.5','Unserved pincode → Q006; FOIR >60% → Q007'],['TC-04.6','p95 <90 s under 50-concurrent load'],['TC-04.7','Raw bureau score absent from all tables'],['TC-04.8','QUALIFIED shows commission estimate, labelled']]},
  {id:'TM-05',name:'Notification & Messaging Fabric',deps:['TM-01'],oq:[],covers:['US-18','US-37','US-53'],
   tasks:['FCM dispatcher with preference suppression + deep links','Interakt WhatsApp: DLT templates only, unregistered rejected','Email channel for key FI events','In-portal notification centre with read state','Voice: DND scrub every call, 9am–9pm, disclosure, multilingual','Rules-based channel selection engine'],
   tcs:[['TC-05.1','DND number → voice blocked, logged, WhatsApp fallback'],['TC-05.2','21:30 call deferred to 9am, never fired'],['TC-05.3','Unregistered template rejected at dispatch'],['TC-05.4','Status push deep-links to the right lead'],['TC-05.5','Read state persists across sessions'],['TC-05.6','Push off → no push, in-portal still written'],['TC-05.7','Transcript opens with the mandatory disclosure']]},
  {id:'TM-06',name:'Document Collection Engine',deps:['TM-04','TM-05'],oq:[],covers:['US-33','US-34','US-35','US-36','US-38','US-39','US-40'],
-  tasks:['Checklist rules engine with fetch method + priority per document','Weighted completeness scoring, FI-configurable threshold','WhatsApp upload flows: S3 → OCR → validate → confirm','AA consent flow + Perfios analysis on structured JSON','Connector task cards + AES-256 camera upload','Temporal escalation timers T+4h→T+72h','Document access log on every link'],
+  tasks:['Checklist rules engine with fetch method + priority per document (GoRules · Zen JDM decision tables)','Weighted completeness scoring, FI-configurable threshold','WhatsApp upload flows: S3 → OCR → validate → confirm','AA consent flow + Perfios analysis on structured JSON','Connector task cards + AES-256 camera upload','Temporal escalation timers T+4h→T+72h','Document access log on every link'],
   tcs:[['TC-06.1','PL/salaried/₹3L/740 fixture → exact spec checklist'],['TC-06.2','2-of-3 slips reproduces the 86% worked example'],['TC-06.3','Crossing 80% sets docs_ready_at and signals Phase C'],['TC-06.4','T+36h push; T+48h ops takeover + score penalty'],['TC-06.5','T+72h → Stale + connector flagged'],['TC-06.6','AA JSON only — no PDF ingestion path exists'],['TC-06.7','Low OCR net-pay → previous-month request'],['TC-06.8','Every fetch writes an access-log row']]},
  {id:'TM-07',name:'FI Onboarding & Eligibility Configuration',deps:['TM-01'],oq:['OQ-03'],covers:['US-06','US-07','US-65','US-66','US-67','US-68','US-69','US-71','US-72','US-73','US-74'],
   tasks:['Two-step onboarding wizard; FI Manager only CreditBridge-onboarded user','Schema migration to product variants','FI org user management with per-user lead detail','Change-request lifecycle in Lead Market with effective-from','CreditBridge override endpoint, audit-logged','Suspend/reactivate + bid priority job (50/30/20, ±10 audited)'],
@@ -1173,7 +1209,7 @@ const TMS=[
   tasks:['Server-side status FSM: sequential only, decline needs reason','Doc-request workflow: WhatsApp + voice + connector push','Finezza/Bajaj adapters: signature verify, idempotent mapping','Milestone fan-out honouring FI-name-post-accept rule','Disbursed → disbursed_at + amount + commission trigger','Manual override + escalation queue with reasons'],
   tcs:[['TC-11.1','Skipping sanction stages → 400'],['TC-11.2','Decline without reason → 400; reason in history + notification'],['TC-11.3','Duplicate webhook → exactly one history row'],['TC-11.4','Bad signature → 401, no state change'],['TC-11.5','Doc request fires all three channels; upload advances status'],['TC-11.6','Disbursed enqueues exactly one commission workflow'],['TC-11.7','No FI name in any notification pre-accept']]},
  {id:'TM-12',name:'Commission, GST Invoicing & Payout',deps:['TM-11'],oq:['OQ-06','OQ-09'],covers:['US-75','US-76','US-77','US-78','US-79','US-80','US-81'],
-  tasks:['Commission rules engine, all amounts in paise','GST invoice ≤4h: PDF + IRN/QR; per-FI cadence + NET terms','Payout state machine: maker-checker, SQL CHECK, admin above threshold','Razorpay with per-(payout,action) idempotency; pre-funded per lead','on_hold for KYC/fraud/sanctions; append-only authorizations','FI billing view + settlement reconciliation + Form 16A'],
+  tasks:['Commission rules engine, all amounts in paise (GoRules · Zen JDM decision tables)','GST invoice ≤4h: PDF + IRN/QR; per-FI cadence + NET terms','Payout state machine: maker-checker, SQL CHECK, admin above threshold','Razorpay with per-(payout,action) idempotency; pre-funded per lead','on_hold for KYC/fraud/sanctions; append-only authorizations','FI billing view + settlement reconciliation + Form 16A'],
   tcs:[['TC-12.1','Fixture matches hand-calculated paise breakdown'],['TC-12.2','TDS zero below ₹15K/yr; 5% after crossing'],['TC-12.3','Maker releasing own payout → 403 + DB CHECK rejects'],['TC-12.4','Above-threshold without approval rejected'],['TC-12.5','Retry with same key → one Razorpay call'],['TC-12.6','Fraud flag → on_hold until cleared with reason'],['TC-12.7','Weekly FI invoice batches; connectors already paid per lead'],['TC-12.8','fi_rm billing → 403; fi_billing lead actions → 403']]},
  {id:'TM-13',name:'Compliance & Audit Infrastructure',deps:['TM-03','TM-04','TM-08','TM-12'],oq:['OQ-01'],covers:['US-10','US-83','US-84','US-85','US-86'],
   tasks:['Bureau purge cron at 30 days, purge events logged','DPDP withdrawal: freeze/anonymise pre-FI; immutable event post-FI','RBI audit query/export by date, lead, actor','Compliance dashboard: coverage %, retention flags','Immutability across all audit tables; CloudWatch → S3 (2y)','PMLA 5-year marker + PEP/sanctions screening hook'],
