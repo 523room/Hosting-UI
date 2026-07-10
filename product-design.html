@@ -266,7 +266,7 @@
       <a href="connector-app.html">Connector App</a>
       <a href="lead-market.html">Lead Market</a>
       <a href="lead-converter.html">Converter Portal</a>
-      <a href="index.html">All UI</a>
+      <a href="permission-catalog.html">Permission Catalog</a>
     </div>
   </div>
   <div class="tb-row2" id="actorChips" aria-label="Filter by actor"></div>
@@ -949,6 +949,27 @@ sequenceDiagram
 
   <!-- empty template — the constant 23-participant roster, no messages.
        Shown by default in the center pane when nothing is selected. -->
+  <div class="flow" id="SF-07"><div class="flhead"><span class="fid">SF-07</span><h3>RBAC &amp; tenant scoping (reusable)</h3></div><div class="flcov" data-cov="SF-07"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    participant CL as Client
+    participant MW as RequirePermission
+    participant SC as Row-level scope
+    participant DB as PostgreSQL
+    CL->>MW: Request + JWT (role, fi_id) (US-04)
+    alt Route not mapped to role
+    MW-->>CL: 403 — permission denied (deny-by-default)
+    else Permitted
+    MW->>SC: role + fi_id
+    Note over SC: connector→self · fi_*→own fi_id · onboarder→own-code · converter/billing/admin→GLOBAL
+    alt Target out of remit / other tenant
+    SC-->>CL: 404 — not found (existence hidden, never 403)
+    else In remit
+    SC->>DB: Scoped query
+    DB-->>CL: Data — own remit only
+    end
+    end
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Two gates in series on every request. First, deny-by-default <code>RequirePermission</code>: any route not explicitly mapped to the caller's role returns <b>403</b>. Second, a row-level scope filter binds the query to the caller's remit — <code>connector</code> self, <code>fi_*</code> own <code>fi_id</code>, <code>onboarder</code> own-code, while <code>converter</code>/<code>billing</code>/<code>admin</code> are <b>truly global (all tenants, no geography/vertical scoping)</b>. One consistent rule governs the two error codes: <b>403</b> = action not permitted for your role; <b>404</b> = resource is real but outside your remit/tenant, so its existence is never disclosed. The 404-not-403 rule is applied identically to FI cross-tenant and connector cross-access.</div></div>
+
   <div class="flow" id="FD-TEMPLATE"><div class="flhead"><span class="fid">—</span><h3>No flow selected</h3></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
       </pre></div></div>
@@ -1187,6 +1208,7 @@ const FLOWS=[
  {id:'SF-04',covers:['US-46','US-48','US-86']},
  {id:'SF-05',covers:['US-45','US-55','US-70']},
  {id:'SF-06',covers:['US-10','US-86']},
+ {id:'SF-07',covers:['US-04']},
 ];
 
 const TMS=[
@@ -1265,6 +1287,7 @@ const REVIEW={
   'US-01':'reviewed',
   'US-02':'reviewed',
   'US-03':'reviewed',
+  'US-04':'reviewed',
 };
 const revBadge=id=>{
   const r=REVIEW[id];

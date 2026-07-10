@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>CreditBridge — Permission Catalog</title>
+<style>
+  :root{--bg:#0F1117;--panel:#161b22;--line:#2c3542;--text:#e8ecf3;--mut:#9aa4b4;--mint:#00C896;--amber:#FFAA33;--red:#ff6b5e;--mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+  .wrap{max-width:1100px;margin:0 auto;padding:32px 22px 80px}
+  a.back{color:var(--mint);text-decoration:none;font-size:13px}
+  h1{font-size:24px;margin:14px 0 4px} .sub{color:var(--mut);font-size:13px;margin-bottom:26px}
+  h2{font-size:15px;margin:34px 0 12px;color:var(--mint);letter-spacing:.02em}
+  .rule{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.rule{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .card .code{font-family:var(--mono);font-weight:700;font-size:13px}
+  .c403{color:var(--amber)} .c404{color:var(--red)}
+  .card p{margin:8px 0 0;color:var(--mut);font-size:13px}
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px;overflow:hidden;border-radius:12px;border:1px solid var(--line)}
+  th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{background:#12241d;color:var(--mint);font-size:12px;letter-spacing:.03em}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:rgba(255,255,255,.03)}
+  code{font-family:var(--mono);color:var(--mint);font-size:12.5px}
+  .scroll{overflow-x:auto}
+  .glob{color:var(--mint);font-weight:700}
+  .foot{margin-top:30px;color:var(--mut);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="product-design.html">← Product Blueprint</a>
+  <h1>Permission Catalog</h1>
+  <div class="sub">Realises US-04 — RBAC &amp; Tenant Isolation · v1.0 · 10 July 2026</div>
+
+  <h2>ACCESS RULE — ONE CONSISTENT RULE</h2>
+  <div class="rule">
+    <div class="card"><span class="code c403">403 Forbidden</span><p>You are authenticated, but the route/action is not mapped to your role — deny-by-default permission failure.</p></div>
+    <div class="card"><span class="code c404">404 Not Found</span><p>The resource exists but is outside your remit or another FI's tenant. Existence is never disclosed — we never return 403 for out-of-remit data, because that would confirm it exists. Applied identically to FI cross-tenant and connector cross-access.</p></div>
+  </div>
+
+  <h2>TENANT BREADTH</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Role scope</th><th>Breadth</th></tr></thead>
+    <tbody>
+      <tr><td><code>connector</code></td><td>Self only — own leads, own commission</td></tr>
+      <tr><td><code>onboarder</code></td><td>Connectors carrying own referral code</td></tr>
+      <tr><td><code>fi_manager</code>, <code>fi_rm</code>, <code>fi_billing</code>, <code>fi_viewer</code></td><td>Own <code>fi_id</code> tenant only</td></tr>
+      <tr><td><code>converter</code>, <code>billing</code>, <code>admin</code></td><td><span class="glob">Truly global — all tenants, no geography or vertical scoping</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>ROLE → PERMISSION CATALOG</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Role</th><th>Surface</th><th>Can</th><th>Cannot</th></tr></thead>
+    <tbody>
+      <tr><td><code>connector</code></td><td>Connector App</td><td>Submit &amp; track own leads, upload documents, view own commission &amp; quality band, edit own profile</td><td>See other connectors; any FI / ops / money action</td></tr>
+      <tr><td><code>onboarder</code></td><td>Connector App</td><td>Share referral code, view activation of own-code recruits</td><td>Act on leads; see non-own-code connectors</td></tr>
+      <tr><td><code>converter</code></td><td>Converter Portal</td><td>Advance/override lead stages (reason logged), SLA escalate/cascade, suspend/blacklist connectors, FI onboard/suspend/config-override, compliance dashboard, audit export</td><td>Any money/payout action; platform config; user management</td></tr>
+      <tr><td><code>billing</code></td><td>Converter Portal</td><td>Generate invoices, initiate/release payouts (maker-checker), reconciliation</td><td>Any lead-lifecycle action</td></tr>
+      <tr><td><code>admin</code></td><td>Converter Portal / Admin</td><td>Everything + user management (all roles), platform config, audit query, FI eligibility override, above-threshold payout approval, revenue analytics</td><td>— highest privilege; TOTP + IP gated</td></tr>
+      <tr><td><code>fi_manager</code></td><td>Lead Market</td><td>Accept/pass leads, bid, eligibility config (maker/checker), org-user management, approve change requests, tenant analytics</td><td>Cross-tenant data; CreditBridge ops/money</td></tr>
+      <tr><td><code>fi_rm</code></td><td>Lead Market</td><td>Feed, accept/pass, status updates, bid, submit change requests</td><td>Billing; org-user management; cross-tenant</td></tr>
+      <tr><td><code>fi_billing</code></td><td>Lead Market</td><td>Invoices, payment status, reconciliation (own tenant)</td><td>Any lead action; cross-tenant</td></tr>
+      <tr><td><code>fi_viewer</code></td><td>Lead Market</td><td>Read-only feed + analytics (own tenant)</td><td>Any write action</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="foot">Borrower is passive — never authenticates, holds no role. Enforcement: <code>RequirePermission</code> deny-by-default middleware + row-level scope filter (sub-flow SF-07 · TM-01).</div>
+</div>
+</body>
+</html>
