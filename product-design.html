@@ -346,20 +346,26 @@ sequenceDiagram
     participant RZ as Razorpay Payouts
     participant CP as Converter Portal
     participant CW as CloudWatch → S3 (2y)
-    C->>CA: Mobile number
-    CA->>LP: POST /auth/otp/send
-    LP-->>C: OTP (MSG91 → Gupshup fallback)
-    C->>CA: OTP
-    CA->>LP: POST /auth/otp/verify
+    C->>CA: Mobile number + OTP (US-01)
+    Note over CA,LP: ▶ SF-01 auth and session (OTP → JWT + refresh)
     LP->>DB: Upsert user (pending_activation)
-    C->>CA: 5-step profile + onboarder code + consent
+    C->>CA: 5-step profile + onboarder code + consent (US-11, US-12)
+    Note over CA,LP: ▶ SF-02 consent capture and ledger
     CA->>LP: POST /connector/onboard
-    LP->>DB: Profile + consents (JSONB)
-    LP->>KYC: eKYC + PAN verify
-    LP->>KYC: UPI penny-drop (₹1 C → CreditBridge, auto-refund)
-    KYC-->>LP: Bank + identity confirmed
-    LP->>DB: status = active — no manual approval
-    LP-->>CA: Push — activated
+    LP->>KYC: eKYC + PAN verify + UPI penny-drop
+    KYC-->>LP: Verification result
+    alt KYC clean
+    LP->>DB: status = active — auto-activated, no manual step
+    else KYC exception / mismatch
+    LP->>CV: Route to KYC-exception review queue (US-13)
+    CV->>CP: Approve / reject with reason
+    CP->>LP: Decision recorded
+    end
+    opt Fraud / misconduct
+    CV->>CP: Suspend or blacklist + mandatory reason (US-14)
+    CP->>LP: jti denylist + status update
+    end
+    LP-->>CA: Push — activation result
       </pre></div></div>
 
   <div class="flow" id="FD-02"><div class="flhead"><span class="fid">FD-02</span><h3>Lead submission — offline queue &amp; consent</h3></div><div class="flcov" data-cov="FD-02"></div><div class="flbody"><pre class="mermaid">
@@ -388,16 +394,18 @@ sequenceDiagram
     participant RZ as Razorpay Payouts
     participant CP as Converter Portal
     participant CW as CloudWatch → S3 (2y)
-    C->>CA: 10-field form + one-tap consent
+    C->>CA: 10-field 4-step form + one-tap consent (US-23, US-82)
+    Note over CA,LP: ▶ SF-02 consent capture and ledger
     alt Online
-    CA->>LP: POST /connector/leads (idempotency key)
+    CA->>LP: POST /connector/leads (idempotency key) (US-24, US-25)
     LP->>DB: TX — lead + consent (atomic, append-only)
-    LP-->>CV: Ops email alert (Asynq)
+    LP->>CV: Ops alert — new lead needs handling (US-89)
+    Note over LP: ▶ SF-03 notification fan-out
     LP-->>CA: Lead ID · Submitted
     else Offline
     CA->>HV: Queue (pending)
     HV->>CA: Reconnect event
-    CA->>CA: Duplicate mobile+product? flag first
+    CA->>CA: Duplicate mobile+product? flag first (US-24)
     CA->>LP: FIFO drain (3 retries, backoff)
     end
       </pre></div></div>
@@ -427,15 +435,21 @@ sequenceDiagram
     participant RZ as Razorpay Payouts
     participant CP as Converter Portal
     participant CW as CloudWatch → S3 (2y)
-    TW->>SETU: PAN verify
-    Note over TW: Mismatch >30% → human review signal
-    TW->>B: Aadhaar OTP
-    B-->>SETU: Confirmed (Aadhaar number never stored)
-    TW->>CRIF: Score-only soft pull — no footprint
-    TW->>DB: Score BAND only · 30-day purge scheduled
-    TW->>TW: Rules engine → Q001–Q007
+    TW->>SETU: PAN verify (US-27)
+    alt PAN mismatch > 30%
+    TW->>CV: Human review signal — never auto-reject (US-28)
+    end
+    TW->>B: Aadhaar OTP (OKYC)
+    alt OKYC confirmed
+    B-->>SETU: Confirmed (Aadhaar never stored) (US-29)
+    else Retry fails twice
+    TW->>CA: Fall back to physical KYC (US-29)
+    end
+    TW->>CRIF: Score-only soft pull — no footprint (US-30)
+    TW->>DB: Score BAND only · 30-day purge scheduled (US-30)
+    TW->>TW: Deterministic rules → Q001–Q007 (US-28)
     Note over TW: GenAI writes the reason text, never the decision
-    TW-->>CA: QUALIFIED (+ estimate) or DISQUALIFIED (+ suggestion)
+    TW-->>CA: QUALIFIED (+ commission estimate) or DISQUALIFIED (+ suggestion) (US-31, US-76)
       </pre></div></div>
 
   <div class="flow" id="FD-04"><div class="flhead"><span class="fid">FD-04</span><h3>Document collection &amp; enrichment</h3></div><div class="flcov" data-cov="FD-04"></div><div class="flbody"><pre class="mermaid">
@@ -463,24 +477,28 @@ sequenceDiagram
     participant RZ as Razorpay Payouts
     participant CP as Converter Portal
     participant CW as CloudWatch → S3 (2y)
-    TW->>TW: Checklist — loan × employment × score × amount
+    TW->>TW: Checklist — loan × employment × score × amount (US-33)
+    TW->>TW: Weighted completeness score · 80% gate (US-34)
     par WhatsApp uploads
-    TW->>WA: Upload flow
+    TW->>WA: Guided upload flow (US-35)
     B->>WA: Photo → S3 → OCR → validate
-    and Bank statement
-    TW->>WA: AA consent deep-link
+    and Bank statement (AA)
+    TW->>WA: AA consent deep-link (US-36)
     B->>AA: Authorise → structured JSON → Perfios
-    and Physical collection
-    TW->>CA: Task card (doc, due date, address)
+    and Connector task + in-app capture
+    TW->>CA: Task card — digital / physical / upload (US-39)
+    C->>CA: In-app photo → OCR confirm → encrypted upload (US-40)
+    CA->>S3: Encrypted upload
     end
     loop Escalation T+4h → T+48h
-    TW->>VO: Voice (DND-scrubbed, 9am–9pm)
+    TW->>VO: DND-scrubbed voice, 9am–9pm (US-37, US-38)
+    Note over TW: ▶ SF-03 notification fan-out
     TW->>CA: T+36h connector push · T+48h ops takeover
     end
     TW->>TW: ≥80% complete → Phase C
       </pre></div></div>
 
-  <div class="flow" id="FD-05"><div class="flhead"><span class="fid">FD-05</span><h3>Matching, bidding &amp; acceptance — PII unlock</h3></div><div class="flcov" data-cov="FD-05"></div><div class="flbody"><pre class="mermaid">
+  <div class="flow" id="FD-05a"><div class="flhead"><span class="fid">FD-05a</span><h3>Matching, bidding &amp; winner selection</h3></div><div class="flcov" data-cov="FD-05a"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
     actor C as Connector
     participant CA as Connector App
@@ -505,20 +523,55 @@ sequenceDiagram
     participant RZ as Razorpay Payouts
     participant CP as Converter Portal
     participant CW as CloudWatch → S3 (2y)
-    LP->>LM: 3-gate pre-filter → anonymised feed (no PII)
-    Note over LM: Per-FI source-IP allowlist on every request
-    LP->>LM: Bid window opens (2h, sealed)
-    FI->>LM: Bid — APR (variant pre-fill) + fee + TAT
-    LP->>LP: Weighted winner — APR 60 · TAT 30 · SLA 10
-    alt Accept
-    FI->>LM: KFS confirmed → Accept
-    LP->>LP: PII unlock + audit + SLA clock
-    LP->>S3: Document vault (24h links, re-issuable)
-    LP-->>C: "Accepted by [FI]" — name post-accept only
-    else Pass
-    LP->>LP: Back to pool → cascade (recoverable pass)
-    else No bids
-    LP->>LP: Waterfall by bid priority
+    LP->>LP: Apply connector visibility exclusions (US-19, OQ-11)
+    LP->>LP: 3 hard gates — product × pincode × score (US-56)
+    LP->>LM: Anonymised feed — score/income band, completeness, freshness (US-43, US-44)
+    LP->>LM: Open 2h sealed bid window (US-58)
+    Note over LP,LM: ▶ SF-05 KFS build and delivery (variant APR pre-fill)
+    FI->>LM: Bid — APR + fee + TAT (US-49)
+    LM-->>FI: Live countdown · sealed win/lose (US-50)
+    LP->>LP: Weighted winner — APR 60 · TAT 30 · SLA 10 (US-51, US-58)
+    opt No bids
+    LP->>LP: Waterfall by bid priority → cascade (see FD-06)
+    end
+      </pre></div></div>
+
+  <div class="flow" id="FD-05b"><div class="flhead"><span class="fid">FD-05b</span><h3>Acceptance &amp; PII unlock</h3></div><div class="flcov" data-cov="FD-05b"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
+    alt Manual accept
+    FI->>LM: KFS confirmed → Accept (US-45, US-46)
+    else Auto-accept rule
+    LP->>LP: Standing rule matches · KFS acknowledged at config (US-70)
+    Note over LP: ▶ SF-05 KFS build and delivery
+    end
+    Note over LP: ▶ SF-04 PII unlock + audit + SLA start
+    LP->>S3: Document vault — 24h re-issuable links (US-42)
+    LP-->>FI: Full PII + docs + connector contact (US-48)
+    opt Pass
+    LP->>LP: Recoverable pass → Passed-leads toggle (US-47)
     end
       </pre></div></div>
 
@@ -598,7 +651,7 @@ sequenceDiagram
     RZ->>TW: Settlement webhook → reconcile or flag
       </pre></div></div>
 
-  <div class="flow" id="FD-08"><div class="flhead"><span class="fid">FD-08</span><h3>FI onboarding &amp; configuration change</h3></div><div class="flcov" data-cov="FD-08"></div><div class="flbody"><pre class="mermaid">
+  <div class="flow" id="FD-08b"><div class="flhead"><span class="fid">FD-08b</span><h3>FI config change &amp; eligibility</h3></div><div class="flcov" data-cov="FD-08b"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
     actor C as Connector
     participant CA as Connector App
@@ -623,18 +676,17 @@ sequenceDiagram
     participant RZ as Razorpay Payouts
     participant CP as Converter Portal
     participant CW as CloudWatch → S3 (2y)
-    CV->>CP: Register FI → pending_setup
-    CV->>CP: Variants (score · amount · APR · commission · pincodes) → active
-    FI->>LM: Provision org users (RM, billing) — own tenant only
-    loop Change requests (maker/checker in the FI org)
-    FI->>LM: Submit + effective-from date
+    FI->>LM: Product-variant cards — score/amount/APR/commission/pincodes (US-66, US-69)
+    loop Change requests (maker/checker in FI org)
+    FI->>LM: Submit + effective-from date (US-67)
     FI->>LM: Approve → Scheduled → Live on date
+    LM-->>FI: My Requests table — status, reason, cancel (US-68)
     end
     opt Geography / compliance change
-    CV->>CP: Override with mandatory reason (audit-logged)
+    CV->>CP: Override with mandatory reason — audit-logged (US-71)
+    Note over CP,LP: ▶ SF-06 immutable audit write
     end
-    LP->>LP: Daily scrape → LLM parse → human review (never auto-applied)
-    LP->>LP: Bid priority — SLA 50 · Accept 30 · TAT 20 (ops ±10)
+    LP->>LP: Daily rate-card scrape → LLM parse → human review (US-74)
       </pre></div></div>
 
   <div class="flow" id="FD-09"><div class="flhead"><span class="fid">FD-09</span><h3>Consent lifecycle &amp; compliance enforcement</h3></div><div class="flcov" data-cov="FD-09"></div><div class="flbody"><pre class="mermaid">
@@ -662,20 +714,23 @@ sequenceDiagram
     participant RZ as Razorpay Payouts
     participant CP as Converter Portal
     participant CW as CloudWatch → S3 (2y)
-    LP->>DB: Per-activity consent — bureau · OKYC · AA · ITR · data-to-FI · marketing
-    Note over B,DB: Consent-withdrawal enforcement — DEFERRED
-    B->>LP: Withdraw consent (deferred)
+    LP->>DB: Per-activity consent — bureau · OKYC · AA · ITR · data-to-FI (US-83)
+    Note over LP,DB: ▶ SF-02 consent capture and ledger
+    opt Withdrawal (deferred)
+    B->>LP: Withdraw consent (US-84)
     alt Not yet at an FI
     LP->>DB: Freeze → anonymise PII ≤30 days
     else Already accepted by FI
     LP->>DB: Immutable withdrawal event only (no recall — OQ-01)
     end
-    loop Scheduled jobs
-    LP->>DB: Bureau purge at 30 days (band retained)
-    LP->>DB: PMLA — KYC kept 5y post closure
-    LP->>CW: Everything archived — PII access, status, config, payouts
     end
-    CV->>LP: Compliance dashboard + RBI audit export
+    loop Scheduled jobs
+    LP->>DB: Bureau purge at 30 days · band retained (US-30, US-86)
+    LP->>CW: Archive — PII access, status, config, payouts (US-86)
+    Note over LP,CW: ▶ SF-06 immutable audit write and archive
+    end
+    AD->>CP: Query audit log by actor / action / date (US-10)
+    CV->>LP: Compliance dashboard + RBI audit export (US-85)
       </pre></div></div>
 
   <div class="flow" id="FD-10"><div class="flhead"><span class="fid">FD-10</span><h3>Admin access — OTP &amp; IP allowlist</h3></div><div class="flcov" data-cov="FD-10"></div><div class="flbody"><pre class="mermaid">
@@ -818,7 +873,433 @@ sequenceDiagram
     LP-->>CP: Live confirmation
       </pre></div></div>
 
-  <!-- empty template — the constant 24-participant roster, no messages.
+  <div class="flow" id="FD-14"><div class="flhead"><span class="fid">FD-14</span><h3>FI onboarding &amp; first-login 2FA</h3></div><div class="flcov" data-cov="FD-14"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
+    participant EM as Email service
+    CV->>CP: Create FI (name, fi_manager email) — Converter/Admin only (US-65)
+    CP->>LP: POST /admin/fi
+    LP->>DB: FI tenant = pending_setup · fi_manager invited (no password)
+    Note over LP: ▶ SF-06 immutable audit write
+    LP->>EM: Single-use, time-boxed activation link
+    FI->>LM: Open activation link
+    LM->>LP: GET /auth/activate?token → validate (unused, unexpired)
+    FI->>LM: Set password
+    LP->>DB: Store Argon2 hash · status = pending_2fa
+    FI->>LM: First login (email + password)
+    Note over LM,LP: ▶ FD-11 source-IP allowlist (US-05)
+    LP->>DB: role=fi_manager & pending_2fa → require 2FA
+    LP-->>FI: TOTP secret + QR (enrolment) (US-05a)
+    FI->>LM: Enter TOTP code
+    LP->>DB: Verify + store encrypted secret · status = active
+    Note over LP: ▶ SF-01 JWT issue + refresh
+    LP-->>FI: Session granted → /leads
+    opt Provision org users (US-06)
+    FI->>LM: Invite RM / Billing (tenant-scoped)
+    LP->>EM: Activation link to invitee (same set-password + 2FA)
+    end
+      </pre></div></div>
+
+  <div class="flow" id="FD-15"><div class="flhead"><span class="fid">FD-15</span><h3>FI lifecycle &amp; routing controls</h3></div><div class="flcov" data-cov="FD-15"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
+    FI->>LM: Per-user lead detail — handled, conversion, SLA record (US-07)
+    CV->>CP: Compute bid priority — SLA 50 · Accept 30 · TAT 20 (US-72)
+    CV->>CP: Manual ±10 override (audited)
+    Note over CP,LP: ▶ SF-06 immutable audit write
+    opt Dispute / integrity
+    CV->>CP: Suspend FI from routing instantly (US-73)
+    CP->>LP: No new routing rows · accepted leads unaffected
+    CV->>CP: Reactivate with reason (US-73)
+    end
+      </pre></div></div>
+
+  <div class="flow" id="FD-16"><div class="flhead"><span class="fid">FD-16</span><h3>FI-initiated document request</h3></div><div class="flcov" data-cov="FD-16"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
+    FI->>LM: Request extra documents (US-41)
+    LM->>LP: POST /leads/{id}/doc-request
+    Note over LP: ▶ SF-03 notification fan-out
+    par Fan-out
+    LP->>WA: WhatsApp request to borrower
+    and Voice
+    LP->>VO: Voice follow-up (DND-scrubbed)
+    and Connector
+    LP->>CA: Connector alert / task
+    end
+    B->>WA: Upload → validate → advances status
+      </pre></div></div>
+
+  <div class="flow" id="FD-17"><div class="flhead"><span class="fid">FD-17</span><h3>Connector FI-offer &amp; KFS delivery</h3></div><div class="flcov" data-cov="FD-17"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
+    LP->>CA: FI offers ranked by APR (US-55)
+    Note over LP: ▶ SF-05 KFS build and delivery
+    LP->>WA: Deliver each offer's KFS over WhatsApp (US-55)
+    WA-->>B: KFS + APR disclosure (RBI DLD 2025)
+    Note over LP: ▶ SF-03 notification fan-out
+    B-->>LP: Borrower selects an offer (informed, compliant)
+    LP-->>CA: Selection recorded
+      </pre></div></div>
+
+  <div class="flow" id="FD-18"><div class="flhead"><span class="fid">FD-18</span><h3>Connector quality-score computation</h3></div><div class="flcov" data-cov="FD-18"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
+    TW->>DB: Read 90-day window (disbursals, docs, clean record)
+    TW->>TW: Composite = disbursal 50 · documents 30 · clean 20 · ≥10-lead floor (US-15)
+    alt Under 10 leads
+    TW->>DB: No score yet
+    else 10 or more leads
+    TW->>DB: Persist BAND only (High/Medium/Low) — never a numeric
+    end
+    Note over TW,DB: ▶ SF-06 immutable audit write
+    TW-->>CA: Band + plain-language breakdown (feeds US-16)
+      </pre></div></div>
+
+  <div class="flow" id="FD-19"><div class="flhead"><span class="fid">FD-19</span><h3>AI credit summary generation</h3></div><div class="flcov" data-cov="FD-19"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
+    LP->>LP: On acceptance — assemble profile features
+    LP->>TW: Generate 3-sentence AI credit summary (US-32)
+    Note over TW: Deterministic inputs · GenAI writes prose only
+    TW->>DB: Persist summary (auditable)
+    LP->>LM: Show summary on accepted lead (US-32)
+    LM-->>FI: Credit team grasps profile instantly
+      </pre></div></div>
+
+  <div class="flow" id="FD-20"><div class="flhead"><span class="fid">FD-20</span><h3>Ops pipeline management &amp; escalation</h3></div><div class="flcov" data-cov="FD-20"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
+    LP->>CV: Alert on every new lead needing manual handling (US-89)
+    Note over LP: ▶ SF-03 notification fan-out
+    CV->>CP: Ops pipeline — full lead views, funnel (US-88)
+    CV->>CP: Real-time SLA monitor · 6h warnings · manual triggers (US-62)
+    opt Edge case
+    CV->>CP: Stage advance / override with reason (US-88)
+    CV->>CP: Escalation queue
+    Note over CP,LP: ▶ SF-06 immutable audit write
+    end
+      </pre></div></div>
+
+  <div class="flow" id="FD-21"><div class="flhead"><span class="fid">FD-21</span><h3>Connector home &amp; tracking (data-load)</h3></div><div class="flcov" data-cov="FD-21"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
+    CA->>LP: GET /connector/home (on open, offline-cached) (US-22)
+    LP->>DB: Read lead count, commission due, conversion
+    LP-->>CA: Dashboard aggregates (US-22)
+    CA->>LP: GET /connector/score
+    LP-->>CA: Quality band + plain-language breakdown (US-16)
+    CA->>LP: GET /connector/benchmark
+    LP-->>CA: Anonymised top X% in city / product (US-17)
+    CA->>LP: GET /connector/leads
+    LP-->>CA: Colour-coded status timeline (US-26)
+      </pre></div></div>
+
+  <div class="flow" id="FD-22"><div class="flhead"><span class="fid">FD-22</span><h3>Billing, payout &amp; analytics views (data-load)</h3></div><div class="flcov" data-cov="FD-22"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    actor C as Connector
+    participant CA as Connector App
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant KYC as eKYC · PAN · Penny-drop
+    actor CV as Converter
+    participant TW as Temporal
+    participant SETU as Setu (PAN + OKYC)
+    participant CRIF as CRIF via Surepass
+    actor B as Borrower
+    participant WA as WhatsApp (Interakt)
+    participant AA as Account Aggregator
+    participant VO as AI Voice (Sarvam+Bolna)
+    participant LM as Lead Market
+    actor FI as FI Manager / RM
+    participant S3 as S3 signed URLs
+    participant LOS as FI LOS webhooks
+    participant GSTN as GSTN e-invoice
+    actor BL as Billing
+    actor AD as Admin
+    participant RZ as Razorpay Payouts
+    participant CP as Converter Portal
+    participant CW as CloudWatch → S3 (2y)
+    FI->>LM: Open FI analytics — TAT hero, conversion, SLA (US-52)
+    LM->>LP: GET /fi/analytics
+    LP-->>LM: Tenant-scoped metrics
+    CA->>LP: GET /connector/payouts
+    LP-->>CA: History + TDS lines + Form 16A (US-77)
+    BL->>CP: Open billing views
+    CP->>LP: GET /billing
+    LP-->>CP: FI invoices, ageing (US-80) · overdue, margin recon (US-81)
+    CV->>CP: Ops dashboard — KPIs + funnel (US-87)
+    LP->>DB: Platform analytics off transactional DB / ClickHouse (US-90)
+      </pre></div></div>
+
+  <!-- ===== reusable sub-flows (compact "function" views) ===== -->
+  <div class="flow" id="SF-01"><div class="flhead"><span class="fid">SF-01</span><h3>Auth &amp; session (reusable)</h3></div><div class="flcov" data-cov="SF-01"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    actor U as User
+    participant CL as Client (App / Portal)
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    U->>CL: Credentials — OTP or email+password (US-01)
+    CL->>LP: POST /auth/verify
+    opt FI portal / high-privilege
+    LP-->>U: TOTP 2FA challenge (US-05a)
+    U->>LP: TOTP code
+    end
+    LP->>DB: Verify + load role & fi_id tenant
+    LP-->>CL: Short-lived JWT + 7-day refresh (US-02)
+    Note over LP: Deny-by-default RBAC + tenant scope (US-04)
+    loop On refresh
+    CL->>LP: Rotate refresh token (replay → revoke pair)
+    end
+      </pre></div></div>
+
+  <div class="flow" id="SF-02"><div class="flhead"><span class="fid">SF-02</span><h3>Consent capture &amp; ledger (reusable)</h3></div><div class="flcov" data-cov="SF-02"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    actor U as Connector / Borrower
+    participant CL as Client
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    U->>CL: One-tap / per-activity consent (US-82)
+    CL->>LP: Submit consent with parent write
+    LP->>DB: Atomic TX — parent + consent (append-only)
+    Note over DB: Immutable per-activity ledger (US-83)
+    opt Withdrawal (deferred)
+    U->>LP: Withdraw consent
+    LP->>DB: Freeze / anonymise hook
+    end
+      </pre></div></div>
+
+  <div class="flow" id="SF-03"><div class="flhead"><span class="fid">SF-03</span><h3>Notification fan-out (reusable)</h3></div><div class="flcov" data-cov="SF-03"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    participant LP as Lead Platform
+    participant NF as Notification engine
+    participant CH as Channels — Push/WA/Email/Voice/In-portal
+    actor R as Recipient
+    LP->>NF: Event — milestone, SLA, doc request (US-63)
+    NF->>NF: Rules-based channel select + preference suppression
+    Note over NF: DND scrub · 9am–9pm · DLT templates (US-37)
+    NF->>CH: Dispatch with deep link
+    CH-->>R: Push / WhatsApp / Email / Voice / In-portal (US-53)
+      </pre></div></div>
+
+  <div class="flow" id="SF-04"><div class="flhead"><span class="fid">SF-04</span><h3>PII unlock + audit + SLA start (reusable)</h3></div><div class="flcov" data-cov="SF-04"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    participant LP as Lead Platform
+    participant DB as PostgreSQL
+    participant CW as CloudWatch → S3
+    actor FI as FI Manager
+    Note over LP: Precondition — KFS confirmed / auto-accept rule
+    LP->>LP: API-layer PII unlock (US-46)
+    LP->>DB: Immutable audit event — actor, action, ts (US-86)
+    LP->>CW: Archive audit
+    LP->>LP: Start per-stage SLA clock
+    LP-->>FI: Full PII + documents released (US-48)
+      </pre></div></div>
+
+  <div class="flow" id="SF-05"><div class="flhead"><span class="fid">SF-05</span><h3>KFS build &amp; delivery (reusable)</h3></div><div class="flcov" data-cov="SF-05"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    participant LP as Lead Platform
+    participant WA as WhatsApp (Interakt)
+    actor FI as FI Manager
+    actor B as Borrower
+    LP->>LP: Build KFS — APR annualised, fees, terms (US-45)
+    opt At bid / auto-accept config
+    FI->>LP: KFS acknowledged at configuration (US-70)
+    end
+    LP->>WA: Deliver KFS over WhatsApp (US-55)
+    WA-->>B: KFS + APR disclosure
+    B-->>LP: Acknowledgement captured
+      </pre></div></div>
+
+  <div class="flow" id="SF-06"><div class="flhead"><span class="fid">SF-06</span><h3>Immutable audit write &amp; archive (reusable)</h3></div><div class="flcov" data-cov="SF-06"></div><div class="flbody"><pre class="mermaid">
+sequenceDiagram
+    participant SVC as Any service
+    participant DB as PostgreSQL
+    participant CW as CloudWatch → S3 (2y)
+    actor AD as Admin
+    SVC->>DB: Append-only audit row — actor, action, ts (US-86)
+    Note over DB: UPDATE / DELETE rejected by DB
+    DB->>CW: Ship to CloudWatch → S3 (2y)
+    AD->>DB: Query audit log by actor / action / date (US-10)
+      </pre></div></div>
+
+  <!-- empty template — the constant 23-participant roster, no messages.
        Shown by default in the center pane when nothing is selected. -->
   <div class="flow" id="FD-TEMPLATE"><div class="flhead"><span class="fid">—</span><h3>No flow selected</h3></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -875,8 +1356,9 @@ const FEATURES=[
   ['US-03','Admin','admin access gated by an 8-char alphanumeric OTP and an IP allowlist','the highest-privilege role is hardest to compromise']]},
  {id:'1.2',name:'RBAC & Tenant Isolation',sf:'Lead Platform',s:[
   ['US-04','CreditBridge','every API request scoped by role and FI tenant','no user ever sees data outside their remit or another FI\'s leads']]},
- {id:'1.3',name:'Source-IP Access Control',sf:'Lead Market',s:[
-  ['US-05','FI Manager','a source-IP allowlist enforced at login and on every request','portal access from unapproved networks is blocked']]},
+ {id:'1.3',name:'Source-IP Access Control & FI Auth',sf:'Lead Market',s:[
+  ['US-05','FI Manager','a source-IP allowlist enforced at login and on every request','portal access from unapproved networks is blocked'],
+  ['US-05a','FI Manager','to sign in with email + password and first-login mandatory 2FA (TOTP) after activating my emailed invite','FI portal access is strongly authenticated before any lead is exposed']]},
  {id:'1.4',name:'FI Org User Management',sf:'Lead Market',s:[
   ['US-06','FI Manager','invite, edit and deactivate users in my own FI org (RM, Billing)','I control who acts on leads and billing without CreditBridge'],
   ['US-07','FI Manager','per-user lead detail — leads handled, conversion, SLA record','I can hold my team accountable for wasted leads']]},
@@ -889,7 +1371,7 @@ const FEATURES=[
   ['US-11','Connector','a 5-step onboarding profile with KYC and bank details','I can start submitting leads once approved'],
   ['US-12','Onboarder','my referral code optionally attached to a registration','enrolments are attributed to whoever recruited them']]},
  {id:'2.2',name:'Connector Lifecycle Management',sf:'Converter Portal',s:[
-  ['US-13','Converter','an approval queue with KYC verification','only verified connectors are activated'],
+  ['US-13','Converter','a KYC-exception review queue — clean eKYC + PAN + penny-drop auto-activates, only exceptions surface for manual review','fraud-risk or mismatched applications are checked without delaying clean connectors'],
   ['US-14','Converter','suspend or blacklist with a mandatory logged reason','fraud or misconduct is contained immediately']]},
  {id:'2.3',name:'Connector Quality Score',sf:'Lead Platform + Connector App',s:[
   ['US-15','CreditBridge','a composite quality score (disbursal 50 · documents 30 · clean record 20; 10-lead minimum)','routing reflects connector reliability'],
@@ -1038,28 +1520,44 @@ const FEATURES=[
 ];
 
 const FLOWS=[
- {id:'FD-01',covers:['US-01','US-02','US-11','US-12','US-13','US-14']},
- {id:'FD-02',covers:['US-22','US-23','US-24','US-25','US-26','US-82','US-89']},
+ {id:'FD-01',covers:['US-01','US-11','US-12','US-13','US-14']},
+ {id:'FD-02',covers:['US-23','US-24','US-25','US-82','US-89']},
  {id:'FD-03',covers:['US-27','US-28','US-29','US-30','US-31','US-76']},
  {id:'FD-04',covers:['US-33','US-34','US-35','US-36','US-37','US-38','US-39','US-40']},
- {id:'FD-05',covers:['US-04','US-05','US-43','US-44','US-45','US-46','US-47','US-48','US-49','US-50','US-56','US-58','US-70']},
- {id:'FD-06',covers:['US-41','US-57','US-59','US-60','US-61','US-62','US-63','US-64']},
- {id:'FD-07',covers:['US-75','US-76','US-77','US-78','US-79','US-80','US-81']},
- {id:'FD-08',covers:['US-06','US-07','US-65','US-66','US-67','US-68','US-69','US-71','US-72','US-73','US-74']},
+ {id:'FD-05a',covers:['US-19','US-43','US-44','US-49','US-50','US-51','US-56','US-58']},
+ {id:'FD-05b',covers:['US-42','US-45','US-46','US-47','US-48','US-70']},
+ {id:'FD-06',covers:['US-57','US-59','US-60','US-61','US-63','US-64']},
+ {id:'FD-07',covers:['US-75','US-76','US-78','US-79']},
+ {id:'FD-08b',covers:['US-66','US-67','US-68','US-69','US-71','US-74']},
  {id:'FD-09',covers:['US-10','US-30','US-83','US-84','US-85','US-86']},
  {id:'FD-10',covers:['US-03']},
  {id:'FD-11',covers:['US-05']},
  {id:'FD-12',covers:['US-08']},
  {id:'FD-13',covers:['US-09']},
+ {id:'FD-14',covers:['US-05','US-05a','US-06','US-65']},
+ {id:'FD-15',covers:['US-07','US-72','US-73']},
+ {id:'FD-16',covers:['US-41']},
+ {id:'FD-17',covers:['US-55']},
+ {id:'FD-18',covers:['US-15']},
+ {id:'FD-19',covers:['US-32']},
+ {id:'FD-20',covers:['US-62','US-88','US-89']},
+ {id:'FD-21',covers:['US-16','US-17','US-22','US-26']},
+ {id:'FD-22',covers:['US-52','US-77','US-80','US-81','US-87','US-90']},
+ {id:'SF-01',covers:['US-01','US-02','US-04','US-05a']},
+ {id:'SF-02',covers:['US-82','US-83']},
+ {id:'SF-03',covers:['US-37','US-53','US-63']},
+ {id:'SF-04',covers:['US-46','US-48','US-86']},
+ {id:'SF-05',covers:['US-45','US-55','US-70']},
+ {id:'SF-06',covers:['US-10','US-86']},
 ];
 
 const TMS=[
- {id:'TM-01',name:'Auth Hardening & Platform RBAC',deps:[],oq:[],covers:['US-01','US-02','US-03','US-04','US-05','US-08'],
+ {id:'TM-01',name:'Auth Hardening & Platform RBAC',deps:[],oq:[],covers:['US-01','US-02','US-03','US-04','US-05','US-05a','US-08'],
   tasks:['Extend roles to the full catalog + fi_id tenant column','Deny-by-default RequirePermission middleware (role→permission map, audited seed)','Row-level scoping: connector=self, fi_*=own tenant, onboarder=own-code','Publish JWKS endpoint for downstream verification','Redis jti denylist fired only by suspend; 15-min status TTL otherwise','Admin login: 8-char crypto/rand OTP + Nginx IP allowlist','Negative-case RBAC suite: every role × every denied permission'],
   tcs:[['TC-01.1','Unregistered-permission route → 403 for every role'],['TC-01.2','converter calling payout release → 403'],['TC-01.3','billing calling lead:advance → 403'],['TC-01.4','Suspension rejects a still-valid JWT on the next request'],['TC-01.5','Replayed rotated refresh token → 401, pair revoked'],['TC-01.6','fi_rm of FI-A requesting FI-B resource → 404'],['TC-01.7','Admin OTP from non-allowlisted IP blocked at proxy']]},
  {id:'TM-02',name:'Connector Lifecycle & Activation',deps:['TM-01'],oq:['OQ-11'],covers:['US-11','US-12','US-13','US-14','US-15','US-16','US-19'],
-  tasks:['Approval queue API — list, KYC, approve/reject with reason','pending_approval gate: no lead submission until active','Suspend/blacklist with reason + denylist + push','Onboarder code capture and attribution','Quality score job (50/30/20, 90-day rolling, 10-lead floor), band-only','Lead-visibility settings on profile'],
-  tcs:[['TC-02.1','pending_approval connector POST /leads → 403'],['TC-02.2','Approval → active + activation push'],['TC-02.3','Rejection without reason → 400; reason persisted'],['TC-02.4','Suspension effective on next API call'],['TC-02.5','Onboarder reads only own-code connectors'],['TC-02.6','9 leads → no score; 10+ → band only, never numeric'],['TC-02.7','Hidden-FI setting persists and reaches routing']]},
+  tasks:['Auto-activate on clean eKYC + PAN + UPI penny-drop — no manual gate for clean KYC','KYC-exception review queue — only mismatches/failures surface for Converter approve/reject with reason','Suspend/blacklist with reason + jti denylist + push','Onboarder code capture and attribution','Quality score job (50/30/20, 90-day rolling, 10-lead floor), band-only','Lead-visibility settings on profile'],
+  tcs:[['TC-02.1','Clean KYC (eKYC+PAN+penny-drop) → status active with no manual step'],['TC-02.2','KYC mismatch/failure → routed to review queue, not auto-activated'],['TC-02.3','Review rejection without reason → 400; reason persisted'],['TC-02.4','Suspension effective on next API call'],['TC-02.5','Onboarder reads only own-code connectors'],['TC-02.6','9 leads → no score; 10+ → band only, never numeric'],['TC-02.7','Hidden-FI setting persists and reaches routing']]},
  {id:'TM-03',name:'Lead Submission, Offline Queue & Consent',deps:['TM-02'],oq:[],covers:['US-22','US-23','US-24','US-25','US-26','US-82','US-89'],
   tasks:['POST /connector/leads with full field validation','Idempotency key with 24-hour dedup window','Atomic lead + consent transaction; append-only consents','Hive offline queue: FIFO drain, 3 retries, banner','Duplicate mobile+product flag before sync','Lead list/detail APIs + ops alert email job'],
   tcs:[['TC-03.1','Duplicate idempotency key ≤24h → original ID, HTTP 200, no new row'],['TC-03.2','Malformed PAN → 400, nothing created'],['TC-03.3','Consent write failure rolls back the lead'],['TC-03.4','Airplane-mode leads queue and drain FIFO'],['TC-03.5','Duplicate flagged before sync, not silently sent'],['TC-03.6','Connector A reading B\'s lead → 404'],['TC-03.7','UPDATE/DELETE on lead_consents rejected by DB'],['TC-03.8','Exactly one ops alert per lead']]},
@@ -1121,6 +1619,8 @@ FEATURES.forEach(F=>F.mods.forEach(M=>M.s.forEach(s=>{STORY[s[0]]={actor:s[1],wa
 
 const chip=(cls,id,title)=>`<a class="chip ${cls}" href="#${id}" ${title?`title="${title.replace(/"/g,'&quot;')}"`:''}>${id}</a>`;
 const usTitle=u=>{const s=STORY[u];return s?`${s.actor}: ${s.want}`:''};
+/* stories that are intentionally UI-only (static tools / saved prefs) — no sequence diagram expected */
+const UIONLY=new Set(['US-18','US-20','US-54']);
 
 /* ================= RENDER: features (left pane) ================= */
 const featureList=document.getElementById('featureList');
@@ -1133,7 +1633,9 @@ FEATURES.forEach((F,i)=>{
       if(def==='deferred'){links=`<span class="chip def">deferred</span>`;}
       else{
         links=tr.fd.map(f=>chip('fd',f)).join('')+tr.tm.map(t=>chip('tm',t)).join('');
-        if(!tr.fd.length)links+=`<span class="chip gap" title="No flow diagram realises this story (UI-only or gap)">no flow</span>`;
+        if(!tr.fd.length)links+= UIONLY.has(id)
+          ? `<span class="chip def" title="UI-only — no sequence diagram needed">UI only</span>`
+          : `<span class="chip gap" title="No flow diagram realises this story (gap)">no flow</span>`;
         if(!tr.tm.length)links+=`<span class="chip gap" title="No testable module covers this story">untested</span>`;
       }
       return `<div class="story${def==='deferred'?' deferred':''}" id="${id}" data-actor="${actor}">
@@ -1169,7 +1671,7 @@ actorChipsEl.innerHTML=
   actorOrder.map(a=>`<button class="actor-chip" data-actor="${a}" type="button" title="${(AD[a]||'').replace(/"/g,'&quot;')}"><span class="adot" style="background:${AC[a]||'#EDF1F7'}"></span>${a}</button>`).join('');
 
 /* ================= RENDER: FD title chips (top) ================= */
-const fdMeta=Array.from(document.querySelectorAll('#flowPool .flow[id^="FD-"]'))
+const fdMeta=Array.from(document.querySelectorAll('#flowPool .flow[id^="FD-"], #flowPool .flow[id^="SF-"]'))
   .filter(el=>el.id!=='FD-TEMPLATE')
   .map(el=>({id:el.id,title:el.querySelector('.flhead h3').textContent}));
 const fdChipsEl=document.getElementById('fdChips');
