@@ -49,6 +49,8 @@
   .fd-chip.covered{border-color:rgba(77,159,255,.55);box-shadow:0 0 0 1px rgba(77,159,255,.25)}
   .fd-chip.active{border-color:var(--mint);color:var(--text);background:rgba(0,200,150,.1)}
   .fd-chip.active .fid{color:var(--mint)}
+  .fd-chip.fd-all .fid{color:var(--mint)}
+  .fd-chip.fd-all.on{border-color:var(--mint);color:var(--text);background:rgba(0,200,150,.12)}
 
   /* ===== shell / panes ===== */
   .shell{flex:1;display:flex;min-height:0;overflow:hidden;position:relative}
@@ -149,6 +151,31 @@
   .loupe-rect{position:absolute;border:1.5px solid var(--mint);background:rgba(0,200,150,.1);pointer-events:none;
     display:none;z-index:5;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
   .loupe-rect.show{display:block}
+
+  /* ===== brighten rendered mermaid sequence diagrams (main + loupe clone) =====
+     The loupe clone loses mermaid's id-scoped <style>, so these rules restyle it
+     fully; they also brighten the main center diagram (desirable). */
+  #diagramMount .mermaid svg .messageLine0, #loupeSvg .messageLine0,
+  #diagramMount .mermaid svg .messageLine1, #loupeSvg .messageLine1{
+    stroke:#EDF1F7!important;stroke-width:1.7px!important}
+  #diagramMount .mermaid svg .messageLine1, #loupeSvg .messageLine1{stroke-dasharray:3,3!important}
+  /* arrowheads / markers */
+  #diagramMount .mermaid svg marker path, #diagramMount .mermaid svg marker polygon, #diagramMount .mermaid svg marker line,
+  #loupeSvg marker path, #loupeSvg marker polygon, #loupeSvg marker line{
+    fill:#EDF1F7!important;stroke:#EDF1F7!important}
+  /* actor lifelines */
+  #diagramMount .mermaid svg .actor-line, #loupeSvg .actor-line{stroke:#9AABC7!important;stroke-width:1.3px!important}
+  /* actor / entity boxes + their text */
+  #diagramMount .mermaid svg .actor, #loupeSvg .actor{stroke:#6E7C93!important;stroke-width:1.4px!important}
+  #loupeSvg .actor{fill:#1A2230!important}
+  #loupeSvg text.actor, #loupeSvg .actor tspan{fill:#EDF1F7!important}
+  /* message + note + loop text and boxes (loupe needs explicit fills) */
+  #loupeSvg .messageText{fill:#EDF1F7!important}
+  #loupeSvg .noteText, #loupeSvg .labelText, #loupeSvg .loopText, #loupeSvg text{fill:#EDF1F7!important}
+  #loupeSvg .note{fill:#243044!important;stroke:#6E7C93!important}
+  #loupeSvg .labelBox{fill:#243044!important;stroke:#6E7C93!important}
+  #loupeSvg .loopLine{stroke:#9AABC7!important}
+  #loupeSvg .activation0, #loupeSvg .activation1, #loupeSvg .activation2{fill:#00C896!important;stroke:#00C896!important}
 
   /* ===== fullscreen pan/zoom overlay ===== */
   .fs-overlay{position:fixed;inset:0;z-index:200;background:rgba(8,10,14,.95);backdrop-filter:blur(4px);
@@ -1146,7 +1173,22 @@ const fdMeta=Array.from(document.querySelectorAll('#flowPool .flow[id^="FD-"]'))
   .filter(el=>el.id!=='FD-TEMPLATE')
   .map(el=>({id:el.id,title:el.querySelector('.flhead h3').textContent}));
 const fdChipsEl=document.getElementById('fdChips');
-fdChipsEl.innerHTML=fdMeta.map(f=>`<button class="fd-chip" data-fd="${f.id}" type="button"><span class="fid">${f.id}</span><span class="ft">${f.title}</span></button>`).join('');
+fdChipsEl.innerHTML=
+  `<button class="fd-chip fd-all on" data-fd-all="1" type="button"><span class="fid">ALL</span><span class="ft">All flows</span></button>`+
+  fdMeta.map(f=>`<button class="fd-chip" data-fd="${f.id}" type="button"><span class="fid">${f.id}</span><span class="ft">${f.title}</span></button>`).join('');
+
+/* when a story is selected, the top FD list narrows to its related diagrams;
+   null = show all. The "All flows" chip clears the filter. */
+let storyFilterFDs=null;
+function applyFdFilter(){
+  const showAll=!storyFilterFDs;
+  document.querySelectorAll('.fd-chip[data-fd]').forEach(c=>{
+    c.style.display=(showAll||storyFilterFDs.includes(c.dataset.fd))?'':'none';
+  });
+  const allChip=document.querySelector('.fd-chip.fd-all');
+  if(allChip)allChip.classList.toggle('on',showAll);
+}
+function clearStoryFdFilter(){ storyFilterFDs=null; applyFdFilter(); }
 
 /* ================= CENTER PANE: mount / swap flow diagrams ================= */
 const pool=document.getElementById('flowPool');
@@ -1192,8 +1234,10 @@ function renderRightPane(id){
 }
 
 /* ================= story selection ================= */
+let currentStory=null;
 function selectStory(id){
   const s=STORY[id];if(!s)return;
+  currentStory=id;
   document.querySelectorAll('.story.active').forEach(x=>x.classList.remove('active'));
   const el=document.getElementById(id);
   if(el){
@@ -1204,10 +1248,22 @@ function selectStory(id){
   }
   renderRightPane(id);
   const fds=(TRACE[id]&&TRACE[id].fd)||[];
+  /* narrow the top FD list to only this story's diagrams */
+  storyFilterFDs=fds.slice();
+  applyFdFilter();
   document.querySelectorAll('.fd-chip.covered').forEach(c=>c.classList.remove('covered'));
   fds.forEach(fid=>{const c=document.querySelector(`.fd-chip[data-fd="${fid}"]`);if(c)c.classList.add('covered')});
   if(fds.length)selectFD(fds[0]);
   else selectFD('FD-TEMPLATE',{note:true});
+}
+/* click the active story again -> back to the no-selection default (all flows) */
+function deselectStory(){
+  currentStory=null;
+  document.querySelectorAll('.story.active').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.fd-chip.covered').forEach(c=>c.classList.remove('covered'));
+  clearStoryFdFilter();
+  rightPaneBody.innerHTML=`<div class="rp-empty">Select a story on the left to see its tasks, tests and open questions.</div>`;
+  selectFD('FD-TEMPLATE');
 }
 
 /* ================= actor filter ================= */
@@ -1244,9 +1300,13 @@ document.addEventListener('click',e=>{
     else if(a.classList.contains('us'))selectStory(id);
     return;
   }
-  /* story row */
+  /* story row (clicking the already-active story toggles back to all flows) */
   const storyEl=e.target.closest('.story');
-  if(storyEl&&storyEl.id){selectStory(storyEl.id);return;}
+  if(storyEl&&storyEl.id){
+    if(storyEl.id===currentStory)deselectStory();
+    else selectStory(storyEl.id);
+    return;
+  }
   /* actor filter chip */
   const actorBtn=e.target.closest('.actor-chip');
   if(actorBtn){
@@ -1256,9 +1316,12 @@ document.addEventListener('click',e=>{
     applyActorFilter();
     return;
   }
+  /* "All flows" chip restores the full FD list */
+  const allChip=e.target.closest('.fd-chip.fd-all');
+  if(allChip){clearStoryFdFilter();return;}
   /* FD title chip (top) */
   const fdBtn=e.target.closest('.fd-chip');
-  if(fdBtn){selectFD(fdBtn.dataset.fd);return;}
+  if(fdBtn&&fdBtn.dataset.fd){selectFD(fdBtn.dataset.fd);return;}
   /* drawer toggles */
   if(e.target.closest('#leftToggle')){leftPane.classList.toggle('open');return;}
   if(e.target.closest('#rightToggle')){rightPane.classList.toggle('open');return;}
@@ -1487,8 +1550,8 @@ function onDiagramChanged(){
 /* ================= mermaid ================= */
 mermaid.initialize({startOnLoad:true,theme:'dark',securityLevel:'loose',
  themeVariables:{darkMode:true,background:'#151B24',primaryColor:'#1A2230',primaryTextColor:'#EDF1F7',primaryBorderColor:'#31405A',
-  lineColor:'#4D9FFF',actorBkg:'#1A2230',actorBorder:'#31405A',actorTextColor:'#EDF1F7',
-  signalColor:'#8B95A7',signalTextColor:'#C7CEDB',noteBkgColor:'#243044',noteTextColor:'#EDF1F7',noteBorderColor:'#31405A',
+  lineColor:'#9AABC7',actorBkg:'#1A2230',actorBorder:'#6E7C93',actorTextColor:'#EDF1F7',
+  signalColor:'#EDF1F7',signalTextColor:'#EDF1F7',noteBkgColor:'#243044',noteTextColor:'#EDF1F7',noteBorderColor:'#6E7C93',
   labelBoxBkgColor:'#243044',labelBoxBorderColor:'#31405A',labelTextColor:'#EDF1F7',loopTextColor:'#EDF1F7',
   activationBkgColor:'#00C896',sequenceNumberColor:'#0E1116',fontFamily:'IBM Plex Mono, monospace',fontSize:'13px'}});
 
