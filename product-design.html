@@ -657,7 +657,8 @@ sequenceDiagram
     CP->>LP: POST /admin/fi
     LP->>DB: FI tenant = pending_setup · fi_manager invited (no password)
     Note over LP: ▶ SF-06 immutable audit write
-    LP->>EM: Single-use, time-boxed activation link
+    LP->>EM: Single-use activation link (7-day expiry)
+    Note over LP,EM: Login attempted before password set / link expired → regenerate + resend
     FI->>LM: Open activation link
     LM->>LP: GET /auth/activate?token → validate (unused, unexpired)
     FI->>LM: Set password
@@ -665,7 +666,7 @@ sequenceDiagram
     FI->>LM: First login (email + password)
     Note over LM,LP: ▶ FD-11 source-IP allowlist (US-05) — DEFERRED, skipped for now
     LP->>DB: role=fi_manager & pending_2fa → require 2FA
-    LP-->>FI: TOTP secret + QR (enrolment) (US-05a)
+    LP-->>FI: TOTP secret + QR + backup recovery codes (US-05a)
     FI->>LM: Enter TOTP code
     LP->>DB: Verify + store encrypted secret · status = active
     Note over LP: ▶ SF-01 JWT issue + refresh
@@ -674,7 +675,7 @@ sequenceDiagram
     FI->>LM: Invite RM / Billing (tenant-scoped)
     LP->>EM: Activation link to invitee (same set-password + 2FA)
     end
-      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>FI accounts start with no password (<code>pending_setup</code>); the activation link is single-use and time-boxed, validated server-side before a password can be set. 2FA enrollment (TOTP secret + QR) fires on first login. <b style="color:#FFAA33">⚑ DEFERRED (D-08d):</b> the FI-11 source-IP gate is deferred for now, so first login proceeds straight to TOTP; when re-enabled, the IP gate precedes 2FA (network trust + second factor).</div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>FI accounts start with no password (<code>pending_setup</code>); the activation link is single-use with a <b>7-day expiry</b>, validated server-side before a password can be set. If the invitee attempts login before setting a password (or the link expired), the link is <b>regenerated and resent</b>. 2FA enrollment (TOTP secret + QR) fires on first login, issuing <b>one-time backup recovery codes</b> for lost-authenticator access. <b style="color:#FFAA33">⚑ DEFERRED (D-08d):</b> the FI-11 source-IP gate is deferred for now, so first login proceeds straight to TOTP; when re-enabled, the IP gate precedes 2FA (network trust + second factor).</div></div>
 
   <div class="flow" id="FD-15"><div class="flhead"><span class="fid">FD-15</span><h3>FI lifecycle &amp; routing controls</h3></div><div class="flcov" data-cov="FD-15"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -1005,7 +1006,7 @@ const FEATURES=[
   ['US-04','CreditBridge','every API request scoped by role and FI tenant','no user ever sees data outside their remit or another FI\'s leads']]},
  {id:'1.3',name:'Source-IP Access Control & FI Auth',sf:'Lead Market',s:[
   ['US-05','FI Manager','a source-IP allowlist enforced at login and on every request','portal access from unapproved networks is blocked','deferred'],
-  ['US-05a','FI Manager','to sign in with email + password and first-login mandatory 2FA (TOTP) after activating my emailed invite','FI portal access is strongly authenticated before any lead is exposed']]},
+  ['US-05a','FI Manager','to sign in with email + password and first-login mandatory 2FA (TOTP) after activating my emailed invite (single-use link, 7-day expiry; resent if I log in before setting a password) with one-time TOTP backup recovery codes','FI portal access is strongly authenticated before any lead is exposed']]},
  {id:'1.4',name:'FI Org User Management',sf:'Lead Market',s:[
   ['US-06','FI Manager','invite, edit and deactivate users in my own FI org (RM, Billing)','I control who acts on leads and billing without CreditBridge'],
   ['US-07','FI Manager','per-user lead detail — leads handled, conversion, SLA record','I can hold my team accountable for wasted leads']]},
@@ -1288,6 +1289,7 @@ const REVIEW={
   'US-02':'reviewed',
   'US-03':'reviewed',
   'US-04':'reviewed',
+  'US-05a':'reviewed',
 };
 const revBadge=id=>{
   const r=REVIEW[id];
