@@ -118,6 +118,10 @@
   .flcov .lbl{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.14em;text-transform:uppercase;margin-right:4px}
   .flbody{padding:10px 14px;overflow-x:auto}
   .flbody .mermaid{display:flex;justify-content:center;min-width:640px}
+  .flexplain{padding:14px 22px 18px;border-top:1px solid var(--line);font-size:12.5px;line-height:1.6;color:var(--mut)}
+  .flexplain .lbl{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+  .flexplain b{color:var(--text);font-weight:600}
+  .flexplain code{font-family:var(--mono);font-size:11.5px;color:var(--sky);background:rgba(77,159,255,.1);padding:1px 5px;border-radius:4px}
   .center-note{flex:none;padding:10px 18px;font-size:12px;color:var(--amber);background:rgba(255,170,51,.08);
     border-bottom:1px solid rgba(255,170,51,.3);display:none}
   .center-note.show{display:block}
@@ -282,7 +286,7 @@
         <span class="lb-hint">hover the diagram to magnify</span>
         <span class="spacer"></span>
         <span class="lb-zoom">
-          <input class="lz-slider" id="loupeZoomSlider" type="range" min="0.1" max="1" step="0.1" value="1" title="Loupe magnification" aria-label="Loupe magnification">
+          <input class="lz-slider" id="loupeZoomSlider" type="range" min="0.5" max="1" step="0.1" value="1" title="Loupe magnification" aria-label="Loupe magnification">
           <span class="lz-val" id="loupeZoomVal">1.0×</span>
         </span>
         <button class="fs-btn" id="fsOpen" type="button" title="Open fullscreen zoomable view">⤢ Fullscreen</button>
@@ -351,7 +355,7 @@ sequenceDiagram
     CP->>LP: jti denylist + status update
     end
     LP-->>CA: Push — activation result
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Connector App calls <b>POST /connector/onboard</b> once profile + consent are captured; Lead Platform fires eKYC/PAN/penny-drop synchronously against Setu. A clean result flips <code>status</code> to active in one write — no queue, no human in the loop. A dirty result instead writes a row to the Converter's review queue table; the Converter's approve/reject is a second, separate write that the Connector App picks up on next poll/push.</div></div>
 
   <div class="flow" id="FD-02"><div class="flhead"><span class="fid">FD-02</span><h3>Lead submission — offline queue &amp; consent</h3></div><div class="flcov" data-cov="FD-02"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -375,7 +379,7 @@ sequenceDiagram
     CA->>CA: Duplicate mobile+product? flag first (US-24)
     CA->>LP: FIFO drain (3 retries, backoff)
     end
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Lead capture is idempotency-keyed so retries from a flaky connection never double-write. Online path is a single atomic transaction (lead + consent) inside Lead Platform. Offline path defers that same POST to a Hive-backed local queue on the device; on reconnect it drains FIFO with backoff and de-dupes against mobile+product before touching the server at all.</div></div>
 
   <div class="flow" id="FD-03"><div class="flhead"><span class="fid">FD-03</span><h3>Qualification in under 90 seconds</h3></div><div class="flcov" data-cov="FD-03"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -402,7 +406,7 @@ sequenceDiagram
     TW->>TW: Deterministic rules → Q001–Q007 (US-28)
     Note over TW: GenAI writes the reason text, never the decision
     TW-->>CA: QUALIFIED (+ commission estimate) or DISQUALIFIED (+ suggestion) (US-31, US-76)
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>This whole flow runs inside a Temporal workflow so a crash mid-qualification resumes instead of restarting. PAN/OKYC calls hit Setu; CRIF is a soft pull via Surepass that returns a score only — the raw score never lands in the DB, only a derived band. The Q001–Q007 rule evaluation is deterministic code; the LLM is invoked only afterward, to phrase the reason, never to decide it.</div></div>
 
   <div class="flow" id="FD-04"><div class="flhead"><span class="fid">FD-04</span><h3>Document collection &amp; enrichment</h3></div><div class="flcov" data-cov="FD-04"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -433,7 +437,7 @@ sequenceDiagram
     TW->>CA: T+36h connector push · T+48h ops takeover
     end
     TW->>TW: ≥80% complete → Phase C
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Three collection channels run in parallel (WhatsApp/OCR, Account Aggregator, connector task cards) writing into the same completeness score, so any channel completing a document unblocks the gate. The T+4h→T+48h escalation is a Temporal timer chain, not a cron job — each rung fires only if the prior one didn't resolve the document.</div></div>
 
   <div class="flow" id="FD-05a"><div class="flhead"><span class="fid">FD-05a</span><h3>Matching, bidding &amp; winner selection</h3></div><div class="flcov" data-cov="FD-05a"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -451,7 +455,7 @@ sequenceDiagram
     opt No bids
     LP->>LP: Waterfall by bid priority → cascade (see FD-06)
     end
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Lead Platform computes the anonymised feed server-side (visibility exclusions + 3 hard gates) before it ever reaches Lead Market — FIs never see PII-bearing rows to filter client-side. The 2h bid window is a timer with sealed writes: each FI's bid is invisible to competitors until the window closes and the weighted-score winner is computed in one pass.</div></div>
 
   <div class="flow" id="FD-05b"><div class="flhead"><span class="fid">FD-05b</span><h3>Acceptance &amp; PII unlock</h3></div><div class="flcov" data-cov="FD-05b"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -471,7 +475,7 @@ sequenceDiagram
     opt Pass
     LP->>LP: Recoverable pass → Passed-leads toggle (US-47)
     end
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Manual accept and auto-accept both terminate at the same SF-04 unlock step, so PII exposure is a single code path regardless of entry point — auto-accept just skips the human click by matching a pre-configured standing rule. The document vault issues time-boxed signed URLs (24h) rather than permanent links, so access is reissued, not indefinite.</div></div>
 
   <div class="flow" id="FD-06"><div class="flhead"><span class="fid">FD-06</span><h3>Status, per-stage SLA &amp; cascade</h3></div><div class="flcov" data-cov="FD-06"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -494,7 +498,7 @@ sequenceDiagram
     LP->>CV: Nudge flag → escalate or cascade (reason)
     LP->>LP: Next FI — old FI sees only "opportunity passed"
     end
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Manual FI status updates and inbound LOS webhooks write to the same status table through the same validation, so the sequential-status constraint holds regardless of source. SLA countdown is computed off stored per-stage timestamps, not a separate scheduler; breach handling (nudge → escalate/cascade) is triggered when a read finds the countdown past zero.</div></div>
 
   <div class="flow" id="FD-07"><div class="flhead"><span class="fid">FD-07</span><h3>Disbursement → commission → payout</h3></div><div class="flcov" data-cov="FD-07"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -515,7 +519,7 @@ sequenceDiagram
     TW->>RZ: NEFT/IMPS (idempotency per payout+action)
     RZ-->>C: Credit + TDS breakdown + reference
     RZ->>TW: Settlement webhook → reconcile or flag
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Commission math runs entirely in paise to avoid float rounding, and is computed once at disbursement, not re-derived later. Payout is strict maker-checker: the same user id can't both initiate and release (enforced by a SQL CHECK constraint, not just app logic), and admin approval is required only above a configured threshold.</div></div>
 
   <div class="flow" id="FD-08b"><div class="flhead"><span class="fid">FD-08b</span><h3>FI config change &amp; eligibility</h3></div><div class="flcov" data-cov="FD-08b"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -535,7 +539,7 @@ sequenceDiagram
     Note over CP,LP: ▶ SF-06 immutable audit write
     end
     LP->>LP: Daily rate-card scrape → LLM parse → human review (US-74)
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>FI-side config edits go through the FI's own maker/checker before ever reaching CreditBridge, and only take effect at the stored effective-from date via a scheduled flip — never immediately. The daily rate-card scrape writes to a human review queue; nothing from that pipeline auto-applies to live eligibility.</div></div>
 
   <div class="flow" id="FD-09"><div class="flhead"><span class="fid">FD-09</span><h3>Consent lifecycle &amp; compliance enforcement</h3></div><div class="flcov" data-cov="FD-09"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -565,7 +569,7 @@ sequenceDiagram
     end
     AD->>CP: Query audit log by actor / action / date (US-10)
     CV->>LP: Compliance dashboard + RBI audit export (US-85)
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Consent rows are append-only per activity — no update, no delete — captured via SF-02 in the same transaction as the action they authorise. Withdrawal branches on whether an FI has already accepted the lead: pre-accept triggers an actual freeze+anonymise job; post-accept only appends an immutable withdrawal event, since the data already left CreditBridge's custody.</div></div>
 
   <div class="flow" id="FD-10"><div class="flhead"><span class="fid">FD-10</span><h3>Admin access — OTP &amp; IP allowlist</h3></div><div class="flcov" data-cov="FD-10"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -582,7 +586,7 @@ sequenceDiagram
     else IP not allowlisted
     LP-->>AD: 403 — unapproved network
     end
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>IP allowlist check happens before OTP issuance, not after — a request from a disallowed network never gets an OTP prompt, closing off brute-force probing of the admin OTP itself.</div></div>
 
   <div class="flow" id="FD-11"><div class="flhead"><span class="fid">FD-11</span><h3>FI source-IP access control</h3></div><div class="flcov" data-cov="FD-11"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -599,7 +603,7 @@ sequenceDiagram
     LP-->>FI: 403 — blocked network
     end
     Note over LP,DB: Enforced at login AND on every request
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>The source-IP check re-runs on every request, not just at login, so a session token stolen off-network still fails at the next call — this is enforced at the API gateway/middleware layer, ahead of business logic.</div></div>
 
   <div class="flow" id="FD-12"><div class="flhead"><span class="fid">FD-12</span><h3>Admin account management</h3></div><div class="flcov" data-cov="FD-12"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -615,7 +619,7 @@ sequenceDiagram
     end
     LP->>DB: Audit event (actor, action)
     LP-->>CP: Confirmation
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Admin account writes go through Converter Portal → single <code>POST /admin/users</code> endpoint; suspend is two effects in one transaction (status flip + jti denylist) so a suspended session can't ride out its JWT's remaining TTL.</div></div>
 
   <div class="flow" id="FD-13"><div class="flhead"><span class="fid">FD-13</span><h3>Admin platform settings</h3></div><div class="flcov" data-cov="FD-13"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -628,7 +632,7 @@ sequenceDiagram
     LP->>DB: Persist config + audit event
     LP->>LP: Apply without deploy (hot reload)
     LP-->>CP: Live confirmation
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Platform settings are hot-reloaded — the config write and its application are the same request, no deploy or restart step, which is why every change also writes an audit row synchronously.</div></div>
 
   <div class="flow" id="FD-14"><div class="flhead"><span class="fid">FD-14</span><h3>FI onboarding &amp; first-login 2FA</h3></div><div class="flcov" data-cov="FD-14"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -660,7 +664,7 @@ sequenceDiagram
     FI->>LM: Invite RM / Billing (tenant-scoped)
     LP->>EM: Activation link to invitee (same set-password + 2FA)
     end
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>FI accounts start with no password (<code>pending_setup</code>); the activation link is single-use and time-boxed, validated server-side before a password can be set. 2FA enrollment (TOTP secret + QR) only fires on first login and only after the FI-11 source-IP gate passes — 2FA is a second factor stacked on top of network trust, not a replacement for it.</div></div>
 
   <div class="flow" id="FD-15"><div class="flhead"><span class="fid">FD-15</span><h3>FI lifecycle &amp; routing controls</h3></div><div class="flcov" data-cov="FD-15"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -678,7 +682,7 @@ sequenceDiagram
     CP->>LP: No new routing rows · accepted leads unaffected
     CV->>CP: Reactivate with reason (US-73)
     end
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Bid priority is a computed score (SLA/Accept/TAT weighted) that Converter can nudge ±10 — the override is stored as a delta with a mandatory reason, not a raw overwrite, so the computed baseline stays recoverable. Suspension stops new routing rows immediately but is explicitly non-retroactive: leads already accepted by that FI keep flowing.</div></div>
 
   <div class="flow" id="FD-16"><div class="flhead"><span class="fid">FD-16</span><h3>FI-initiated document request</h3></div><div class="flcov" data-cov="FD-16"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -700,7 +704,7 @@ sequenceDiagram
     LP->>CA: Connector alert / task
     end
     B->>WA: Upload → validate → advances status
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>A single FI action (<code>POST /leads/{id}/doc-request</code>) fans out through SF-03 to three channels in parallel — the request doesn't wait for all three to succeed, any one borrower response (typically WhatsApp upload) advances the lead status.</div></div>
 
   <div class="flow" id="FD-17"><div class="flhead"><span class="fid">FD-17</span><h3>Connector FI-offer &amp; KFS delivery</h3></div><div class="flcov" data-cov="FD-17"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -716,7 +720,7 @@ sequenceDiagram
     Note over LP: ▶ SF-03 notification fan-out
     B-->>LP: Borrower selects an offer (informed, compliant)
     LP-->>CA: Selection recorded
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>KFS is built once per offer and delivered over WhatsApp before the borrower selects — the disclosure precedes the choice, satisfying RBI DLD 2025 sequencing, not just presence.</div></div>
 
   <div class="flow" id="FD-18"><div class="flhead"><span class="fid">FD-18</span><h3>Connector quality-score computation</h3></div><div class="flcov" data-cov="FD-18"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -732,7 +736,7 @@ sequenceDiagram
     end
     Note over TW,DB: ▶ SF-06 immutable audit write
     TW-->>CA: Band + plain-language breakdown (feeds US-16)
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Score computation reads a rolling 90-day window on every run rather than maintaining a running counter, so historical corrections (e.g. a disbursal reversal) are reflected automatically. Below the 10-lead floor the job writes nothing — the Connector App shows "no score yet" as an absence of data, not a zero.</div></div>
 
   <div class="flow" id="FD-19"><div class="flhead"><span class="fid">FD-19</span><h3>AI credit summary generation</h3></div><div class="flcov" data-cov="FD-19"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -747,7 +751,7 @@ sequenceDiagram
     TW->>DB: Persist summary (auditable)
     LP->>LM: Show summary on accepted lead (US-32)
     LM-->>FI: Credit team grasps profile instantly
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Summary generation is deterministic-in, generative-out: Lead Platform assembles the feature set from structured data, and the LLM call only produces the 3-sentence prose layered on top — the underlying facts it summarises are never LLM-derived.</div></div>
 
   <div class="flow" id="FD-20"><div class="flhead"><span class="fid">FD-20</span><h3>Ops pipeline management &amp; escalation</h3></div><div class="flcov" data-cov="FD-20"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -763,7 +767,7 @@ sequenceDiagram
     CV->>CP: Escalation queue
     Note over CP,LP: ▶ SF-06 immutable audit write
     end
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>The ops alert (SF-03) fires once per lead needing manual handling, decoupled from the pipeline view itself — Converter Portal separately polls/reads the pipeline table for the live funnel. Every override or stage-advance writes through SF-06 so ops interventions are as auditable as automated transitions.</div></div>
 
   <div class="flow" id="FD-21"><div class="flhead"><span class="fid">FD-21</span><h3>Connector home &amp; tracking (data-load)</h3></div><div class="flcov" data-cov="FD-21"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -779,7 +783,7 @@ sequenceDiagram
     LP-->>CA: Anonymised top X% in city / product (US-17)
     CA->>LP: GET /connector/leads
     LP-->>CA: Colour-coded status timeline (US-26)
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>These are read-only GETs, each independently cacheable — <code>/connector/home</code> is explicitly offline-cached so the dashboard renders from local state before any network round-trip completes.</div></div>
 
   <div class="flow" id="FD-22"><div class="flhead"><span class="fid">FD-22</span><h3>Billing, payout &amp; analytics views (data-load)</h3></div><div class="flcov" data-cov="FD-22"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -801,7 +805,7 @@ sequenceDiagram
     LP-->>CP: FI invoices, ageing (US-80) · overdue, margin recon (US-81)
     CV->>CP: Ops dashboard — KPIs + funnel (US-87)
     LP->>DB: Platform analytics off transactional DB / ClickHouse (US-90)
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Each role's view hits a scoped endpoint (<code>/fi/analytics</code>, <code>/connector/payouts</code>, <code>/billing</code>) rather than one shared analytics API, keeping tenant isolation at the query layer. Aggregate analytics are served off ClickHouse, deliberately separated from the OLTP path so dashboard load can't contend with transactional writes.</div></div>
 
   <!-- ===== reusable sub-flows (compact "function" views) ===== -->
   <div class="flow" id="SF-01"><div class="flhead"><span class="fid">SF-01</span><h3>Auth &amp; session (reusable)</h3></div><div class="flcov" data-cov="SF-01"></div><div class="flbody"><pre class="mermaid">
@@ -822,7 +826,7 @@ sequenceDiagram
     loop On refresh
     CL->>LP: Rotate refresh token (replay → revoke pair)
     end
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>2FA is conditional — only high-privilege clients (FI portal) get the TOTP challenge — but the JWT/refresh issuance path afterward is identical for every client. Refresh rotation means a replayed (already-used) refresh token revokes the whole pair, not just itself, so token theft is detected on first reuse.</div></div>
 
   <div class="flow" id="SF-02"><div class="flhead"><span class="fid">SF-02</span><h3>Consent capture &amp; ledger (reusable)</h3></div><div class="flcov" data-cov="SF-02"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -838,7 +842,7 @@ sequenceDiagram
     U->>LP: Withdraw consent
     LP->>DB: Freeze / anonymise hook
     end
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Consent is written in the same transaction as the action it authorises (lead submission, doc access, etc.) — never a follow-up call — so there's no window where an action exists without its consent record. The ledger itself is append-only; withdrawal adds a new event rather than mutating history.</div></div>
 
   <div class="flow" id="SF-03"><div class="flhead"><span class="fid">SF-03</span><h3>Notification fan-out (reusable)</h3></div><div class="flcov" data-cov="SF-03"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -851,7 +855,7 @@ sequenceDiagram
     Note over NF: DND scrub · 9am–9pm · DLT templates (US-37)
     NF->>CH: Dispatch with deep link
     CH-->>R: Push / WhatsApp / Email / Voice / In-portal (US-53)
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>Channel selection is rules-based and runs suppression (DND scrub, 9am–9pm window, user preferences) before dispatch, not after — a blocked channel is skipped rather than attempted-and-failed. This sub-flow is invoked by event type from multiple parent flows (FD-04, FD-06, FD-16, FD-20) rather than reimplemented per caller.</div></div>
 
   <div class="flow" id="SF-04"><div class="flhead"><span class="fid">SF-04</span><h3>PII unlock + audit + SLA start (reusable)</h3></div><div class="flcov" data-cov="SF-04"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -865,7 +869,7 @@ sequenceDiagram
     LP->>CW: Archive audit
     LP->>LP: Start per-stage SLA clock
     LP-->>FI: Full PII + documents released (US-48)
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>This is the single choke point for PII exposure in the entire platform — every parent flow that unlocks PII (FD-05b, FD-09) routes through it, so the audit-event-before-release ordering only has to be correct once.</div></div>
 
   <div class="flow" id="SF-05"><div class="flhead"><span class="fid">SF-05</span><h3>KFS build &amp; delivery (reusable)</h3></div><div class="flcov" data-cov="SF-05"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -880,7 +884,7 @@ sequenceDiagram
     LP->>WA: Deliver KFS over WhatsApp (US-55)
     WA-->>B: KFS + APR disclosure
     B-->>LP: Acknowledgement captured
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>KFS construction and delivery are separated from acknowledgement: the borrower's ack is captured as its own event, distinct from the FI's earlier bid/auto-accept-time acknowledgement — the two are not conflated even though both reference the same KFS document.</div></div>
 
   <div class="flow" id="SF-06"><div class="flhead"><span class="fid">SF-06</span><h3>Immutable audit write &amp; archive (reusable)</h3></div><div class="flcov" data-cov="SF-06"></div><div class="flbody"><pre class="mermaid">
 sequenceDiagram
@@ -892,7 +896,7 @@ sequenceDiagram
     Note over DB: UPDATE / DELETE rejected by DB
     DB->>CW: Ship to CloudWatch → S3 (2y)
     AD->>DB: Query audit log by actor / action / date (US-10)
-      </pre></div></div>
+      </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>The audit table itself rejects UPDATE/DELETE at the database level (not just app-layer convention), so immutability holds even against a compromised service account. Shipping to CloudWatch → S3 is a secondary async step; the synchronous guarantee is the DB write succeeding first.</div></div>
 
   <!-- empty template — the constant 23-participant roster, no messages.
        Shown by default in the center pane when nothing is selected. -->
@@ -1417,7 +1421,7 @@ const loupeBand=document.getElementById('loupeBand');
 const loupeSvg=document.getElementById('loupeSvg');
 const loupeStage=loupeSvg.parentElement;   /* .loupe-stage div — reliable clientWidth/Height */
 const loupeRect=document.getElementById('loupeRect');
-const LOUPE_MIN=0.1, LOUPE_MAX=1, LOUPE_STEP=0.1;
+const LOUPE_MIN=0.5, LOUPE_MAX=1, LOUPE_STEP=0.1;
 let loupeZoom=1;           // adjustable magnification (lower = more content shown)
 let loupeSourceRef=null;   // the <svg> currently cloned into the loupe
 let cloneSeq=0;
