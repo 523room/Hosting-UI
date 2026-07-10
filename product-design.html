@@ -673,7 +673,7 @@ sequenceDiagram
     LP-->>FI: Session granted → /leads
     opt Provision org users (US-06)
     FI->>LM: Invite RM / Billing (tenant-scoped)
-    LP->>EM: Activation link to invitee (same set-password + 2FA)
+    LP->>EM: Activation link → set password + mobile (2FA optional for RM/Billing)
     end
       </pre></div><div class="flexplain"><span class="lbl">Implementation notes</span>FI accounts start with no password (<code>pending_setup</code>); the activation link is single-use with a <b>7-day expiry</b>, validated server-side before a password can be set. If the invitee attempts login before setting a password (or the link expired), the link is <b>regenerated and resent</b>. 2FA enrollment (TOTP secret + QR) fires on first login, issuing <b>one-time backup recovery codes</b> for lost-authenticator access. <b style="color:#FFAA33">⚑ DEFERRED (D-08d):</b> the FI-11 source-IP gate is deferred for now, so first login proceeds straight to TOTP; when re-enabled, the IP gate precedes 2FA (network trust + second factor).</div></div>
 
@@ -1008,7 +1008,7 @@ const FEATURES=[
   ['US-05','FI Manager','a source-IP allowlist enforced at login and on every request','portal access from unapproved networks is blocked','deferred'],
   ['US-05a','FI Manager','to sign in with email + password and first-login mandatory 2FA (TOTP) after activating my emailed invite (single-use link, 7-day expiry; resent if I log in before setting a password) with one-time TOTP backup recovery codes','FI portal access is strongly authenticated before any lead is exposed']]},
  {id:'1.4',name:'FI Org User Management',sf:'Lead Market',s:[
-  ['US-06','FI Manager','invite, edit and deactivate users in my own FI org (RM, Billing)','I control who acts on leads and billing without CreditBridge'],
+  ['US-06','FI Manager','invite, edit and deactivate RM/Billing in my own FI org (invitee sets password + mobile via email link; 2FA optional for them); I cannot deactivate myself (single manager; email-change/reactivation via Converter)','I control who acts on leads and billing without CreditBridge'],
   ['US-07','FI Manager','per-user lead detail — leads handled, conversion, SLA record','I can hold my team accountable for wasted leads']]},
  {id:'1.5',name:'Admin: User & Platform Management',sf:'Converter Portal',s:[
   ['US-08','Admin','create, edit and suspend accounts across all roles','platform access is tightly controlled'],
@@ -1213,7 +1213,7 @@ const FLOWS=[
 ];
 
 const TMS=[
- {id:'TM-01',name:'Auth Hardening & Platform RBAC',deps:[],oq:[],covers:['US-01','US-02','US-03','US-04','US-05','US-05a','US-08'],
+ {id:'TM-01',name:'Auth Hardening & Platform RBAC',deps:[],oq:[],covers:['US-01','US-02','US-03','US-04','US-05','US-05a','US-08','US-92'],
   tasks:['Extend roles to the full catalog + fi_id tenant column','Deny-by-default RequirePermission middleware (role→permission map, audited seed)','Row-level scoping: connector=self, fi_*=own tenant, onboarder=own-code','Publish JWKS endpoint for downstream verification','Redis jti denylist fired only by suspend; 15-min status TTL otherwise','Admin login: mandatory TOTP 2FA (Nginx source-IP allowlist DEFERRED — D-08d)','Negative-case RBAC suite: every role × every denied permission'],
   tcs:[['TC-01.1','Unregistered-permission route → 403 for every role'],['TC-01.2','converter calling payout release → 403'],['TC-01.3','billing calling lead:advance → 403'],['TC-01.4','Suspension rejects a still-valid JWT on the next request'],['TC-01.5','Replayed rotated refresh token → 401, pair revoked'],['TC-01.6','fi_rm of FI-A requesting FI-B resource → 404'],['TC-01.7','Source-IP allowlist DEFERRED — admin auth gated by TOTP only for now']]},
  {id:'TM-02',name:'Connector Lifecycle & Activation',deps:['TM-01'],oq:['OQ-11'],covers:['US-11','US-12','US-13','US-14','US-15','US-16','US-19'],
@@ -1290,6 +1290,7 @@ const REVIEW={
   'US-03':'reviewed',
   'US-04':'reviewed',
   'US-05a':'reviewed',
+  'US-06':'reviewed',
 };
 const revBadge=id=>{
   const r=REVIEW[id];
