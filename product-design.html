@@ -945,10 +945,13 @@ const FEATURES=[
 {n:2,name:'Connector Onboarding & Enablement',mods:[
  {id:'2.1',name:'Connector Onboarding',sf:'Connector App + Lead Platform',s:[
   ['US-11','Connector','a 5-step onboarding profile with KYC and bank details','I can start submitting leads once approved'],
-  ['US-12','Onboarder','my referral code optionally attached to a registration','enrolments are attributed to whoever recruited them']]},
+  ['US-12','Onboarder','my referral code optionally attached to a registration','enrolments are attributed to whoever recruited them'],
+  ['US-107','CreditBridge','to track and pay the ₹2,500 referral bonus per activated connector to the referring party','the connector-acquisition GTM incentive from the business model is honoured, auditable and reconciled','deferred']]},
  {id:'2.2',name:'Connector Lifecycle Management',sf:'Converter Portal',s:[
   ['US-13','Converter','a KYC-exception review queue — clean eKYC + PAN + penny-drop auto-activates, only exceptions surface for manual review','fraud-risk or mismatched applications are checked without delaying clean connectors'],
-  ['US-14','Converter','suspend or blacklist with a mandatory logged reason','fraud or misconduct is contained immediately']]},
+  ['US-14','Converter','suspend or blacklist with a mandatory logged reason','fraud or misconduct is contained immediately'],
+  ['US-95','CreditBridge','a connector automatically flagged for review and blocked from new lead submission after 2 confirmed-fraudulent leads within a rolling window','document-fraud exposure is contained without waiting on a manual Converter action'],
+  ['US-99','Connector','to request account closure and deletion of my personal data, subject to PMLA/AML retention obligations','I can exit the platform on my own terms rather than only being suspended or blacklisted involuntarily','deferred']]},
  {id:'2.3',name:'Connector Quality Score',sf:'Lead Platform + Connector App',s:[
   ['US-15','CreditBridge','a composite quality score (disbursal 50 · documents 30 · clean record 20; 10-lead minimum)','routing reflects connector reliability'],
   ['US-16','Connector','my score as a band (High/Medium/Low) with a plain-language breakdown','I understand my standing without a gameable number']]},
@@ -975,13 +978,15 @@ const FEATURES=[
 {n:4,name:'Lead Qualification & Enrichment',mods:[
  {id:'4.1',name:'Qualification Engine',sf:'Lead Platform',s:[
   ['US-27','CreditBridge','every lead qualified or disqualified in 90 seconds (PAN, OKYC, bureau, FOIR, geography)','connectors get an immediate answer'],
-  ['US-28','CreditBridge','a deterministic rules engine deciding — GenAI writes only the explanation','every decision is auditable and RBI-defensible']]},
+  ['US-28','CreditBridge','a deterministic rules engine deciding — GenAI writes only the explanation','every decision is auditable and RBI-defensible'],
+  ['US-108','Connector','to re-submit a previously DISQUALIFIED borrower for re-qualification once their circumstances change — improved bureau band, cleared DPD, or corrected KYC','a temporary disqualification is not permanent and a now-eligible borrower gets another chance']]},
  {id:'4.2',name:'Borrower eKYC',sf:'Connector App + Lead Platform',s:[
   ['US-29','Connector','Aadhaar OTP + PAN verification with retry-then-physical fallback','FIs can trust the lead is genuine']]},
  {id:'4.3',name:'Bureau Integration',sf:'Lead Platform',s:[
   ['US-30','CreditBridge','a score-only soft pull with no footprint and 30-day auto-purge','borrowers\' credit files are protected']]},
  {id:'4.4',name:'Qualification Result',sf:'Connector App',s:[
-  ['US-31','Connector','the outcome with a plain-language reason code (Q001–Q007) and a suggestion','I give the borrower an actionable answer on the spot']]},
+  ['US-31','Connector','the outcome with a plain-language reason code (Q001–Q007) and a suggestion','I give the borrower an actionable answer on the spot'],
+  ['US-92','Borrower','a plain-language reason delivered directly to me over WhatsApp when I am disqualified or an FI declines me — not only to the Connector','I understand the outcome and can seek recourse']]},
  {id:'4.5',name:'AI Credit Summary',sf:'Lead Platform → Lead Market',s:[
   ['US-32','FI Manager','a 3-sentence AI credit summary on accepted leads','my credit team grasps a profile instantly']]}]},
 {n:5,name:'Document Collection & Management',mods:[
@@ -1073,7 +1078,10 @@ const FEATURES=[
  {id:'9.4',name:'FI Invoicing & Billing',sf:'Lead Market',s:[
   ['US-80','FI Billing','filterable invoices with per-loan rows, IRN PDFs and ageing','our finance team reconciles without manual work']]},
  {id:'9.5',name:'Billing & Reconciliation (Ops)',sf:'Converter Portal',s:[
-  ['US-81','Billing','per-FI invoice cadence, overdue flags and margin reconciliation','receivables and cash position are always accurate']]}]},
+  ['US-81','Billing','per-FI invoice cadence, overdue flags and margin reconciliation','receivables and cash position are always accurate']]},
+ {id:'9.6',name:'Reversals & Payout Recovery',sf:'Lead Platform + Converter Portal',s:[
+  ['US-93','Billing','to reverse or credit-note a commission and adjust the linked connector payout when a disbursed loan is cancelled, foreclosed or reversed within a cooling-off period','FI invoices, CreditBridge margin and connector earnings all reconcile with recognised FI revenue'],
+  ['US-94','Billing','a failed Razorpay payout (bounced account, name mismatch) auto-flagged, the connector notified to correct bank details, and the payout safely re-queued','a bad account number never silently strands a connector\'s earnings past the 48-hour payout SLA']]}]},
 {n:10,name:'Compliance & Consent',mods:[
  {id:'10.1',name:'DPDP Consent Capture',sf:'Connector App',s:[
   ['US-82','Connector','one combined plain-language consent statement at submission','lawful consent is captured in a single tap']]},
@@ -1083,7 +1091,10 @@ const FEATURES=[
  {id:'10.3',name:'Compliance Dashboard',sf:'Converter Portal',s:[
   ['US-85','Converter','consent coverage, retention flags and an RBI audit export','compliance is monitored continuously, not at audit time']]},
  {id:'10.4',name:'Audit & Retention Infrastructure',sf:'Lead Platform',s:[
-  ['US-86','CreditBridge','immutable audit logs, 30-day bureau purge, 5-year PMLA retention, India-only residency','every retention rule is enforced by the system, not by policy']]}]},
+  ['US-86','CreditBridge','immutable audit logs, 30-day bureau purge, 5-year PMLA retention, India-only residency','every retention rule is enforced by the system, not by policy']]},
+ {id:'10.5',name:'Grievance & Sanctions Screening',sf:'Converter Portal + Lead Platform',s:[
+  ['US-91','Borrower','a visible Grievance Redressal Officer contact and complaint tracking, surfaced at KFS delivery and on every WhatsApp status touchpoint','I have a defined escalation channel for a lending dispute'],
+  ['US-96','Converter','a PEP/sanctions-list hit to pause the lead or onboarding and route to a mandatory compliance review queue — never silently pass or auto-reject','PMLA screening obligations are honoured with a human decision on record']]}]},
 {n:11,name:'Internal Operations',mods:[
  {id:'11.1',name:'Operations Dashboard',sf:'Converter Portal',s:[
   ['US-87','Converter','KPIs and the pipeline funnel on one screen','I identify bottlenecks and prioritise each day']]},
