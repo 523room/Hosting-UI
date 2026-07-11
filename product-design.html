@@ -824,25 +824,8 @@ sequenceDiagram
     participant CA as Connector App
     participant LP as Lead Platform
     participant DB as PostgreSQL
-    participant KYC as eKYC · PAN · Penny-drop
     actor CV as Converter
-    participant TW as Temporal
-    participant SETU as Setu (PAN + OKYC)
-    participant CRIF as CRIF via Surepass
-    actor B as Borrower
-    participant WA as WhatsApp (Interakt)
-    participant AA as Account Aggregator
-    participant VO as AI Voice (Sarvam+Bolna)
-    participant LM as Lead Market
-    actor FI as FI Manager / RM
-    participant S3 as S3 signed URLs
-    participant LOS as FI LOS webhooks
-    participant GSTN as GSTN e-invoice
-    actor BL as Billing
-    actor AD as Admin
-    participant RZ as Razorpay Payouts
     participant CP as Converter Portal
-    participant CW as CloudWatch → S3 (2y)
     par Manual — Converter action
     CV->>CP: Suspend / blacklist connector + mandatory logged reason (US-14)
     CP->>LP: POST /connector/suspend
